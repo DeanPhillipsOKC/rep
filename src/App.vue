@@ -13,18 +13,82 @@ const view = ref<'log' | 'exercises' | 'history'>('log')
 <template>
   <main>
     <AuthGate>
-      <h1>Workout Tracker</h1>
+      <header class="app-header">
+        <h1>Workout Tracker</h1>
+        <button type="button" class="ghost" @click="auth.signOut()">Sign out</button>
+      </header>
 
-      <nav>
-        <button type="button" :disabled="view === 'log'" @click="view = 'log'">Log</button>
-        <button type="button" :disabled="view === 'exercises'" @click="view = 'exercises'">Exercises</button>
-        <button type="button" :disabled="view === 'history'" @click="view = 'history'">History</button>
-        <button type="button" @click="auth.signOut()">Sign out</button>
+      <nav class="tabs">
+        <button type="button" :class="{ active: view === 'log' }" @click="view = 'log'">Log</button>
+        <button type="button" :class="{ active: view === 'exercises' }" @click="view = 'exercises'">
+          Exercises
+        </button>
+        <button type="button" :class="{ active: view === 'history' }" @click="view = 'history'">
+          History
+        </button>
       </nav>
 
-      <WorkoutLogger v-if="view === 'log'" />
-      <ExerciseList v-else-if="view === 'exercises'" />
-      <WorkoutHistory v-else-if="view === 'history'" />
+      <section class="content">
+        <WorkoutLogger v-if="view === 'log'" />
+        <ExerciseList v-else-if="view === 'exercises'" />
+        <WorkoutHistory v-else-if="view === 'history'" />
+      </section>
     </AuthGate>
   </main>
 </template>
+
+<style scoped>
+main {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 32px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.app-header .ghost {
+  min-height: auto;
+  padding: 8px 12px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 12px;
+  background: var(--bg);
+}
+
+.tabs button {
+  flex: 1;
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.tabs button.active {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.content {
+  padding: 0 16px;
+}
+</style>

@@ -53,20 +53,18 @@ function handleFinish() {
   <div>
     <h2>Log a workout</h2>
 
-    <div v-if="!workout.activeWorkoutId">
-      <form @submit.prevent="handleStart">
-        <label for="workout-notes">Notes (optional)</label>
-        <input id="workout-notes" v-model="notes" type="text" />
-        <button type="submit">Start workout</button>
-      </form>
-    </div>
+    <form v-if="!workout.activeWorkoutId" class="card" @submit.prevent="handleStart">
+      <label for="workout-notes">Notes (optional)</label>
+      <input id="workout-notes" v-model="notes" type="text" />
+      <button type="submit">Start workout</button>
+    </form>
 
     <div v-else>
-      <p v-if="exercises.activeExercises.length === 0">
+      <p v-if="exercises.activeExercises.length === 0" class="empty">
         No exercises yet. Add one under the Exercises tab first.
       </p>
 
-      <form v-else @submit.prevent="handleAddSet">
+      <form v-else class="card" @submit.prevent="handleAddSet">
         <label for="set-exercise">Exercise</label>
         <select id="set-exercise" v-model="exerciseId" required>
           <option value="" disabled>Select an exercise</option>
@@ -75,34 +73,137 @@ function handleFinish() {
           </option>
         </select>
 
-        <label for="set-reps">Reps</label>
-        <input id="set-reps" v-model.number="reps" type="number" min="1" required />
+        <div class="grid-2">
+          <div>
+            <label for="set-reps">Reps</label>
+            <input id="set-reps" v-model.number="reps" type="number" inputmode="numeric" min="1" required />
+          </div>
+          <div>
+            <label for="set-weight">Weight</label>
+            <input
+              id="set-weight"
+              v-model.number="weight"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.5"
+              required
+            />
+          </div>
+        </div>
 
-        <label for="set-weight">Weight</label>
-        <input id="set-weight" v-model.number="weight" type="number" min="0" step="0.5" required />
-
-        <label for="set-unit">Unit</label>
-        <select id="set-unit" v-model="weightUnit">
-          <option value="lb">lb</option>
-          <option value="kg">kg</option>
-        </select>
-
-        <label for="set-rpe">RPE (optional)</label>
-        <input id="set-rpe" v-model.number="rpe" type="number" min="0" max="10" step="0.5" />
+        <div class="grid-2">
+          <div>
+            <label for="set-unit">Unit</label>
+            <select id="set-unit" v-model="weightUnit">
+              <option value="lb">lb</option>
+              <option value="kg">kg</option>
+            </select>
+          </div>
+          <div>
+            <label for="set-rpe">RPE (optional)</label>
+            <input id="set-rpe" v-model.number="rpe" type="number" inputmode="decimal" min="0" max="10" step="0.5" />
+          </div>
+        </div>
 
         <button type="submit">Add set</button>
       </form>
 
-      <ol>
-        <li v-for="set in workout.activeSets" :key="set.id">
-          {{ exerciseName(set.exercise_id) }} — {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
-          <span v-if="set.rpe !== null"> @ RPE {{ set.rpe }}</span>
+      <ol class="list">
+        <li v-for="(set, index) in workout.activeSets" :key="set.id" class="row">
+          <span class="row-index">{{ index + 1 }}</span>
+          <span class="row-body">
+            <span class="row-title">{{ exerciseName(set.exercise_id) }}</span>
+            <span class="row-sub">
+              {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
+              <template v-if="set.rpe !== null"> · RPE {{ set.rpe }}</template>
+            </span>
+          </span>
         </li>
       </ol>
 
-      <button type="button" @click="handleFinish">Finish workout</button>
+      <button type="button" class="ghost finish" @click="handleFinish">Finish workout</button>
     </div>
 
-    <p v-if="errorMessage">{{ errorMessage }}</p>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </template>
+
+<style scoped>
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.empty {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.row-index {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.row-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.row-title {
+  font-weight: 600;
+}
+
+.row-sub {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.finish {
+  width: 100%;
+}
+
+.error {
+  color: var(--danger);
+}
+</style>

@@ -29,20 +29,82 @@ async function handlePasskeySignIn() {
 </script>
 
 <template>
-  <div>
+  <div class="screen">
     <h1>Workout Tracker</h1>
 
-    <button v-if="auth.supportsPasskeys()" type="button" @click="handlePasskeySignIn">
+    <button
+      v-if="auth.supportsPasskeys()"
+      type="button"
+      class="primary"
+      @click="handlePasskeySignIn"
+    >
       Sign in with passkey
     </button>
 
-    <form @submit.prevent="handleMagicLink">
+    <div class="divider" v-if="auth.supportsPasskeys()"><span>or</span></div>
+
+    <form class="card" @submit.prevent="handleMagicLink">
       <label for="email">Email</label>
       <input id="email" v-model="email" type="email" required autocomplete="email" />
       <button type="submit" :disabled="status === 'sending'">Email me a sign-in link</button>
     </form>
 
-    <p v-if="status === 'sent'">Check your email for a sign-in link.</p>
-    <p v-if="status === 'error'">{{ errorMessage }}</p>
+    <p v-if="status === 'sent'" class="hint">Check your email for a sign-in link.</p>
+    <p v-if="status === 'error'" class="error">{{ errorMessage }}</p>
   </div>
 </template>
+
+<style scoped>
+.screen {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 48px 16px;
+}
+
+.screen h1 {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.primary {
+  width: 100%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.hint {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.error {
+  margin-top: 16px;
+  text-align: center;
+  color: var(--danger);
+}
+</style>
