@@ -21,17 +21,13 @@ Anything not listed here (writing schema, config files, app code) is Claude's/Co
 
 ## Supabase project configuration (dashboard, after project creation)
 
-- [x] Disable open sign-ups in Auth settings (invite-only app — see `docs/architecture.md#access-control`).
 - [x] Run `supabase/schema.sql` and `supabase/policies.sql` in the SQL editor to create tables and RLS policies. Verified via anon-key REST calls: reads return empty, unauthenticated writes get rejected with `42501`.
-- [x] Run `supabase/seed.local.sql` to seed the `allowed_users` table.
 - [x] Checked current WebAuthn/passkey support — public beta as of May 2026, still "experimental, API may change without notice." Decision: proceed with passkeys anyway (see `docs/architecture.md#authentication`).
-- [ ] **Configure Relying Party settings** for passkeys: Authentication → Passkeys (BETA) in the dashboard. Set:
-  - RP Display Name: `Workout Tracker`
-  - RP ID: `rep-970.pages.dev` (or your custom domain, if/when you set one up — passkeys registered under one RP ID won't carry over to another)
-  - RP Origins: `https://rep-970.pages.dev`
-  Passkey registration will fail until this is set.
-- [ ] **URL Configuration** (Authentication → URL Configuration): set **Site URL** to `https://rep-970.pages.dev`, and add both `https://rep-970.pages.dev` and `http://localhost:5173` under **Redirect URLs** — magic-link sign-in will fail with a redirect error otherwise (the second one only matters if you test with `npm run dev` locally).
-- [ ] Once real accounts exist: sign in as user A and try to read/write user B's rows by ID directly against the REST API. Confirm both fail — this is the full hostile-read test from `docs/architecture.md#row-level-security`, which couldn't be run earlier with no real users.
+- [x] **Configure Relying Party settings** for passkeys: Authentication → Passkeys (BETA). RP Display Name `Workout Tracker`, RP ID `rep-970.pages.dev`, RP Origins `https://rep-970.pages.dev`. Confirmed live via `/auth/v1/settings` (`passkeys_enabled: true`).
+- [x] **URL Configuration**: Site URL `https://rep-970.pages.dev`, Redirect URLs include that plus `http://localhost:5173` for local dev.
+- [x] Disable open sign-ups in Auth settings (Sign In / Providers → "Allow new users to sign up" off). Confirmed live via `/auth/v1/settings` (`disable_signup: true`).
+- [x] Pre-create both accounts manually: Authentication → Users → Add user (with Auto Confirm) for both allowed emails, since signups are disabled and no `allowed_users` table is used (see `docs/architecture.md#access-control`).
+- [ ] Once you've signed in as both users at least once: try to read/write the other user's rows by ID directly against the REST API while authenticated as one of them. Confirm both fail — this is the full hostile-read test from `docs/architecture.md#row-level-security`, which couldn't be run earlier with no real accounts.
 
 ## Decisions only you can make
 

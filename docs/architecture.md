@@ -59,7 +59,7 @@ Magic link is never the primary path after enrollment. It exists so a lost crede
 The app is invite-only. There is no public sign-up.
 
 - Disable open sign-ups in the Supabase Auth settings.
-- Maintain an allowlist: either seed the two user rows manually, or gate account creation on an email present in an `allowed_users` table.
+- Maintain an allowlist by seeding the two user rows manually (Authentication → Users → Add user, with Auto Confirm), rather than building an `allowed_users` table the app would have to check on every sign-in attempt. With signups disabled, an unrecognized email simply can't create an account — there's nothing left for a table-based check to add for two users.
 - Do not rely on "nobody knows the URL" as a control.
 
 ## Data model

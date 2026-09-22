@@ -32,9 +32,3 @@ create table sets (
   weight_unit text not null check (weight_unit in ('lb', 'kg')),
   rpe         numeric null
 );
-
--- Invite-only allowlist, per docs/architecture.md#access-control.
--- Seed the two allowed emails manually after creating this table.
-create table allowed_users (
-  email text primary key
-);
