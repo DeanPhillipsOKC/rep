@@ -9,8 +9,8 @@ Anything not listed here (writing schema, config files, app code) is Claude's/Co
 - [x] **GitHub** — repo: https://github.com/DeanPhillipsOKC/rep
 - [x] **Supabase** ([supabase.com](https://supabase.com)) — project created (`zdcoqykpuhyftuqtyngt`). URL + publishable key are in `.env.local` (gitignored, not committed).
 - [x] **Cloudflare** ([dash.cloudflare.com](https://dash.cloudflare.com)) — account created, Pages project connected to the GitHub repo.
-  - [ ] In the Cloudflare Pages project settings, set **build command** `npm run build`, **build output directory** `dist`.
-  - [ ] Add environment variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (same values as `.env.local`) in Pages → Settings → Environment variables, so the deployed build can reach Supabase.
+  - [x] In the Cloudflare Pages project settings, set **build command** `npm run build`, **build output directory** `dist`.
+  - [x] Added environment variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Pages → Settings → Environment variables. Confirmed baked into the deployed bundle.
 - [ ] *(Optional, only if Supabase's built-in email hits rate limits)* **Resend** free tier, for magic-link/recovery email.
 - [ ] *(Optional)* A domain name, if you want something other than the default `*.pages.dev` subdomain.
 
@@ -38,7 +38,8 @@ Anything not listed here (writing schema, config files, app code) is Claude's/Co
 
 ## Physical device verification
 
-- [ ] **Android** (primary): confirm the app installs from Chrome, the `beforeinstallprompt` install flow works, and passkey registration works inside the installed PWA.
+- [x] **Android, browser tab:** magic-link sign-in and passkey registration both worked on `rep-970.pages.dev` in Chrome.
+- [ ] **Android, installed PWA:** confirm the app installs from Chrome (`beforeinstallprompt` flow), and that passkey sign-in still works once launched from the home screen icon rather than a browser tab.
 - [ ] **iPhone** (secondary, once available): confirm iCloud Keychain sync is enabled; test passkey registration *inside the installed home-screen PWA*, not just in a Safari tab — behavior has historically differed between the two; confirm the "Add to Home Screen" flow and app icon look right.
 
 ## Not needed for this project

@@ -173,6 +173,7 @@ See `supabase/schema.sql` and `supabase/policies.sql` for the runnable versions 
 - **Supabase pauses free projects after roughly a week of inactivity.** Resuming is a dashboard click, but if usage is sporadic this will be the main friction. Consider a scheduled ping if it becomes a nuisance, or accept it.
 - Free tier limits change. Verify current allowances at build time rather than trusting this document.
 - No analytics, no third-party scripts, no tracking. Two users, private fitness data, nothing to gain from instrumentation.
+- **The service worker caches the previous deploy.** After pushing a change, a device that already has the app open/installed can keep serving the old cached version for a bit — `registerType: 'autoUpdate'` catches up, but not always on the very first load. If a deploy "doesn't seem to have worked," try an incognito/private tab first to rule out stale cache before assuming it's a real bug.
 
 ## Build order
 
