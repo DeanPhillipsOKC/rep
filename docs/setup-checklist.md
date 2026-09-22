@@ -39,7 +39,7 @@ Anything not listed here (writing schema, config files, app code) is Claude's/Co
 ## Physical device verification
 
 - [x] **Android, browser tab:** magic-link sign-in and passkey registration both worked on `rep-970.pages.dev` in Chrome.
-- [ ] **Android, installed PWA:** confirm the app installs from Chrome (`beforeinstallprompt` flow), and that passkey sign-in still works once launched from the home screen icon rather than a browser tab.
+- [ ] **Android, installed PWA — blocked, needs investigation next session.** Chrome's `⋮` menu wasn't offering a real "Install app" option, only something that looked like a plain bookmark/shortcut to the Chrome home page rather than a standalone install. This was tried *before* the placeholder icons existed (see `docs/architecture.md` — the manifest icons 404'd, which fails Chrome's installability check silently, no error shown). Icons are fixed and deployed now; **try installing again first** — it may just work. If not, get a screenshot of the `⋮` menu to diagnose further (e.g. check `chrome://flags` for PWA-related flags, or check manifest validity via Chrome DevTools' Application tab if a PC can mirror the phone).
 - [ ] **iPhone** (secondary, once available): confirm iCloud Keychain sync is enabled; test passkey registration *inside the installed home-screen PWA*, not just in a Safari tab — behavior has historically differed between the two; confirm the "Add to Home Screen" flow and app icon look right.
 
 ## Not needed for this project
