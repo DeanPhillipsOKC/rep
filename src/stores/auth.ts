@@ -23,14 +23,24 @@ export const useAuthStore = defineStore('auth', () => {
     hasPasskey.value = !error && !!data && data.length > 0
   }
 
+  // exercises/workouts have an FK to profiles(id) (see docs/architecture.md#data-model).
+  // Pre-created auth users don't get a profiles row for free, so ensure one exists
+  // on every sign-in — cheap no-op once it's there.
+  async function ensureProfile() {
+    if (!session.value) return
+    await supabase.from('profiles').upsert({ id: session.value.user.id })
+  }
+
   async function init() {
     const { data } = await supabase.auth.getSession()
     session.value = data.session
+    await ensureProfile()
     await refreshPasskeyStatus()
     loading.value = false
 
     supabase.auth.onAuthStateChange((_event, newSession) => {
       session.value = newSession
+      ensureProfile()
       refreshPasskeyStatus()
     })
   }
