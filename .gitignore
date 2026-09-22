@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+.env
+.env.local
+*.local
+supabase/seed.local.sql
+.DS_Store
