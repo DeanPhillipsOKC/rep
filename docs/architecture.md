@@ -45,6 +45,11 @@ Magic link is never the primary path after enrollment. It exists so a lost crede
 ### Requirements
 
 - Verify Supabase's current WebAuthn support before building. It is a newer feature and the API may have changed. If it is not production-ready at implementation time, fall back to magic-link-only auth and layer passkeys in later. Do not hand-roll a WebAuthn implementation.
+
+> **Status as of 2026-09-22:** Supabase's Passkeys support went to public beta in May 2026 (`@supabase/supabase-js` v2.105.0+, client opt-in via `auth: { experimental: { passkey: true } }`) but Supabase still documents it as experimental with "the API may change without notice." Per the fallback rule above, the safe default would be magic-link-only for now. **Decision: build passkey-first anyway**, accepting the risk of a breaking API change later — this is a two-user prototype, the blast radius of a breaking change is low, and re-doing the auth UI later is cheap. If Supabase ships a breaking change, expect to revisit `src/stores/auth.ts` and `src/components/*`.
+
+- Do not hand-roll a WebAuthn implementation — use `supabase.auth.registerPasskey()` / `supabase.auth.signInWithPasskey()` / `supabase.auth.passkey.list()`.
+- Configure Relying Party settings in the Supabase dashboard (Authentication → Passkeys) before passkey registration will work: RP Display Name, RP ID (bare domain, e.g. `rep-970.pages.dev`), RP Origins (matching HTTPS origin(s), up to 5). See `docs/setup-checklist.md`.
 - Register at least two passkeys per account where possible. On Android this syncs via Google Password Manager; on iPhone, confirm iCloud Keychain sync is enabled — so credentials survive device loss either way.
 - Test passkey registration inside the installed home-screen PWA context on each platform, not only in a browser tab. Behavior has historically differed between installed and tab contexts, especially on iOS Safari.
 - Set a long session expiry. Safari in particular can evict storage during idle periods, which forces re-auth.

@@ -21,12 +21,17 @@ Anything not listed here (writing schema, config files, app code) is Claude's/Co
 
 ## Supabase project configuration (dashboard, after project creation)
 
-Deferred for now — the app can't actually log in or store data until this is done, but there's no rush until we're ready to test auth. Come back to this before build-order step 3 (Auth) in `docs/architecture.md`.
-
-- [ ] Disable open sign-ups in Auth settings (invite-only app — see `docs/architecture.md#access-control`).
-- [ ] Run `supabase/schema.sql` and `supabase/policies.sql` in the SQL editor to create tables and RLS policies.
-- [ ] Run `supabase/seed.local.sql` (gitignored — has the real allowlist emails in it, not committed) to seed the `allowed_users` table.
-- [ ] Confirm current WebAuthn/passkey support in Supabase Auth before building the passkey enrollment flow — it's a newer feature and may have changed. If not production-ready, ship magic-link-only first and layer passkeys in later.
+- [x] Disable open sign-ups in Auth settings (invite-only app — see `docs/architecture.md#access-control`).
+- [x] Run `supabase/schema.sql` and `supabase/policies.sql` in the SQL editor to create tables and RLS policies. Verified via anon-key REST calls: reads return empty, unauthenticated writes get rejected with `42501`.
+- [x] Run `supabase/seed.local.sql` to seed the `allowed_users` table.
+- [x] Checked current WebAuthn/passkey support — public beta as of May 2026, still "experimental, API may change without notice." Decision: proceed with passkeys anyway (see `docs/architecture.md#authentication`).
+- [ ] **Configure Relying Party settings** for passkeys: Authentication → Passkeys (BETA) in the dashboard. Set:
+  - RP Display Name: `Workout Tracker`
+  - RP ID: `rep-970.pages.dev` (or your custom domain, if/when you set one up — passkeys registered under one RP ID won't carry over to another)
+  - RP Origins: `https://rep-970.pages.dev`
+  Passkey registration will fail until this is set.
+- [ ] **URL Configuration** (Authentication → URL Configuration): set **Site URL** to `https://rep-970.pages.dev`, and add both `https://rep-970.pages.dev` and `http://localhost:5173` under **Redirect URLs** — magic-link sign-in will fail with a redirect error otherwise (the second one only matters if you test with `npm run dev` locally).
+- [ ] Once real accounts exist: sign in as user A and try to read/write user B's rows by ID directly against the REST API. Confirm both fail — this is the full hostile-read test from `docs/architecture.md#row-level-security`, which couldn't be run earlier with no real users.
 
 ## Decisions only you can make
 
