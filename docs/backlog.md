@@ -7,10 +7,31 @@ How this works:
 - When an item is finished, delete it from here and add a one-line entry to `docs/backlog-archive.md` (cold storage) with what shipped and a commit ref. Don't leave finished write-ups in this file — that's what bloats context on every load.
 - **[human]** tags mark tasks only the user can do (accounts, physical devices, product decisions). Flag if one is unchecked and blocking; don't attempt it yourself.
 - "Depends on" call out ordering between items below.
+- Every item carries an `[Effort: N, Value: N, ROI: X]` tag — see **Prioritization** below. When adding a new item, assign its scores yourself; the user doesn't want to be involved in that judgment call.
+
+## Prioritization
+
+Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
+
+- **Effort** — implementation complexity/size, your best estimate.
+- **Value** — combined technical and business impact (there's no need to separate the two; use one number for "how much this is worth doing").
+
+`ROI = Value / Effort`. Higher ROI = do it sooner. This is a rough forcing function for "what's next," not a precise formula — ties are fine, don't over-think a single point of Effort or Value. Re-score an item if its scope changes materially; otherwise leave existing scores alone even as new items are added around them.
+
+Priority order (highest ROI first), kept in sync with the tags below:
+
+| # | Item | Effort | Value | ROI |
+|---|------|--------|-------|-----|
+| 9 | Don't persist a workout with zero sets logged | 2 | 8 | 4.0 |
+| 4 | PR toast on new record | 3 | 5 | 1.67 |
+| 8 | Exercise setup notes | 3 | 5 | 1.67 |
+| 5 | On-demand data-wipe script | 2 | 3 | 1.5 |
+| 7 | Edit exercise name | 2 | 3 | 1.5 |
+| 6 | Post-workout volume chart | 8 | 8 | 1.0 |
 
 ## Bugs
 
-### 9. Don't persist a workout with zero sets logged
+### 9. Don't persist a workout with zero sets logged `[Effort: 2, Value: 8, ROI: 4.0]`
 
 Starting a workout and finishing it (or abandoning it) without adding any sets still leaves a `workouts` row behind with no `sets` rows under it. This isn't just clutter — it already broke the "last time" pre-fill (item 3): the lookup found the most recent `workouts` row for a template before checking whether it had sets, so an empty workout could shadow a real one until fixed with `sets!inner` in `fetchPreviousWorkout` (`src/stores/workouts.ts`). Any future reporting that scans `workouts` directly (item 6's volume chart, exercise history) has the same trap unless it also remembers to filter for sets.
 
@@ -19,20 +40,20 @@ Starting a workout and finishing it (or abandoning it) without adding any sets s
 
 ## Features
 
-### 4. PR toast on new record
+### 4. PR toast on new record `[Effort: 3, Value: 5, ROI: 1.67]`
 
 When a set is added, compare `reps * weight` against the user's best-ever value for that `exercise_id` across all past workouts. If it's a new max, show a congratulatory toast.
 
 - Scope: per-user, per-exercise all-time max — not scoped to the current workout or template.
 
-### 5. On-demand data-wipe script
+### 5. On-demand data-wipe script `[Effort: 2, Value: 3, ROI: 1.5]`
 
 A script (not wired into the UI) that clears all workout data for a given account, so repeated manual/exploratory test scenarios don't accumulate stale data.
 
 - Must take an explicit user id/email argument and refuse to run without one — never a blanket wipe that could hit both real accounts.
 - Service-role key, local-only — same handling constraints as item 1.
 
-### 6. Post-workout volume chart
+### 6. Post-workout volume chart `[Effort: 8, Value: 8, ROI: 1.0]`
 
 At the end of a workout, show total volume (Σ reps × weight across all sets) for that template over time, as a two-line chart:
 
@@ -41,11 +62,11 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
 - **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
 
-### 7. Edit exercise name
+### 7. Edit exercise name `[Effort: 2, Value: 3, ROI: 1.5]`
 
 Exercises currently support create and archive only (`src/stores/exercises.ts`) — no way to fix a typo'd or rename an existing exercise's `name` without archiving it and losing its history linkage. Add an edit affordance (inline or a small form) that updates `name` on the existing row, same RLS as today.
 
-### 8. Exercise setup notes
+### 8. Exercise setup notes `[Effort: 3, Value: 5, ROI: 1.67]`
 
 **User request:** add freeform notes to an exercise (e.g. machine seat height, incline position) and see them while logging a set for that exercise, so setup is consistent workout to workout.
 
