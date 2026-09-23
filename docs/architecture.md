@@ -49,7 +49,7 @@ Magic link is never the primary path after enrollment. It exists so a lost crede
 > **Status as of 2026-09-22:** Supabase's Passkeys support went to public beta in May 2026 (`@supabase/supabase-js` v2.105.0+, client opt-in via `auth: { experimental: { passkey: true } }`) but Supabase still documents it as experimental with "the API may change without notice." Per the fallback rule above, the safe default would be magic-link-only for now. **Decision: build passkey-first anyway**, accepting the risk of a breaking API change later — this is a two-user prototype, the blast radius of a breaking change is low, and re-doing the auth UI later is cheap. If Supabase ships a breaking change, expect to revisit `src/stores/auth.ts` and `src/components/*`.
 
 - Do not hand-roll a WebAuthn implementation — use `supabase.auth.registerPasskey()` / `supabase.auth.signInWithPasskey()` / `supabase.auth.passkey.list()`.
-- Configure Relying Party settings in the Supabase dashboard (Authentication → Passkeys) before passkey registration will work: RP Display Name, RP ID (bare domain, e.g. `rep-970.pages.dev`), RP Origins (matching HTTPS origin(s), up to 5). See `docs/setup-checklist.md`.
+- Configure Relying Party settings in the Supabase dashboard (Authentication → Passkeys) before passkey registration will work: RP Display Name, RP ID (bare domain, e.g. `rep-970.pages.dev`), RP Origins (matching HTTPS origin(s), up to 5). See `docs/backlog.md`.
 - Register at least two passkeys per account where possible. On Android this syncs via Google Password Manager; on iPhone, confirm iCloud Keychain sync is enabled — so credentials survive device loss either way.
 - Test passkey registration inside the installed home-screen PWA context on each platform, not only in a browser tab. Behavior has historically differed between installed and tab contexts, especially on iOS Safari.
 - Set a long session expiry. Safari in particular can evict storage during idle periods, which forces re-auth.
@@ -61,6 +61,31 @@ The app is invite-only. There is no public sign-up.
 - Disable open sign-ups in the Supabase Auth settings.
 - Maintain an allowlist by seeding the two user rows manually (Authentication → Users → Add user, with Auto Confirm), rather than building an `allowed_users` table the app would have to check on every sign-in attempt. With signups disabled, an unrecognized email simply can't create an account — there's nothing left for a table-based check to add for two users.
 - Do not rely on "nobody knows the URL" as a control.
+
+### Testing / automation
+
+Real auth is passkey + magic-link only — neither is scriptable, which blocks browser
+automation and end-to-end tests. `scripts/create-test-session.mjs` (`npm run test:session`)
+mints a real session for a dedicated test account instead of a client-visible bypass:
+
+1. Uses the Supabase **service role** key (Admin API) to call `auth.admin.generateLink({ type: 'magiclink', email })` for the test account. This both creates the account if it doesn't exist yet and returns a `hashed_token`, bypassing the "disable signups" restriction the same way the dashboard's manual account creation does.
+2. Redeems that token with the **anon** key via `auth.verifyOtp({ token_hash, type: 'email' })` — the same call flow a user clicking the magic-link email would trigger — to get a real `Session` (access + refresh tokens).
+3. Prints the session plus the `sb-<project-ref>-auth-token` localStorage key a browser automation tool should inject it under, so the app's normal `supabase.auth.getSession()` picks it up on load with no code path specific to testing.
+
+The minting logic lives in `scripts/lib/mint-test-session.mjs` so both the CLI script and Playwright can call it directly (see `e2e/fixtures/auth.ts` below) without shelling out.
+
+Constraints:
+
+- The service role key lives in `.env.local` only (`SUPABASE_SERVICE_ROLE_KEY`) — never committed, never in Cloudflare Pages env vars. Same handling as any other service-role use (see Client security below).
+- `TEST_ACCOUNT_EMAIL` must be a dedicated test account, never one of the two real allowlisted users — the script refuses to run against either.
+- Verify `generateLink`/`verifyOtp` still behave this way against the installed `@supabase/supabase-js` version before depending on this further; confirmed working as of `@supabase/supabase-js` 2.117.0.
+
+### End-to-end tests (Playwright)
+
+`e2e/` holds Playwright specs (`npm run test:e2e`). `playwright.config.ts` boots the Vite
+dev server automatically (`webServer`, reused if already running locally) and runs against
+Chromium. `e2e/fixtures/auth.ts` wraps the test-session mint above into `signInAsTestUser(page)`
+so specs can start already signed in — confirmed working end-to-end (`e2e/auth.spec.ts`).
 
 ## Data model
 
