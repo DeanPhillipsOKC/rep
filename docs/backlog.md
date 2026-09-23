@@ -38,6 +38,18 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
 - **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the lookup mechanism from item 3.
 
+### 7. Edit exercise name
+
+Exercises currently support create and archive only (`src/stores/exercises.ts`) — no way to fix a typo'd or rename an existing exercise's `name` without archiving it and losing its history linkage. Add an edit affordance (inline or a small form) that updates `name` on the existing row, same RLS as today.
+
+### 8. Exercise setup notes
+
+**User request:** add freeform notes to an exercise (e.g. machine seat height, incline position) and see them while logging a set for that exercise, so setup is consistent workout to workout.
+
+- Schema: `exercises` gains a nullable `setup_notes text` column (or similarly named — distinct from a per-workout `workouts.notes`, which is about that day's session, not the machine).
+- Editable wherever exercise name/category are managed (see item 7 for the edit affordance this can share).
+- Surface in `WorkoutLogger.vue`: show the selected exercise's notes near the set-entry form, not just in the Exercises tab, since that's the moment it's needed.
+
 ## Human setup / device verification
 
 - [ ] **[human]** Hostile-read RLS test: now that both accounts have signed in at least once, sign in as one user and attempt to read/write the other's rows by ID directly against the REST API. Confirm both fail. (`docs/architecture.md#row-level-security`)
@@ -46,6 +58,7 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - [ ] **[human]** App display name, theme color, and final icon (or approve the current placeholder set).
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
+- [ ] **[human]** *Future discussion:* what is the `exercises.category` field actually for? It's currently just a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing in the app filters, groups, or otherwise behaves differently based on it. Needs a decision: define a real purpose for it (e.g. filtering the exercise picker, grouping template exercises) or drop the field if it's not earning its keep.
 
 ---
 
