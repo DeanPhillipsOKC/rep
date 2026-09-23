@@ -35,7 +35,15 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   await expect(page.locator('.row', { hasText: exerciseName })).toBeVisible()
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  // Second workout against the same template: should show last time's data.
+  // Second workout against the same template, but abandoned with no sets
+  // logged (e.g. started by mistake). This must not shadow the real data
+  // from the first workout on the next lookup.
+  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByRole('button', { name: 'Finish workout' }).click()
+
+  // Third workout against the same template: should show the last workout
+  // that actually had sets (the first one), skipping the empty one.
   await page.getByLabel('Template (optional)').selectOption({ label: templateName })
   await page.getByRole('button', { name: 'Start workout' }).click()
 

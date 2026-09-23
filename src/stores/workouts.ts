@@ -15,13 +15,17 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const activeSets = ref<SetEntry[]>([])
   const previousWorkout = ref<WorkoutWithSets | null>(null)
 
-  // Backlog item 3: most recent past workout logged against this template,
-  // so the logger can show what to beat. Called before startWorkout so the
-  // just-created row can't show up as its own "previous" workout.
+  // Backlog item 3: most recent past workout logged against this template
+  // that actually has sets on it, so the logger can show what to beat.
+  // `sets!inner` turns the embed into an inner join so workouts with zero
+  // sets (e.g. started and finished without logging anything) are excluded
+  // rather than winning on recency and showing an empty card. Called before
+  // startWorkout so the just-created row can't show up as its own "previous"
+  // workout.
   async function fetchPreviousWorkout(templateId: string) {
     const { data, error } = await supabase
       .from('workouts')
-      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .select('*, sets!inner(*, exercises(name)), workout_templates(name)')
       .eq('template_id', templateId)
       .order('performed_at', { ascending: false })
       .order('set_index', { foreignTable: 'sets', ascending: true })
