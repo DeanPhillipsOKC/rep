@@ -94,6 +94,23 @@ Playwright spec under `e2e/` covering the change and run `npm run test:e2e`. Eve
 feature that touches the UI should land with (or exercise) an e2e spec rather than being
 declared done on typecheck/build passing alone.
 
+### Commit & push policy
+
+**Standing rule:** once a change is verified — `npm run build` (typecheck) passes and the
+full `npm run test:e2e` regression suite is green, including any spec added/extended for
+the change — commit it and push to `main` automatically, without stopping to ask first.
+This repo has no CI/PR gate (two-user prototype, direct-to-main history), and Cloudflare
+Pages auto-deploys `main` on push, so a verified commit is safe to ship immediately.
+
+Still stop and ask before:
+
+- Force-pushing, rewriting history, or anything else destructive (see the general git
+  safety rules — those are not overridden by this policy).
+- Pushing a change that couldn't be run through `npm run test:e2e` (no UI surface, dev
+  server/Playwright unavailable, etc.) — commit locally and flag why it wasn't pushed
+  instead of pushing unverified.
+- A change the user asked to review before it ships.
+
 ## Data model
 
 Keep it narrow. Resist adding tables until a real need appears.
