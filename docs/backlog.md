@@ -8,6 +8,15 @@ How this works:
 - **[human]** tags mark tasks only the user can do (accounts, physical devices, product decisions). Flag if one is unchecked and blocking; don't attempt it yourself.
 - "Depends on" call out ordering between items below.
 
+## Bugs
+
+### 9. Don't persist a workout with zero sets logged
+
+Starting a workout and finishing it (or abandoning it) without adding any sets still leaves a `workouts` row behind with no `sets` rows under it. This isn't just clutter — it already broke the "last time" pre-fill (item 3): the lookup found the most recent `workouts` row for a template before checking whether it had sets, so an empty workout could shadow a real one until fixed with `sets!inner` in `fetchPreviousWorkout` (`src/stores/workouts.ts`). Any future reporting that scans `workouts` directly (item 6's volume chart, exercise history) has the same trap unless it also remembers to filter for sets.
+
+- **Fix:** don't let an empty workout survive. Either (a) delete the `workouts` row on `finishWorkout()` if `activeSets` is still empty, or (b) defer creating the `workouts` row at all until the first `addSet` call succeeds (`startWorkout` would stage the notes/template locally and insert on first set). Pick whichever fits the current `startWorkout`/`addSet`/`finishWorkout` flow in `src/stores/workouts.ts` with the least rework.
+- **Scope:** only the app-created path going forward. Existing empty rows already in the data don't need an automatic cleanup migration — item 5's wipe script (or a manual delete) covers stale test data if it matters.
+
 ## Features
 
 ### 4. PR toast on new record

@@ -34,6 +34,14 @@ const previousSetsByExercise = computed(() => {
   return grouped
 })
 
+// Once an exercise is picked, narrow the "Last time" card to just that
+// exercise instead of the whole previous workout — keeps the screen short
+// enough to use mid-set without scrolling past exercises that aren't next.
+const visiblePreviousExercises = computed(() => {
+  const entries = Object.entries(previousSetsByExercise.value)
+  return exerciseId.value ? entries.filter(([exId]) => exId === exerciseId.value) : entries
+})
+
 async function handleStart() {
   errorMessage.value = ''
   if (templateId.value) {
@@ -119,9 +127,11 @@ function handleFinish() {
       <template v-else>
         <div v-if="workout.previousWorkout" class="card last-time">
           <h3>Last time</h3>
-          <p v-if="workout.previousWorkout.notes" class="row-sub">{{ workout.previousWorkout.notes }}</p>
+          <p v-if="!exerciseId && workout.previousWorkout.notes" class="row-sub">
+            {{ workout.previousWorkout.notes }}
+          </p>
           <ul class="last-time-list">
-            <li v-for="(sets, exId) in previousSetsByExercise" :key="exId">
+            <li v-for="[exId, sets] in visiblePreviousExercises" :key="exId">
               <span class="row-title">{{ sets[0].exercises?.name ?? 'Unknown' }}</span>
               <span class="row-sub">
                 {{ sets.map((s) => `${s.reps}×${s.weight}${s.weight_unit}`).join(', ') }}
