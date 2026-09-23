@@ -8,17 +8,6 @@ How this works:
 - **[human]** tags mark tasks only the user can do (accounts, physical devices, product decisions). Flag if one is unchecked and blocking; don't attempt it yourself.
 - "Depends on" call out ordering between items below.
 
-## Tooling
-
-### 10. Visible build version, via GitVersion (priority: next up)
-
-**User request:** there's a lag between pushing to `main` and the Cloudflare Pages deploy actually being live/visible (build time, plus the service-worker caching the previous deploy — see `docs/architecture.md`'s Operational notes). Append a build version to the app so it's a quick glance to confirm a given deploy has actually landed before testing against it, instead of guessing from elapsed time or asset hashes.
-
-- Use [GitVersion](https://gitversion.net/) (not a hand-rolled `git describe`) to compute a semantic version from git history at build time. Needs a `GitVersion.yml` config and a way to invoke it in the build.
-- **Open question to resolve when picking this up:** GitVersion's primary distribution is a .NET tool (`dotnet-gitversion`) or Docker image — Cloudflare Pages' build image is Node-only with no .NET SDK by default. Check whether Cloudflare Pages supports installing the dotnet tool in the build step, whether GitVersion's npm wrapper (`gitversion` on npm, if still maintained/accurate) is viable instead, or whether the version needs to be computed in CI/locally and committed as a generated file the build reads. Don't assume the naive `dotnet tool install` path works in that environment without checking.
-- Inject the resolved version at build time (e.g. Vite `define`) and append it to the page `<title>` — e.g. "Workout Tracker v0.3.1+7" — visible without digging into dev tools.
-- Verify via a real deploy: push a trivial change, confirm the title version changes once the new deploy is live, confirmed both on a fresh load and against the stale-service-worker case this is meant to diagnose.
-
 ## Bugs
 
 ### 9. Don't persist a workout with zero sets logged

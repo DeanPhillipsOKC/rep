@@ -7,6 +7,11 @@ test('shows the login form when signed out', async ({ page }) => {
   await expect(page.getByRole('button', { name: /sign out/i })).not.toBeVisible()
 })
 
+test('page title carries the build version', async ({ page }) => {
+  await page.goto('/')
+  await expect(page).toHaveTitle(/^Workout Tracker v\d+\+[0-9a-f]{7,}/)
+})
+
 test('loads signed in when a test session is injected', async ({ page }) => {
   await signInAsTestUser(page)
   await expect(page.getByRole('button', { name: /sign out/i })).toBeVisible()

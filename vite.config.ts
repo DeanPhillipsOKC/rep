@@ -1,9 +1,13 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import { getBuildVersion } from './scripts/lib/build-version.mjs'
 
 // See docs/architecture.md#pwa-configuration for the reasoning behind these settings.
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(getBuildVersion())
+  },
   plugins: [
     vue(),
     VitePWA({
