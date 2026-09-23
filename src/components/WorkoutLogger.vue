@@ -61,16 +61,36 @@ function pickSuggested(id: string) {
   exerciseId.value = id
 }
 
-// Pre-fill reps/weight with the last set logged for this exercise last
-// time, so the user sees what to beat and only has to adjust, not retype.
-watch(exerciseId, (id) => {
+// Pre-fill reps/weight from the previous workout's set at the same
+// position (set N this session <- set N last time), not just the last set
+// logged, since fatigue means later sets aren't representative of earlier
+// ones. Re-runs on every addSet too, not just on exercise selection, so
+// picking the same exercise again for set 2 refreshes the pre-fill.
+function applyPrefill(id: string) {
   const previousSets = previousSetsByExercise.value[id]
-  const lastSet = previousSets?.[previousSets.length - 1]
-  if (!lastSet) return
-  reps.value = lastSet.reps
-  weight.value = lastSet.weight
-  weightUnit.value = lastSet.weight_unit
+  const loggedCount = workout.activeSets.filter((s) => s.exercise_id === id).length
+  const matchingSet = previousSets?.[loggedCount]
+  if (!matchingSet) {
+    reps.value = null
+    weight.value = null
+    return
+  }
+  reps.value = matchingSet.reps
+  weight.value = matchingSet.weight
+  weightUnit.value = matchingSet.weight_unit
+}
+
+watch(exerciseId, (id) => {
+  if (!id) return
+  applyPrefill(id)
 })
+
+watch(
+  () => workout.activeSets.length,
+  () => {
+    if (exerciseId.value) applyPrefill(exerciseId.value)
+  },
+)
 
 async function handleAddSet() {
   errorMessage.value = ''
@@ -80,8 +100,6 @@ async function handleAddSet() {
   if (error) {
     errorMessage.value = error.message
   } else {
-    reps.value = null
-    weight.value = null
     rpe.value = null
   }
 }

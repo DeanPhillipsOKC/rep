@@ -24,7 +24,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 |---|------|--------|-------|-----|
 | 4 | PR toast on new record | 3 | 5 | 1.67 |
 | 8 | Exercise setup notes | 3 | 5 | 1.67 |
-| 9 | Fix parallel-set pre-fill for previous-workout sets | 3 | 5 | 1.67 |
 | 5 | On-demand data-wipe script | 2 | 3 | 1.5 |
 | 7 | Edit exercise name | 2 | 3 | 1.5 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
@@ -64,13 +63,6 @@ Exercises currently support create and archive only (`src/stores/exercises.ts`) 
 - Schema: `exercises` gains a nullable `setup_notes text` column (or similarly named — distinct from a per-workout `workouts.notes`, which is about that day's session, not the machine).
 - Editable wherever exercise name/category are managed (see item 7 for the edit affordance this can share).
 - Surface in `WorkoutLogger.vue`: show the selected exercise's notes near the set-entry form, not just in the Exercises tab, since that's the moment it's needed.
-
-### 9. Fix parallel-set pre-fill for previous-workout sets `[Effort: 3, Value: 5, ROI: 1.67]`
-
-**User request:** the reps/weight pre-fill for a newly picked exercise always uses the *last* set from that exercise in the previous workout (`WorkoutLogger.vue`: `lastSet = previousSets[previousSets.length - 1]`), regardless of which set the user is about to log. Since users fatigue over a session, set 1 today should be compared to set 1 last time, not whatever set was logged last (often the lightest/hardest) — pre-filling from the wrong set is actively misleading, not just imprecise.
-
-- Fix: index into `previousSets` by the count of sets already logged for that exercise in the current session (`activeSets` in `stores/workouts.ts`, filtered by `exercise_id`) — set N pre-fills from previous set N. When there's no previous set at that index (this session already has more sets for that exercise than last time), fall back to no pre-fill; the "Last time" card still shows the full history to reference.
-- Also needs the pre-fill to re-run after each `addSet`, not just on exercise selection — today it's `watch(exerciseId, ...)` only, so re-picking the same exercise for set 2 doesn't refresh reps/weight.
 
 ## Human setup / device verification
 
