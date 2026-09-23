@@ -13,6 +13,25 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const activeWorkoutId = ref<string | null>(null)
   const activeTemplateId = ref<string | null>(null)
   const activeSets = ref<SetEntry[]>([])
+  const previousWorkout = ref<WorkoutWithSets | null>(null)
+
+  // Backlog item 3: most recent past workout logged against this template,
+  // so the logger can show what to beat. Called before startWorkout so the
+  // just-created row can't show up as its own "previous" workout.
+  async function fetchPreviousWorkout(templateId: string) {
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .eq('template_id', templateId)
+      .order('performed_at', { ascending: false })
+      .order('set_index', { foreignTable: 'sets', ascending: true })
+      .limit(1)
+
+    if (!error) {
+      previousWorkout.value = (data?.[0] ?? null) as unknown as WorkoutWithSets | null
+    }
+    return { error }
+  }
 
   async function startWorkout(notes: string | null = null, templateId: string | null = null) {
     const { data: userData } = await supabase.auth.getUser()
@@ -66,6 +85,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeWorkoutId.value = null
     activeTemplateId.value = null
     activeSets.value = []
+    previousWorkout.value = null
   }
 
   async function fetchHistory() {
@@ -92,9 +112,11 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeWorkoutId,
     activeTemplateId,
     activeSets,
+    previousWorkout,
     startWorkout,
     addSet,
     finishWorkout,
     fetchHistory,
+    fetchPreviousWorkout,
   }
 })

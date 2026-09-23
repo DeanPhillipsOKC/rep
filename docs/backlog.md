@@ -10,12 +10,6 @@ How this works:
 
 ## Features
 
-### 3. Pre-fill from last workout of the same template
-
-When starting a new workout against a template, load the most recent previous `workouts` row for that `template_id` and show its notes, weights, reps, and set order per exercise, so the user can see what to beat.
-
-- **Depends on:** item 2 (shipped — `docs/backlog-archive.md`; `template_id` is available on `workouts`).
-
 ### 4. PR toast on new record
 
 When a set is added, compare `reps * weight` against the user's best-ever value for that `exercise_id` across all past workouts. If it's a new max, show a congratulatory toast.
@@ -36,7 +30,7 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Actual line:** literal volume per past workout instance of that template.
 - **Projected line:** for any workout instance where one or more template exercises were skipped or under-completed, backfill the missing exercise(s)' numbers from that exercise's own most recent prior appearance (straight carry-forward) before summing volume for that point.
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
-- **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the lookup mechanism from item 3.
+- **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
 
 ### 7. Edit exercise name
 

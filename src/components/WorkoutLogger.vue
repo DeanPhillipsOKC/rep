@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
-import type { WeightUnit } from '../lib/types'
+import type { SetWithExercise, WeightUnit } from '../lib/types'
 
 const exercises = useExercisesStore()
 const templates = useTemplatesStore()
@@ -23,8 +23,22 @@ onMounted(() => {
   if (templates.templates.length === 0) templates.fetchTemplates()
 })
 
+// Backlog item 3: sets from the previous workout against this template,
+// grouped by exercise in the order they were logged, so the "last time"
+// card and the reps/weight pre-fill can both read off it.
+const previousSetsByExercise = computed(() => {
+  const grouped: Record<string, SetWithExercise[]> = {}
+  for (const set of workout.previousWorkout?.sets ?? []) {
+    ;(grouped[set.exercise_id] ??= []).push(set)
+  }
+  return grouped
+})
+
 async function handleStart() {
   errorMessage.value = ''
+  if (templateId.value) {
+    await workout.fetchPreviousWorkout(templateId.value)
+  }
   const { error } = await workout.startWorkout(notes.value || null, templateId.value || null)
   if (error) {
     errorMessage.value = error.message
@@ -38,6 +52,17 @@ async function handleStart() {
 function pickSuggested(id: string) {
   exerciseId.value = id
 }
+
+// Pre-fill reps/weight with the last set logged for this exercise last
+// time, so the user sees what to beat and only has to adjust, not retype.
+watch(exerciseId, (id) => {
+  const previousSets = previousSetsByExercise.value[id]
+  const lastSet = previousSets?.[previousSets.length - 1]
+  if (!lastSet) return
+  reps.value = lastSet.reps
+  weight.value = lastSet.weight
+  weightUnit.value = lastSet.weight_unit
+})
 
 async function handleAddSet() {
   errorMessage.value = ''
@@ -61,6 +86,10 @@ function handleFinish() {
   workout.finishWorkout()
   notes.value = ''
   templateId.value = ''
+  exerciseId.value = ''
+  reps.value = null
+  weight.value = null
+  rpe.value = null
 }
 </script>
 
@@ -88,6 +117,19 @@ function handleFinish() {
       </p>
 
       <template v-else>
+        <div v-if="workout.previousWorkout" class="card last-time">
+          <h3>Last time</h3>
+          <p v-if="workout.previousWorkout.notes" class="row-sub">{{ workout.previousWorkout.notes }}</p>
+          <ul class="last-time-list">
+            <li v-for="(sets, exId) in previousSetsByExercise" :key="exId">
+              <span class="row-title">{{ sets[0].exercises?.name ?? 'Unknown' }}</span>
+              <span class="row-sub">
+                {{ sets.map((s) => `${s.reps}×${s.weight}${s.weight_unit}`).join(', ') }}
+              </span>
+            </li>
+          </ul>
+        </div>
+
         <div v-if="workout.activeTemplateId" class="suggested">
           <button
             v-for="te in templates.exercisesByTemplate[workout.activeTemplateId]"
@@ -242,6 +284,18 @@ function handleFinish() {
   background: transparent;
   border-color: var(--border);
   color: var(--text-dim);
+}
+
+.last-time-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.last-time-list li {
+  display: flex;
+  flex-direction: column;
 }
 
 .suggested {
