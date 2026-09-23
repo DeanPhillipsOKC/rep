@@ -30,14 +30,15 @@ function loadEnvLocal() {
   }
 }
 
-export async function mintTestSession() {
+// Shared by the e2e suite (e2e/fixtures/auth.ts) to inspect/clean up rows the
+// test account creates, using the same service-role credentials as session
+// minting — never used against the real allowlisted accounts (see
+// REAL_ACCOUNT_EMAILS above).
+export function getAdminClient() {
   loadEnvLocal()
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY
-  const testEmail = process.env.TEST_ACCOUNT_EMAIL
-
   if (!supabaseUrl) throw new Error('SUPABASE_URL (or VITE_SUPABASE_URL) is not set.')
   if (!serviceRoleKey) {
     throw new Error(
@@ -45,6 +46,20 @@ export async function mintTestSession() {
         'never put it in Cloudflare Pages env vars (see docs/architecture.md#client-security).'
     )
   }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
+export async function mintTestSession() {
+  loadEnvLocal()
+
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY
+  const testEmail = process.env.TEST_ACCOUNT_EMAIL
+
+  if (!supabaseUrl) throw new Error('SUPABASE_URL (or VITE_SUPABASE_URL) is not set.')
   if (!anonKey) throw new Error('VITE_SUPABASE_ANON_KEY is not set.')
   if (!testEmail) {
     throw new Error(
@@ -56,9 +71,7 @@ export async function mintTestSession() {
     throw new Error(`TEST_ACCOUNT_EMAIL (${testEmail}) is one of the real allowlisted accounts. Refusing.`)
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const admin = getAdminClient()
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: 'magiclink',

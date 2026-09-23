@@ -85,7 +85,14 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     return { data, error }
   }
 
-  function finishWorkout() {
+  // Backlog item 9: a workout finished (or abandoned) with zero sets logged
+  // shouldn't survive — it shadows real workouts in the "last time" lookup
+  // (see fetchPreviousWorkout) and would skew any future reporting that
+  // scans `workouts` directly. Delete it instead of leaving an empty row.
+  async function finishWorkout() {
+    if (activeWorkoutId.value && activeSets.value.length === 0) {
+      await supabase.from('workouts').delete().eq('id', activeWorkoutId.value)
+    }
     activeWorkoutId.value = null
     activeTemplateId.value = null
     activeSets.value = []

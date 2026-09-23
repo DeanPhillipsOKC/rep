@@ -90,8 +90,8 @@ function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
 
-function handleFinish() {
-  workout.finishWorkout()
+async function handleFinish() {
+  await workout.finishWorkout()
   notes.value = ''
   templateId.value = ''
   exerciseId.value = ''
