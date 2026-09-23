@@ -1,5 +1,9 @@
 -- Run in the Supabase SQL editor (or via `supabase db push`) after project creation.
 -- See docs/architecture.md#data-model for the reasoning behind each choice.
+--
+-- Applying to an already-provisioned database (workout_templates added after
+-- the initial rollout): run the two new `create table` statements below, then
+--   alter table workouts add column template_id uuid null references workout_templates(id);
 
 create table profiles (
   id           uuid primary key references auth.users(id),
@@ -15,9 +19,25 @@ create table exercises (
   is_archived boolean not null default false
 );
 
+create table workout_templates (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references profiles(id),
+  name        text not null,
+  is_archived boolean not null default false
+);
+
+create table workout_template_exercises (
+  id          uuid primary key default gen_random_uuid(),
+  template_id uuid not null references workout_templates(id) on delete cascade,
+  exercise_id uuid not null references exercises(id),
+  position    int not null,
+  target_sets int null check (target_sets > 0)
+);
+
 create table workouts (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references profiles(id),
+  template_id  uuid null references workout_templates(id),
   performed_at timestamptz not null default now(),
   notes        text
 );

@@ -30,6 +30,7 @@ function formatDate(iso: string): string {
     <div v-for="entry in workout.history" :key="entry.id" class="card">
       <div class="entry-header">
         <h3>{{ formatDate(entry.performed_at) }}</h3>
+        <span v-if="entry.workout_templates" class="template-tag">{{ entry.workout_templates.name }}</span>
       </div>
       <p v-if="entry.notes" class="notes">{{ entry.notes }}</p>
       <ul class="list">
@@ -54,9 +55,26 @@ function formatDate(iso: string): string {
   margin-bottom: 16px;
 }
 
+.entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .entry-header h3 {
-  margin: 0 0 4px;
+  margin: 0;
   color: var(--text);
+}
+
+.template-tag {
+  font-size: 0.75rem;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  flex-shrink: 0;
 }
 
 .notes {

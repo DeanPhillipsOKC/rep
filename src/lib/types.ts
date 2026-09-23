@@ -8,9 +8,31 @@ export interface Exercise {
   is_archived: boolean
 }
 
+export interface WorkoutTemplate {
+  id: string
+  user_id: string
+  name: string
+  is_archived: boolean
+}
+
+export interface WorkoutTemplateExercise {
+  id: string
+  template_id: string
+  exercise_id: string
+  position: number
+  target_sets: number | null
+}
+
+// Shape returned by the nested select in templates.ts (template exercise +
+// its exercise name), used to render a template's exercise list.
+export interface TemplateExerciseWithName extends WorkoutTemplateExercise {
+  exercises: { name: string } | null
+}
+
 export interface Workout {
   id: string
   user_id: string
+  template_id: string | null
   performed_at: string
   notes: string | null
 }
@@ -36,4 +58,5 @@ export interface SetWithExercise extends SetEntry {
 
 export interface WorkoutWithSets extends Workout {
   sets: SetWithExercise[]
+  workout_templates: { name: string } | null
 }

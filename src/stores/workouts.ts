@@ -11,21 +11,23 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const errorMessage = ref('')
 
   const activeWorkoutId = ref<string | null>(null)
+  const activeTemplateId = ref<string | null>(null)
   const activeSets = ref<SetEntry[]>([])
 
-  async function startWorkout(notes: string | null = null) {
+  async function startWorkout(notes: string | null = null, templateId: string | null = null) {
     const { data: userData } = await supabase.auth.getUser()
     const userId = userData.user?.id
     if (!userId) return { error: new Error('Not signed in') }
 
     const { data, error } = await supabase
       .from('workouts')
-      .insert({ user_id: userId, notes })
+      .insert({ user_id: userId, notes, template_id: templateId })
       .select()
       .single()
 
     if (!error && data) {
       activeWorkoutId.value = data.id
+      activeTemplateId.value = templateId
       activeSets.value = []
     }
     return { data, error }
@@ -62,6 +64,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
   function finishWorkout() {
     activeWorkoutId.value = null
+    activeTemplateId.value = null
     activeSets.value = []
   }
 
@@ -70,7 +73,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     errorMessage.value = ''
     const { data, error } = await supabase
       .from('workouts')
-      .select('*, sets(*, exercises(name))')
+      .select('*, sets(*, exercises(name)), workout_templates(name)')
       .order('performed_at', { ascending: false })
       .order('set_index', { foreignTable: 'sets', ascending: true })
 
@@ -87,6 +90,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     loading,
     errorMessage,
     activeWorkoutId,
+    activeTemplateId,
     activeSets,
     startWorkout,
     addSet,

@@ -87,6 +87,13 @@ dev server automatically (`webServer`, reused if already running locally) and ru
 Chromium. `e2e/fixtures/auth.ts` wraps the test-session mint above into `signInAsTestUser(page)`
 so specs can start already signed in — confirmed working end-to-end (`e2e/auth.spec.ts`).
 
+**This is the required way to verify UI changes in this repo.** The Claude-in-Chrome
+browser extension has been unreliable in this environment (extension not connected) —
+don't rely on it or treat a failed connection as a blocker. Instead, write or extend a
+Playwright spec under `e2e/` covering the change and run `npm run test:e2e`. Every new
+feature that touches the UI should land with (or exercise) an e2e spec rather than being
+declared done on typecheck/build passing alone.
+
 ## Data model
 
 Keep it narrow. Resist adding tables until a real need appears.

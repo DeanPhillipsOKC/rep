@@ -2,12 +2,13 @@
 import { ref } from 'vue'
 import AuthGate from './components/AuthGate.vue'
 import ExerciseList from './components/ExerciseList.vue'
+import TemplateManager from './components/TemplateManager.vue'
 import WorkoutHistory from './components/WorkoutHistory.vue'
 import WorkoutLogger from './components/WorkoutLogger.vue'
 import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
-const view = ref<'log' | 'exercises' | 'history'>('log')
+const view = ref<'log' | 'exercises' | 'templates' | 'history'>('log')
 </script>
 
 <template>
@@ -23,6 +24,9 @@ const view = ref<'log' | 'exercises' | 'history'>('log')
         <button type="button" :class="{ active: view === 'exercises' }" @click="view = 'exercises'">
           Exercises
         </button>
+        <button type="button" :class="{ active: view === 'templates' }" @click="view = 'templates'">
+          Templates
+        </button>
         <button type="button" :class="{ active: view === 'history' }" @click="view = 'history'">
           History
         </button>
@@ -31,6 +35,7 @@ const view = ref<'log' | 'exercises' | 'history'>('log')
       <section class="content">
         <WorkoutLogger v-if="view === 'log'" />
         <ExerciseList v-else-if="view === 'exercises'" />
+        <TemplateManager v-else-if="view === 'templates'" />
         <WorkoutHistory v-else-if="view === 'history'" />
       </section>
     </AuthGate>

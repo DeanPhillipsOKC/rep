@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
+import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
 import type { WeightUnit } from '../lib/types'
 
 const exercises = useExercisesStore()
+const templates = useTemplatesStore()
 const workout = useWorkoutsStore()
 
 const notes = ref('')
+const templateId = ref('')
 const exerciseId = ref('')
 const reps = ref<number | null>(null)
 const weight = ref<number | null>(null)
@@ -17,12 +20,23 @@ const errorMessage = ref('')
 
 onMounted(() => {
   if (exercises.exercises.length === 0) exercises.fetchExercises()
+  if (templates.templates.length === 0) templates.fetchTemplates()
 })
 
 async function handleStart() {
   errorMessage.value = ''
-  const { error } = await workout.startWorkout(notes.value || null)
-  if (error) errorMessage.value = error.message
+  const { error } = await workout.startWorkout(notes.value || null, templateId.value || null)
+  if (error) {
+    errorMessage.value = error.message
+    return
+  }
+  if (templateId.value && !templates.exercisesByTemplate[templateId.value]) {
+    await templates.fetchTemplateExercises(templateId.value)
+  }
+}
+
+function pickSuggested(id: string) {
+  exerciseId.value = id
 }
 
 async function handleAddSet() {
@@ -46,6 +60,7 @@ function exerciseName(id: string): string {
 function handleFinish() {
   workout.finishWorkout()
   notes.value = ''
+  templateId.value = ''
 }
 </script>
 
@@ -54,6 +69,14 @@ function handleFinish() {
     <h2>Log a workout</h2>
 
     <form v-if="!workout.activeWorkoutId" class="card" @submit.prevent="handleStart">
+      <label for="workout-template">Template (optional)</label>
+      <select id="workout-template" v-model="templateId">
+        <option value="">No template — freeform</option>
+        <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
+          {{ template.name }}
+        </option>
+      </select>
+
       <label for="workout-notes">Notes (optional)</label>
       <input id="workout-notes" v-model="notes" type="text" />
       <button type="submit">Start workout</button>
@@ -64,50 +87,72 @@ function handleFinish() {
         No exercises yet. Add one under the Exercises tab first.
       </p>
 
-      <form v-else class="card" @submit.prevent="handleAddSet">
-        <label for="set-exercise">Exercise</label>
-        <select id="set-exercise" v-model="exerciseId" required>
-          <option value="" disabled>Select an exercise</option>
-          <option v-for="exercise in exercises.activeExercises" :key="exercise.id" :value="exercise.id">
-            {{ exercise.name }}
-          </option>
-        </select>
-
-        <div class="grid-2">
-          <div>
-            <label for="set-reps">Reps</label>
-            <input id="set-reps" v-model.number="reps" type="number" inputmode="numeric" min="1" required />
-          </div>
-          <div>
-            <label for="set-weight">Weight</label>
-            <input
-              id="set-weight"
-              v-model.number="weight"
-              type="number"
-              inputmode="decimal"
-              min="0"
-              step="0.5"
-              required
-            />
-          </div>
+      <template v-else>
+        <div v-if="workout.activeTemplateId" class="suggested">
+          <button
+            v-for="te in templates.exercisesByTemplate[workout.activeTemplateId]"
+            :key="te.id"
+            type="button"
+            class="ghost chip"
+            @click="pickSuggested(te.exercise_id)"
+          >
+            {{ te.exercises?.name }}
+          </button>
         </div>
 
-        <div class="grid-2">
-          <div>
-            <label for="set-unit">Unit</label>
-            <select id="set-unit" v-model="weightUnit">
-              <option value="lb">lb</option>
-              <option value="kg">kg</option>
-            </select>
-          </div>
-          <div>
-            <label for="set-rpe">RPE (optional)</label>
-            <input id="set-rpe" v-model.number="rpe" type="number" inputmode="decimal" min="0" max="10" step="0.5" />
-          </div>
-        </div>
+        <form class="card" @submit.prevent="handleAddSet">
+          <label for="set-exercise">Exercise</label>
+          <select id="set-exercise" v-model="exerciseId" required>
+            <option value="" disabled>Select an exercise</option>
+            <option v-for="exercise in exercises.activeExercises" :key="exercise.id" :value="exercise.id">
+              {{ exercise.name }}
+            </option>
+          </select>
 
-        <button type="submit">Add set</button>
-      </form>
+          <div class="grid-2">
+            <div>
+              <label for="set-reps">Reps</label>
+              <input id="set-reps" v-model.number="reps" type="number" inputmode="numeric" min="1" required />
+            </div>
+            <div>
+              <label for="set-weight">Weight</label>
+              <input
+                id="set-weight"
+                v-model.number="weight"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="0.5"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="set-unit">Unit</label>
+              <select id="set-unit" v-model="weightUnit">
+                <option value="lb">lb</option>
+                <option value="kg">kg</option>
+              </select>
+            </div>
+            <div>
+              <label for="set-rpe">RPE (optional)</label>
+              <input
+                id="set-rpe"
+                v-model.number="rpe"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                max="10"
+                step="0.5"
+              />
+            </div>
+          </div>
+
+          <button type="submit">Add set</button>
+        </form>
+      </template>
 
       <ol class="list">
         <li v-for="(set, index) in workout.activeSets" :key="set.id" class="row">
@@ -197,6 +242,20 @@ function handleFinish() {
   background: transparent;
   border-color: var(--border);
   color: var(--text-dim);
+}
+
+.suggested {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .finish {
