@@ -29,7 +29,16 @@ export function getBuildVersion(cwd = process.cwd()) {
     ensureFullHistory(cwd)
     const count = run('git rev-list --count HEAD', cwd)
     const sha = run('git rev-parse --short HEAD', cwd)
-    const dirty = run('git status --porcelain', cwd).length > 0
+    // Compare tracked-file content only, ignoring the executable-bit-only
+    // diffs that CI checkouts (Cloudflare's included) can introduce — those
+    // aren't a developer's uncommitted work, so they shouldn't read as dirty.
+    // `diff --quiet` exits 1 on any difference, hence the try/catch.
+    let dirty = false
+    try {
+      execSync('git -c core.fileMode=false diff --quiet HEAD --', { cwd, stdio: 'ignore' })
+    } catch {
+      dirty = true
+    }
     return `v${count}+${sha}${dirty ? '-dirty' : ''}`
   } catch {
     return 'dev'

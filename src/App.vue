@@ -9,6 +9,7 @@ import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
 const view = ref<'log' | 'exercises' | 'templates' | 'history'>('log')
+const appVersion = __APP_VERSION__
 </script>
 
 <template>
@@ -39,6 +40,8 @@ const view = ref<'log' | 'exercises' | 'templates' | 'history'>('log')
         <WorkoutHistory v-else-if="view === 'history'" />
       </section>
     </AuthGate>
+
+    <footer class="app-version">{{ appVersion }}</footer>
   </main>
 </template>
 
@@ -95,5 +98,13 @@ main {
 
 .content {
   padding: 0 16px;
+}
+
+.app-version {
+  padding: 24px 16px 12px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  opacity: 0.6;
 }
 </style>
