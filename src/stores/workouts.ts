@@ -15,6 +15,12 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const activeSets = ref<SetEntry[]>([])
   const previousWorkout = ref<WorkoutWithSets | null>(null)
 
+  // Backlog item 4: set by the (unawaited) record check kicked off from
+  // addSet below. A plain ref rather than addSet's return value so the
+  // record check can run in the background without slowing down the add —
+  // the UI reacts to this changing instead of waiting on it.
+  const newRecord = ref<{ exerciseId: string; volume: number } | null>(null)
+
   // Backlog item 3: most recent past workout logged against this template
   // that actually has sets on it, so the logger can show what to beat.
   // `sets!inner` turns the embed into an inner join so workouts with zero
@@ -56,6 +62,40 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     return { data, error }
   }
 
+  // Backlog item 4: per-user, per-exercise all-time max of reps * weight,
+  // across every past set for that exercise regardless of workout/template.
+  // Session-local cache: once an exercise's history has been read, later
+  // sets for it are compared in memory and only update the cache, never
+  // re-reading the DB. This keeps addSet's own critical path (below) free
+  // of any lookup — the record check runs after the insert, in the
+  // background, so it never delays the add itself.
+  const bestVolumeCache = new Map<string, number>()
+
+  // excludeSetId matters only on a cache miss — this runs after the insert
+  // (see checkForRecord), so a first-ever read of this exercise's history
+  // would otherwise see the just-inserted row and compare it against itself.
+  async function getBestVolume(exerciseId: string, excludeSetId: string): Promise<number> {
+    const cached = bestVolumeCache.get(exerciseId)
+    if (cached !== undefined) return cached
+
+    const { data, error } = await supabase
+      .from('sets')
+      .select('reps, weight')
+      .eq('exercise_id', exerciseId)
+      .neq('id', excludeSetId)
+    const best = !error && data ? data.reduce((max, s) => Math.max(max, s.reps * s.weight), 0) : 0
+    bestVolumeCache.set(exerciseId, best)
+    return best
+  }
+
+  async function checkForRecord(exerciseId: string, setId: string, volume: number) {
+    const previousBest = await getBestVolume(exerciseId, setId)
+    if (volume > previousBest) {
+      bestVolumeCache.set(exerciseId, volume)
+      newRecord.value = { exerciseId, volume }
+    }
+  }
+
   async function addSet(
     exerciseId: string,
     reps: number,
@@ -63,14 +103,19 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     weightUnit: WeightUnit,
     rpe: number | null
   ) {
-    if (!activeWorkoutId.value) return { error: new Error('No active workout') }
+    // Captured before the await below — finishWorkout() can clear
+    // activeWorkoutId.value/activeSets.value while this call is in flight,
+    // and the insert must still target the workout/index it started with.
+    const workoutId = activeWorkoutId.value
+    const setIndex = activeSets.value.length
+    if (!workoutId) return { error: new Error('No active workout') }
 
     const { data, error } = await supabase
       .from('sets')
       .insert({
-        workout_id: activeWorkoutId.value,
+        workout_id: workoutId,
         exercise_id: exerciseId,
-        set_index: activeSets.value.length,
+        set_index: setIndex,
         reps,
         weight,
         weight_unit: weightUnit,
@@ -80,7 +125,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       .single()
 
     if (!error && data) {
-      activeSets.value.push(data)
+      if (activeWorkoutId.value === workoutId) activeSets.value.push(data)
+      checkForRecord(exerciseId, data.id, reps * weight)
     }
     return { data, error }
   }
@@ -97,6 +143,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeTemplateId.value = null
     activeSets.value = []
     previousWorkout.value = null
+    newRecord.value = null
   }
 
   async function fetchHistory() {
@@ -124,6 +171,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeTemplateId,
     activeSets,
     previousWorkout,
+    newRecord,
     startWorkout,
     addSet,
     finishWorkout,

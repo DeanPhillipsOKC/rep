@@ -22,19 +22,13 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 4 | PR toast on new record | 3 | 5 | 1.67 |
 | 8 | Exercise setup notes | 3 | 5 | 1.67 |
 | 5 | On-demand data-wipe script | 2 | 3 | 1.5 |
 | 7 | Edit exercise name | 2 | 3 | 1.5 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
+| 10 | Fix set_index race in addSet | 3 | 3 | 1.0 |
 
 ## Features
-
-### 4. PR toast on new record `[Effort: 3, Value: 5, ROI: 1.67]`
-
-When a set is added, compare `reps * weight` against the user's best-ever value for that `exercise_id` across all past workouts. If it's a new max, show a congratulatory toast.
-
-- Scope: per-user, per-exercise all-time max — not scoped to the current workout or template.
 
 ### 5. On-demand data-wipe script `[Effort: 2, Value: 3, ROI: 1.5]`
 
@@ -63,6 +57,13 @@ Exercises currently support create and archive only (`src/stores/exercises.ts`) 
 - Schema: `exercises` gains a nullable `setup_notes text` column (or similarly named — distinct from a per-workout `workouts.notes`, which is about that day's session, not the machine).
 - Editable wherever exercise name/category are managed (see item 7 for the edit affordance this can share).
 - Surface in `WorkoutLogger.vue`: show the selected exercise's notes near the set-entry form, not just in the Exercises tab, since that's the moment it's needed.
+
+### 10. Fix set_index race in addSet `[Effort: 3, Value: 3, ROI: 1.0]`
+
+**Discovered while shipping item 4** (see `docs/backlog-archive.md`), not caused by it — reproduces on plain `main` too. `addSet` in `src/stores/workouts.ts` derives `set_index` from `activeSets.value.length`, read synchronously per call. Two `addSet` calls fired close together (e.g. logging a superset — different exercises back to back without waiting for the first insert to resolve) can both read the same length before either has inserted, so both rows land with the same `set_index`. This corrupts the position-based pre-fill (item 9, `docs/backlog-archive.md`) for that workout — confirmed via `e2e/pre-fill.spec.ts`'s "set position tracks across exercises logged in parallel" spec, which fails intermittently (~1 in 4-8 runs) on unmodified `main`.
+
+- A client-side queue was tried and made it worse (a queued call whose turn came up after the workout was finished silently dropped the set instead of colliding) — the correct fix likely needs `set_index` assigned server-side (e.g. a Postgres default/trigger computing `count(*) + 1` scoped to `workout_id`, inside the same transaction as the insert), not a client-side workaround.
+- Low urgency for real usage (two users, not usually mashing "Add set" across exercises within tens of milliseconds of each other) but worth fixing since it's a real data-integrity bug, not just a test flake.
 
 ## Human setup / device verification
 
