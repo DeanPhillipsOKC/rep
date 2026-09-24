@@ -22,7 +22,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 31 | Ability to delete a workout from History | 2 | 3 | 1.5 |
 | 33 | Welcome-card/coachmark flashes on Log-screen refresh for users who already have exercises | 2 | 3 | 1.5 |
 | 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
@@ -32,17 +31,13 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 ## Features
 
-### 31. Ability to delete a workout from History `[Effort: 2, Value: 3, ROI: 1.5]`
-
-Requested 2026-09-24. `WorkoutHistory.vue` is read-only today — no way to remove a workout logged in error (duplicate, wrong day, test data) once it's finished. Distinct from item 13 (already shipped), which covers editing/deleting an individual *set* while a workout is still in progress; this is deleting the whole workout row after the fact, from History. `sets.workout_id` already has `on delete cascade` (`supabase/schema.sql`), so deleting the `workouts` row alone is enough — no separate cleanup of its sets needed. Fix direction: a delete affordance per History card, behind a confirm step (destructive, no undo) — `useWorkoutsStore` needs a new `deleteWorkout(id)` removing the row and updating `history` locally, same pattern as `archiveExercise`. Worth deciding alongside item 32 whether both live behind one shared "edit workout" entry point or delete stays its own simpler action.
-
 ### 33. Welcome-card/coachmark flashes on Log-screen refresh for users who already have exercises `[Effort: 2, Value: 3, ROI: 1.5]`
 
 Reported 2026-09-24. `WorkoutLogger.vue`'s zero-exercise welcome card and menu coachmark (item 27) are gated on `exercises.activeExercises.length === 0` (lines ~352/101), but `exercises.exercises` starts empty in the Pinia store on every fresh page load — `onMounted` (line 55) only *starts* `fetchExercises()`, it doesn't await it before the template renders. Result: for a user who already has exercises, reloading the Log screen briefly shows the "Welcome to REP" card and the "More lives in the menu" coachmark arrow before the fetch resolves and they disappear — a visible flash that reads as a bug, not onboarding, to someone who's past onboarding. Fix direction: track fetch status (e.g. a `loaded`/`loading` ref in `useExercisesStore` or a local one in `WorkoutLogger.vue`, set on mount before calling `fetchExercises` and cleared once it resolves) and don't render the welcome card/coachmark — or anything else keyed off "zero exercises" — until that first fetch has actually completed. A brief neutral/blank state (or nothing at all) while loading beats confidently showing the wrong thing.
 
 ### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
 
-Requested 2026-09-24, split out from item 31 as a separate item since editing is materially more work than deleting. Once a workout is finished, `WorkoutHistory.vue` offers no way to fix a wrong rep/weight/RPE entry, add or remove a set, or edit the workout's notes — the only escape today is deleting the whole workout (item 31) and re-logging it. Fix direction: reuse as much of the active-workout edit/delete-a-set UI from item 13 as reasonably fits a finished workout's card, plus notes editing. Needs a decision on scope: allow adding a brand-new set to a past workout (re-triggers `set_index`/volume-chart implications for any template it's linked to), or restrict editing to sets that already exist. Depends on item 31 landing first isn't required, but sharing a UI entry point ("Edit" on the History card) is worth designing once instead of twice.
+Requested 2026-09-24, split out from item 31 (shipped, `docs/backlog-archive.md`) as a separate item since editing is materially more work than deleting. Once a workout is finished, `WorkoutHistory.vue` offers no way to fix a wrong rep/weight/RPE entry, add or remove a set, or edit the workout's notes — the only escape today is deleting the whole workout (item 31) and re-logging it. Fix direction: reuse as much of the active-workout edit/delete-a-set UI from item 13 as reasonably fits a finished workout's card, plus notes editing. Needs a decision on scope: allow adding a brand-new set to a past workout (re-triggers `set_index`/volume-chart implications for any template it's linked to), or restrict editing to sets that already exist. Worth reusing the same card-level "Delete" affordance's placement/confirm-step pattern item 31 shipped, so both live in a consistent spot on the History card.
 
 ### 30. Remove the unused `exercises.category` field `[Effort: 2, Value: 2, ROI: 1]`
 
