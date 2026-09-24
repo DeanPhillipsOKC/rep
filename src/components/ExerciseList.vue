@@ -7,6 +7,8 @@ const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
 const name = ref('')
 const category = ref('')
+const setupNotes = ref('')
+const restSeconds = ref<number | null>(null)
 const errorMessage = ref('')
 const enablingPush = ref(false)
 
@@ -39,12 +41,21 @@ async function handleEnablePush() {
 
 async function handleCreate() {
   errorMessage.value = ''
-  const { error } = await exercises.createExercise(name.value, category.value || null)
+  // v-model.number leaves an emptied input as '' rather than null/NaN.
+  const seconds = restSeconds.value && restSeconds.value > 0 ? restSeconds.value : null
+  const { error } = await exercises.createExercise(
+    name.value,
+    category.value || null,
+    setupNotes.value.trim() || null,
+    seconds,
+  )
   if (error) {
     errorMessage.value = error.message
   } else {
     name.value = ''
     category.value = ''
+    setupNotes.value = ''
+    restSeconds.value = null
   }
 }
 
@@ -138,6 +149,24 @@ async function saveRest(id: string) {
         <option value="legs" />
         <option value="cardio" />
       </datalist>
+
+      <label for="exercise-notes">Setup notes</label>
+      <textarea
+        id="exercise-notes"
+        v-model="setupNotes"
+        rows="2"
+        placeholder="e.g. seat height 4, incline 30°"
+      />
+
+      <label for="exercise-rest">Rest timer (seconds)</label>
+      <input
+        id="exercise-rest"
+        v-model.number="restSeconds"
+        type="number"
+        inputmode="numeric"
+        min="1"
+        placeholder="e.g. 90"
+      />
 
       <button type="submit">Add exercise</button>
     </form>

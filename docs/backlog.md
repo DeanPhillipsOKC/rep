@@ -22,17 +22,12 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 22 | Exercise creation only captures name/category — notes and rest timer need a separate edit trip | 2 | 2 | 1 |
 | 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
 | 28 | In-app rest timer screen: animated bunny, cooldown progress bar, skip option | 5 | 5 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
-
-### 22. Exercise creation only captures name/category — notes and rest timer need a separate edit trip `[Effort: 2, Value: 2, ROI: 1]`
-
-Reported 2026-09-25. `ExerciseList.vue`'s create form (`handleCreate`) only takes name + category; setup notes and rest-timer duration can only be set afterward through their own per-row editors further down the list. Today, adding a new exercise with a rest timer is: add it, scroll down, find it in the list, open two more edit forms. Fix: extend the create form with the same setup-notes/rest-timer inputs the edit forms already use, and pass them through `createExercise` in `src/stores/exercises.ts` (currently only inserts `name`/`category`). Per-row editors stay for later changes — this only removes the forced immediate round-trip after creating. If item 24 lands first, build this into whatever the create form looks like by then; ordering between the two isn't load-bearing.
 
 ### 25. Archiving an exercise doesn't remove it from templates it's already attached to `[Effort: 3, Value: 3, ROI: 1]`
 

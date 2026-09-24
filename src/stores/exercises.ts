@@ -24,14 +24,19 @@ export const useExercisesStore = defineStore('exercises', () => {
     loading.value = false
   }
 
-  async function createExercise(name: string, category: string | null) {
+  async function createExercise(
+    name: string,
+    category: string | null,
+    setupNotes: string | null = null,
+    restSeconds: number | null = null,
+  ) {
     const { data: userData } = await supabase.auth.getUser()
     const userId = userData.user?.id
     if (!userId) return { error: new Error('Not signed in') }
 
     const { data, error } = await supabase
       .from('exercises')
-      .insert({ user_id: userId, name, category })
+      .insert({ user_id: userId, name, category, setup_notes: setupNotes, rest_seconds: restSeconds })
       .select()
       .single()
 
