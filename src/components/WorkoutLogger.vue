@@ -68,6 +68,22 @@ const visiblePreviousExercises = computed(() => {
   return exerciseId.value ? entries.filter(([exId]) => exId === exerciseId.value) : entries
 })
 
+// Backlog item 21: logging against a template restricts the exercise picker
+// to that template's exercises — the suggested chips below were already
+// scoped this way, but the dropdown itself wasn't, so picking from it (not
+// a chip) could add an exercise the template doesn't track. Matters beyond
+// just the chip/dropdown mismatch: "Last time" and the post-workout volume
+// chart both read every set in a templated workout as if it belonged to the
+// template, so an ad-hoc addition there leaks into that reporting. A
+// workout with no template keeps the full exercise list.
+const availableExercises = computed(() => {
+  if (!workout.activeTemplateId) return exercises.activeExercises
+  return (templates.exercisesByTemplate[workout.activeTemplateId] ?? []).map((te) => ({
+    id: te.exercise_id,
+    name: te.exercises?.name ?? 'Unknown',
+  }))
+})
+
 async function handleStart() {
   errorMessage.value = ''
   if (templateId.value) {
@@ -314,7 +330,7 @@ function dismissVolumeChart() {
           <label for="set-exercise">Exercise</label>
           <select id="set-exercise" v-model="exerciseId" required>
             <option value="" disabled>Select an exercise</option>
-            <option v-for="exercise in exercises.activeExercises" :key="exercise.id" :value="exercise.id">
+            <option v-for="exercise in availableExercises" :key="exercise.id" :value="exercise.id">
               {{ exercise.name }}
             </option>
           </select>

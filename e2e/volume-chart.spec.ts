@@ -3,13 +3,19 @@ import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 6: post-workout volume-over-time chart, shown
-// after finishing any workout logged against a template. Template's
-// exercise has target_sets: 2. First workout completes both sets (actual ==
-// projected). Second workout logs only one set of it (under the target)
-// plus a set of an untracked exercise so the workout survives the
-// zero-set cleanup (item 9) — that instance's projected volume should carry
-// forward the exercise's volume from its last complete appearance instead of
-// using this instance's partial number.
+// after finishing any workout logged against a template. Template has two
+// exercises: `trackedName` (target_sets: 2) and `otherName` (no target —
+// "complete" as soon as it has any sets, per computeVolumeHistory). First
+// workout completes both (actual == projected). Second workout logs only
+// one set of `trackedName` (under its target) plus one of `otherName` (still
+// complete) — `otherName` also keeps the workout from tripping the
+// zero-set cleanup (item 9), though `trackedName`'s own set already would.
+// That instance's projected volume should carry forward `trackedName`'s
+// volume from its last complete appearance instead of using this instance's
+// partial number, while `otherName`'s literal actual passes straight
+// through since it's complete. Both exercises have to be on the template —
+// item 21 scoped the in-workout exercise picker to the active template, so
+// an untracked exercise can no longer be logged against one at all.
 test('volume chart: under-completed exercise carries forward its last complete volume', async ({ page }) => {
   const stamp = Date.now()
   const trackedName = `E2E Squat ${stamp}`
@@ -34,6 +40,9 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await page.getByPlaceholder('Sets').fill('2')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.locator('.exercise-row-wrap', { hasText: trackedName })).toBeVisible()
+  await page.getByRole('combobox').selectOption({ label: otherName })
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.locator('.exercise-row-wrap', { hasText: otherName })).toBeVisible()
 
   // Workout 1: complete both sets of the tracked exercise. Volume = 2000.
   // Each add is followed by a wait for its row to land before the next fill
@@ -64,8 +73,8 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await page.getByRole('button', { name: 'Log another workout' }).click()
 
   // Workout 2: only one set of the tracked exercise (under target_sets: 2),
-  // volume 500 — plus one set of the untracked exercise so this workout
-  // isn't deleted as empty.
+  // volume 500 — plus one set of `otherName` (no target_sets, so it's
+  // "complete" and its actual volume passes straight through, uncarried).
   await page.getByLabel('Template (optional)').selectOption({ label: templateName })
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })
@@ -84,8 +93,8 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(points).toHaveCount(2)
   // Workout 2: actual is the literal (partial) volume logged; projected
   // carries forward the tracked exercise's complete volume from workout 1
-  // (2000) in place of its partial contribution (500), plus the untracked
-  // exercise's 200 both ways: 200 (other, actual) + 2000 (carried) = 2200.
+  // (2000) in place of its partial contribution (500), plus `otherName`'s
+  // 200 both ways (it's complete, so it isn't carried): 200 + 2000 = 2200.
   await expect(points.nth(1)).toContainText('700 actual')
   await expect(points.nth(1)).toContainText('2200 projected')
 
