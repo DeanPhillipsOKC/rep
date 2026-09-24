@@ -275,6 +275,7 @@ async function saveRest(id: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -296,8 +297,9 @@ async function saveRest(id: string) {
 
 .row-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .notes-form {

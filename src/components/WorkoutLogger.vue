@@ -471,6 +471,7 @@ function dismissVolumeChart() {
   align-items: center;
   gap: 12px;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .row-index {
@@ -504,7 +505,8 @@ function dismissVolumeChart() {
 .row-actions {
   display: flex;
   gap: 8px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .set-edit-form {
