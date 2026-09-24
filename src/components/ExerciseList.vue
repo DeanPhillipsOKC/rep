@@ -105,7 +105,11 @@ async function saveRest(id: string) {
   <div>
     <h2>Exercises</h2>
 
-    <div class="card push-card">
+    <!-- Backlog item 17: once already enabled, this device doesn't need the
+         full card taking up space above the exercise list on every visit —
+         just a one-line confirmation. -->
+    <p v-if="push.subscribed" class="row-sub push-enabled-note">Rest timer alerts are enabled on this device.</p>
+    <div v-else class="card push-card">
       <h3>Rest timer alerts</h3>
       <p class="row-sub">
         Notifies you when a per-exercise rest timer runs out, even if your phone is locked.
@@ -116,7 +120,6 @@ async function saveRest(id: string) {
         Not supported on this device/browser. On iPhone, add this app to the home screen
         first (Share → Add to Home Screen), then open it from there.
       </p>
-      <p v-else-if="push.subscribed" class="row-sub">Alerts are enabled on this device.</p>
       <button v-else type="button" :disabled="enablingPush" @click="handleEnablePush">
         Enable rest timer alerts
       </button>
@@ -245,6 +248,10 @@ async function saveRest(id: string) {
 
 .push-card .row-sub {
   margin-bottom: 12px;
+}
+
+.push-enabled-note {
+  margin: 0 0 12px;
 }
 
 .error {
