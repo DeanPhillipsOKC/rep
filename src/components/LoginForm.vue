@@ -30,7 +30,7 @@ async function handlePasskeySignIn() {
 
 <template>
   <div class="screen">
-    <h1>Workout Tracker</h1>
+    <h1>REP</h1>
 
     <button
       v-if="auth.supportsPasskeys()"

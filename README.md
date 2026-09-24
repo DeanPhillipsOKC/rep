@@ -1,4 +1,4 @@
-# Workout Tracker PWA
+# REP (Workout Tracker PWA)
 
 Private, installable workout tracker for two users. Vue 3 + TS + Supabase + Cloudflare Pages.
 

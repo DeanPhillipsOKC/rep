@@ -16,7 +16,7 @@ const appVersion = __APP_VERSION__
   <main>
     <AuthGate>
       <header class="app-header">
-        <h1>Workout Tracker</h1>
+        <h1>REP</h1>
         <button type="button" class="ghost" @click="auth.signOut()">Sign out</button>
       </header>
 

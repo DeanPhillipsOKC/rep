@@ -1,4 +1,4 @@
-# Workout Tracker PWA — Architecture
+# REP (Workout Tracker PWA) — Architecture
 
 > Canonical technical reference for this project. Source brief: `ARCHITECTURE.pdf` in this folder.
 > Update this file, not the PDF, as decisions evolve.
