@@ -30,8 +30,11 @@ onMounted(() => {
 
 async function handleEnablePush() {
   enablingPush.value = true
-  await push.enable()
-  enablingPush.value = false
+  try {
+    await push.enable()
+  } finally {
+    enablingPush.value = false
+  }
 }
 
 async function handleCreate() {
