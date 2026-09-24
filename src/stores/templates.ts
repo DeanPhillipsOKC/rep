@@ -80,6 +80,21 @@ export const useTemplatesStore = defineStore('templates', () => {
     return { data, error }
   }
 
+  // Backlog item 14: change a routine's target set count without removing
+  // and re-adding the exercise (which would lose its position).
+  async function updateTemplateExercise(templateId: string, templateExerciseId: string, targetSets: number | null) {
+    const { error } = await supabase
+      .from('workout_template_exercises')
+      .update({ target_sets: targetSets })
+      .eq('id', templateExerciseId)
+    if (!error) {
+      const list = exercisesByTemplate.value[templateId] ?? []
+      const te = list.find((e) => e.id === templateExerciseId)
+      if (te) te.target_sets = targetSets
+    }
+    return { error }
+  }
+
   async function removeExerciseFromTemplate(templateId: string, templateExerciseId: string) {
     const { error } = await supabase.from('workout_template_exercises').delete().eq('id', templateExerciseId)
     if (!error) {
@@ -128,6 +143,7 @@ export const useTemplatesStore = defineStore('templates', () => {
     archiveTemplate,
     fetchTemplateExercises,
     addExerciseToTemplate,
+    updateTemplateExercise,
     removeExerciseFromTemplate,
     moveExercise,
   }

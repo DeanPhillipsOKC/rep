@@ -22,16 +22,9 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 14 | Edit target set count on a template exercise after creation | 3 | 3 | 1.0 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
 
 ## Features
-
-### 14. Edit target set count on a template exercise after creation `[Effort: 3, Value: 3, ROI: 1.0]`
-
-`workout_template_exercises.target_sets` (`supabase/schema.sql`) is set once at creation time (`handleAddExercise` in `TemplateManager.vue`) and displayed (`{{ te.target_sets }} sets`) but has no edit affordance afterward — changing a routine's target set count means removing and re-adding the exercise, losing its position.
-
-- Needs `updateTemplateExercise` (or similar) in `src/stores/templates.ts` (RLS already covers this — same owner-inherited `for all` policy pattern as item 13, no migration needed) and an inline edit affordance next to each exercise row in `TemplateManager.vue`, same pattern as items 7/8's inline edits.
 
 ### 6. Post-workout volume chart `[Effort: 8, Value: 8, ROI: 1.0]`
 

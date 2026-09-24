@@ -64,6 +64,27 @@ async function handleAddExercise(templateId: string) {
 function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
+
+// Backlog item 14: inline edit for an exercise's target set count, same
+// pattern as WorkoutLogger.vue's set editor — one row's id tracked here,
+// null means no row is being edited.
+const editingExerciseId = ref<string | null>(null)
+const editTargetSets = ref<number | null>(null)
+
+function startEditingExercise(te: { id: string; target_sets: number | null }) {
+  editingExerciseId.value = te.id
+  editTargetSets.value = te.target_sets
+}
+
+async function saveExerciseEdit(templateId: string, templateExerciseId: string) {
+  errorMessage.value = ''
+  const { error } = await templates.updateTemplateExercise(templateId, templateExerciseId, editTargetSets.value)
+  if (error) {
+    errorMessage.value = error.message
+  } else {
+    editingExerciseId.value = null
+  }
+}
 </script>
 
 <template>
@@ -90,37 +111,58 @@ function exerciseName(id: string): string {
 
         <div v-if="expandedId === template.id" class="expanded">
           <ol class="exercise-list">
-            <li v-for="(te, index) in templates.exercisesByTemplate[template.id]" :key="te.id" class="exercise-row">
-              <span class="row-index">{{ index + 1 }}</span>
-              <span class="row-body">
-                <span class="row-title">{{ te.exercises?.name ?? exerciseName(te.exercise_id) }}</span>
-                <span v-if="te.target_sets" class="row-sub">{{ te.target_sets }} sets</span>
-              </span>
-              <span class="reorder">
-                <button
-                  type="button"
-                  class="ghost small"
-                  :disabled="index === 0"
-                  @click="templates.moveExercise(template.id, te.id, 'up')"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  class="ghost small"
-                  :disabled="index === (templates.exercisesByTemplate[template.id]?.length ?? 0) - 1"
-                  @click="templates.moveExercise(template.id, te.id, 'down')"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  class="ghost small"
-                  @click="templates.removeExerciseFromTemplate(template.id, te.id)"
-                >
-                  Remove
-                </button>
-              </span>
+            <li v-for="(te, index) in templates.exercisesByTemplate[template.id]" :key="te.id" class="exercise-row-wrap">
+              <div class="exercise-row">
+                <span class="row-index">{{ index + 1 }}</span>
+                <span class="row-body">
+                  <span class="row-title">{{ te.exercises?.name ?? exerciseName(te.exercise_id) }}</span>
+                  <span v-if="te.target_sets" class="row-sub">{{ te.target_sets }} sets</span>
+                </span>
+                <span class="reorder">
+                  <button
+                    type="button"
+                    class="ghost small"
+                    :disabled="index === 0"
+                    @click="templates.moveExercise(template.id, te.id, 'up')"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="ghost small"
+                    :disabled="index === (templates.exercisesByTemplate[template.id]?.length ?? 0) - 1"
+                    @click="templates.moveExercise(template.id, te.id, 'down')"
+                  >
+                    ↓
+                  </button>
+                  <button type="button" class="ghost small" @click="startEditingExercise(te)">Edit</button>
+                  <button
+                    type="button"
+                    class="ghost small"
+                    @click="templates.removeExerciseFromTemplate(template.id, te.id)"
+                  >
+                    Remove
+                  </button>
+                </span>
+              </div>
+
+              <form
+                v-if="editingExerciseId === te.id"
+                class="exercise-edit-form"
+                @submit.prevent="saveExerciseEdit(template.id, te.id)"
+              >
+                <label :for="`edit-target-sets-${te.id}`">Target sets</label>
+                <input
+                  :id="`edit-target-sets-${te.id}`"
+                  v-model.number="editTargetSets"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  class="sets-input"
+                />
+                <button type="submit">Save</button>
+                <button type="button" class="ghost small" @click="editingExerciseId = null">Cancel</button>
+              </form>
             </li>
           </ol>
           <p
@@ -226,10 +268,29 @@ function exerciseName(id: string): string {
   margin-bottom: 12px;
 }
 
+.exercise-row-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
 .exercise-row {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.exercise-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-left: 36px;
+}
+
+.exercise-edit-form button {
+  width: auto;
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
 .row-index {
