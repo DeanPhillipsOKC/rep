@@ -22,18 +22,23 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 15 | Per-exercise rest timer with notification | 5 | 5 | 1.0 |
+| 15 | Per-exercise rest timer with notification | 8 | 8 | 1.0 |
 
 ## Features
 
-### 15. Per-exercise rest timer with notification `[Effort: 5, Value: 5, ROI: 1.0]`
+### 15. Per-exercise rest timer with notification `[Effort: 8, Value: 8, ROI: 1.0]`
 
-Configure a rest duration per exercise; after logging a set, count down and notify the user when rest is over so they don't have to watch a clock between sets.
+Configure a rest duration per exercise; after logging a set, count down and notify the user when rest is over so they don't have to watch a clock between sets. Primary motivating case is the iPhone user (owner is Android) — real durations both users actually want are in the 30–90s range (owner prefers 90s, the iPhone user prefers 30s).
 
-- Add a configurable rest duration (seconds, nullable) per exercise — same shape as `setup_notes` (item 8): a column on `exercises`, editable inline in `ExerciseList.vue`.
-- After logging a set for an exercise with a configured duration, `WorkoutLogger.vue` starts a visible countdown; on completion, notify via the Notification API (`Notification` / `registration.showNotification()`), with `navigator.vibrate` as a companion/fallback. Request notification permission once, same UX shape as the existing passkey prompt.
-- **Feasibility decision (researched — don't relitigate):** a PWA can reliably fire a local notification on timer completion only while its own process is still alive — realistic for the gym use case (phone nearby, tab open, screen may briefly dim). It is **not** reliable if the phone is locked/backgrounded for the *entire* rest period, especially on iOS, without real Web Push infrastructure (VAPID keys, a subscription store, and something server-side to trigger the push at the right moment) — which conflicts with this project's zero-recurring-cost / small-surface-area constraints (`docs/architecture.md#guiding-constraints`). Build the foreground-reliable version; treat "notifies even through a full phone lock" as an explicit non-goal unless the user later wants to invest in that infrastructure.
-- Needs a **[human]** device-verification pass once built (notification permission prompt + actual delivery) on both the Android and iPhone installed PWA — add that as a checklist item below when this ships.
+**Design decision (researched — don't relitigate):** a plain `setTimeout` + local Notification only reliably fires while the PWA's own process is alive, which iOS aggressively suspends the moment the app leaves the foreground (including just locking the screen) — Android is more lenient but not guaranteed either. Reliably notifying through a locked phone requires real Web Push, dispatched server-side independent of whatever the client is doing. This needs no Mac or Apple Developer account — iOS Safari 16.4+ implements the same standard Web Push (VAPID) protocol as Chrome/Firefox, just gated behind the PWA being added to the home screen first.
+
+Shape:
+
+- **Schema:** nullable `rest_seconds` column on `exercises` (same shape as `setup_notes`, item 8), editable inline in `ExerciseList.vue`. Per-user isolation already falls out of `exercises` being a per-user table — no extra design needed for the two of them wanting different durations on their own copy of an exercise.
+- **Subscribe flow:** a new `push_subscriptions` table (RLS-scoped like everything else) storing each installed device's `PushSubscription` (endpoint + keys). Client subscribes via `serviceWorkerRegistration.pushManager.subscribe()` with a VAPID public key, behind a deliberate "Enable rest timer alerts" button — iOS requires the PWA be installed to the home screen first and won't allow prompting for permission on load, only from a user gesture inside the installed app.
+- **Service worker:** gains a `push` handler (`self.registration.showNotification(...)`) and a `notificationclick` handler to focus the app.
+- **Dispatch:** on logging a set for an exercise with a configured `rest_seconds`, the client makes one call (while still active) to a Supabase Edge Function with the subscription + delay. Given the confirmed 30–90s real-world range, the function can just `await sleep(rest_seconds)` then send the push directly via the `web-push` library (Deno-compatible) and VAPID private key (an Edge Function secret, never client-exposed, same handling as the service role key) — no `pg_cron`/polling needed, since that range comfortably fits under typical Edge Function execution limits (verify the current limit at build time, per the free-tier-limits-change note in `docs/architecture.md#operational-notes`).
+- Needs a **[human]** device-verification pass once built (notification permission prompt + actual delivery, both a locked-and-relocked iPhone and Android) — add that as a checklist item below when this ships.
 
 ## Human setup / device verification
 
