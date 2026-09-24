@@ -22,18 +22,8 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 20 | Bug: set-entry fields usable (and get silently wiped) before an exercise is picked | 2 | 3 | 1.5 |
 
-## Features
-
-### 20. Bug: set-entry fields usable (and get silently wiped) before an exercise is picked `[Effort: 2, Value: 3, ROI: 1.5]`
-
-Reported 2026-09-24. In `WorkoutLogger.vue`'s set-entry form, Reps/Weight/Unit/RPE are enabled and typeable even with no exercise selected yet. Two bad things follow from that:
-
-- Submitting with no exercise selected relies on the `<select required>`'s native browser validation, which reads as the form "yelling at you" after you've already filled in reps/weight — not before.
-- Picking an exercise *after* typing reps/weight silently blows the typed values away: `watch(exerciseId, ...)` unconditionally calls `applyPrefill(id)`, which sets `reps.value`/`weight.value` to either the previous-workout prefill or `null` — with no check for whether the user already had something in those fields.
-
-Fix direction (user's preference): don't let the problem happen at all — hide or disable the Reps/Weight/Unit/RPE inputs and the "Add set" button until `exerciseId` is set, rather than validating/correcting after the fact. Hiding is probably the better of the two (a disabled-but-visible numeric input inviting a tap is its own small papercut), but either satisfies the report. Touches only `WorkoutLogger.vue`'s template/script — no store or schema changes. Check whether any `e2e/*.spec.ts` specs assume those fields are visible before an exercise chip/option is clicked.
+No open feature items — check `docs/backlog-archive.md` for what's shipped, or the human-only checklist below for what's left to verify.
 
 ## Human setup / device verification
 

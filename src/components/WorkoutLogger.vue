@@ -337,48 +337,50 @@ function dismissVolumeChart() {
 
           <p v-if="selectedExerciseNotes" class="setup-notes">{{ selectedExerciseNotes }}</p>
 
-          <div class="grid-2">
-            <div>
-              <label for="set-reps">Reps</label>
-              <input id="set-reps" v-model.number="reps" type="number" inputmode="numeric" min="1" required />
+          <template v-if="exerciseId">
+            <div class="grid-2">
+              <div>
+                <label for="set-reps">Reps</label>
+                <input id="set-reps" v-model.number="reps" type="number" inputmode="numeric" min="1" required />
+              </div>
+              <div>
+                <label for="set-weight">Weight</label>
+                <input
+                  id="set-weight"
+                  v-model.number="weight"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  step="0.5"
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label for="set-weight">Weight</label>
-              <input
-                id="set-weight"
-                v-model.number="weight"
-                type="number"
-                inputmode="decimal"
-                min="0"
-                step="0.5"
-                required
-              />
-            </div>
-          </div>
 
-          <div class="grid-2">
-            <div>
-              <label for="set-unit">Unit</label>
-              <select id="set-unit" v-model="weightUnit">
-                <option value="lb">lb</option>
-                <option value="kg">kg</option>
-              </select>
+            <div class="grid-2">
+              <div>
+                <label for="set-unit">Unit</label>
+                <select id="set-unit" v-model="weightUnit">
+                  <option value="lb">lb</option>
+                  <option value="kg">kg</option>
+                </select>
+              </div>
+              <div>
+                <label for="set-rpe">RPE (optional)</label>
+                <input
+                  id="set-rpe"
+                  v-model.number="rpe"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  max="10"
+                  step="0.5"
+                />
+              </div>
             </div>
-            <div>
-              <label for="set-rpe">RPE (optional)</label>
-              <input
-                id="set-rpe"
-                v-model.number="rpe"
-                type="number"
-                inputmode="decimal"
-                min="0"
-                max="10"
-                step="0.5"
-              />
-            </div>
-          </div>
 
-          <button type="submit" :disabled="addingSet">Add set</button>
+            <button type="submit" :disabled="addingSet">Add set</button>
+          </template>
         </form>
       </template>
 
