@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
+import VolumeChart from './VolumeChart.vue'
 import type { SetEntry, SetWithExercise, WeightUnit } from '../lib/types'
 
 const exercises = useExercisesStore()
@@ -198,7 +199,16 @@ const selectedExerciseNotes = computed(() => {
   return exercises.exercises.find((e) => e.id === exerciseId.value)?.setup_notes ?? null
 })
 
+// Backlog item 6: post-workout volume-over-time chart. Captured before
+// finishWorkout() clears activeTemplateId/activeSets — a freeform workout
+// (no template) or a workout finished with zero sets logged (deleted by
+// finishWorkout, see item 9) has nothing to chart.
+const showingVolumeChart = ref(false)
+
 async function handleFinish() {
+  const finishedTemplateId = workout.activeTemplateId
+  const hadSets = workout.activeSets.length > 0
+
   await workout.finishWorkout()
   notes.value = ''
   templateId.value = ''
@@ -208,6 +218,17 @@ async function handleFinish() {
   rpe.value = null
   recordToast.value = ''
   clearTimeout(recordToastTimeout)
+
+  if (finishedTemplateId && hadSets) {
+    const templateExercises = templates.exercisesByTemplate[finishedTemplateId] ?? []
+    await workout.fetchTemplateVolumeHistory(finishedTemplateId, templateExercises)
+    showingVolumeChart.value = true
+  }
+}
+
+function dismissVolumeChart() {
+  showingVolumeChart.value = false
+  workout.clearVolumeHistory()
 }
 </script>
 
@@ -215,7 +236,13 @@ async function handleFinish() {
   <div>
     <h2>Log a workout</h2>
 
-    <form v-if="!workout.activeWorkoutId" class="card" @submit.prevent="handleStart">
+    <div v-if="showingVolumeChart" class="card">
+      <h3>Volume over time</h3>
+      <VolumeChart :points="workout.volumeHistory" />
+      <button type="button" class="ghost finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
+    </div>
+
+    <form v-else-if="!workout.activeWorkoutId" class="card" @submit.prevent="handleStart">
       <label for="workout-template">Template (optional)</label>
       <select id="workout-template" v-model="templateId">
         <option value="">No template — freeform</option>
@@ -527,6 +554,10 @@ async function handleFinish() {
 
 .finish {
   width: 100%;
+}
+
+.chart-dismiss {
+  margin-top: 16px;
 }
 
 .error {

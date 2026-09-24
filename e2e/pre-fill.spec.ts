@@ -47,6 +47,10 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   await expect(page.locator('.row', { hasText: otherExerciseName })).toBeVisible()
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
+  // Finishing a templated workout with sets logged shows the volume chart
+  // (backlog item 6) instead of returning straight to the start form.
+  await page.getByRole('button', { name: 'Log another workout' }).click()
+
   // Second workout against the same template, but abandoned with no sets
   // logged (e.g. started by mistake). This must not shadow the real data
   // from the first workout on the next lookup.
@@ -127,6 +131,10 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
   await addRound('8', '115', exerciseName)
   await addRound('5', '225', otherExerciseName)
   await page.getByRole('button', { name: 'Finish workout' }).click()
+
+  // Finishing a templated workout with sets logged shows the volume chart
+  // (backlog item 6) instead of returning straight to the start form.
+  await page.getByRole('button', { name: 'Log another workout' }).click()
 
   // Second workout: set 1 for the first exercise should pre-fill from its
   // set 1 last time (10x135), not its set 2 (8x115).

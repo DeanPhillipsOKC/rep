@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
+import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
 import type { SetEntry, WeightUnit, WorkoutWithSets } from '../lib/types'
 
 // Core logging flow per docs/architecture.md build order step 4:
@@ -14,6 +15,12 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const activeTemplateId = ref<string | null>(null)
   const activeSets = ref<SetEntry[]>([])
   const previousWorkout = ref<WorkoutWithSets | null>(null)
+
+  // Backlog item 6: post-workout volume-over-time chart for the template
+  // just finished. Populated by fetchTemplateVolumeHistory, cleared by
+  // clearVolumeHistory once the chart has been dismissed.
+  const volumeHistory = ref<VolumeChartPoint[]>([])
+  const volumeHistoryError = ref('')
 
   // Backlog item 11: addSet's insert can still be in flight when the user
   // (or a fast test script) moves straight on to finishing/starting a
@@ -55,6 +62,33 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       previousWorkout.value = (data?.[0] ?? null) as unknown as WorkoutWithSets | null
     }
     return { error }
+  }
+
+  // Backlog item 6: full history of a template's past workouts (oldest
+  // first, so computeVolumeHistory's carry-forward only ever looks
+  // backward), turned into actual/projected volume points. Callers pass the
+  // template's current exercise list (position/target_sets) since that's
+  // already fetched by the time a workout against it finishes.
+  async function fetchTemplateVolumeHistory(templateId: string, templateExercises: TemplateExerciseTarget[]) {
+    volumeHistoryError.value = ''
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .eq('template_id', templateId)
+      .order('performed_at', { ascending: true })
+      .order('set_index', { foreignTable: 'sets', ascending: true })
+
+    if (error) {
+      volumeHistoryError.value = error.message
+      return { error }
+    }
+    volumeHistory.value = computeVolumeHistory((data ?? []) as unknown as WorkoutWithSets[], templateExercises)
+    return { error: null }
+  }
+
+  function clearVolumeHistory() {
+    volumeHistory.value = []
+    volumeHistoryError.value = ''
   }
 
   async function startWorkout(notes: string | null = null, templateId: string | null = null) {
@@ -235,6 +269,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeTemplateId,
     activeSets,
     previousWorkout,
+    volumeHistory,
+    volumeHistoryError,
     newRecord,
     startWorkout,
     addSet,
@@ -243,5 +279,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     finishWorkout,
     fetchHistory,
     fetchPreviousWorkout,
+    fetchTemplateVolumeHistory,
+    clearVolumeHistory,
   }
 })

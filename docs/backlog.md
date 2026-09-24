@@ -20,20 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-| # | Item | Effort | Value | ROI |
-|---|------|--------|-------|-----|
-| 6 | Post-workout volume chart | 8 | 8 | 1.0 |
-
-## Features
-
-### 6. Post-workout volume chart `[Effort: 8, Value: 8, ROI: 1.0]`
-
-At the end of a workout, show total volume (Σ reps × weight across all sets) for that template over time, as a two-line chart:
-
-- **Actual line:** literal volume per past workout instance of that template.
-- **Projected line:** for any workout instance where one or more template exercises were skipped or under-completed, backfill the missing exercise(s)' numbers from that exercise's own most recent prior appearance (straight carry-forward) before summing volume for that point.
-- **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
-- **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
+_No open feature items — see `docs/backlog-archive.md` for what's shipped._
 
 ## Human setup / device verification
 
