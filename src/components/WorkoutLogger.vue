@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
@@ -54,7 +54,55 @@ onMounted(() => {
   if (exercises.exercises.length === 0) exercises.fetchExercises()
   if (templates.templates.length === 0) templates.fetchTemplates()
   workout.fetchProgressStats()
+  window.addEventListener('resize', updateCoachmark)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateCoachmark)
+})
+
+// Backlog item 27: the coachmark arrow points at App.vue's real menu button,
+// a sibling component's DOM node rather than something WorkoutLogger owns —
+// measuring both rects at render time (instead of hand-picked coordinates
+// copied from the design mockup's fixed 390px phone frame) keeps the arrow
+// aimed correctly at whatever viewport width the device actually has.
+const heroCardRef = ref<HTMLElement | null>(null)
+const coachmarkPath = ref('')
+const coachmarkLabelStyle = ref<{ top: string; right: string }>({ top: '0px', right: '0px' })
+
+async function updateCoachmark() {
+  await nextTick()
+  const card = heroCardRef.value
+  const menuButton = document.querySelector('.menu-button')
+  if (!card || !menuButton) return
+
+  const cardRect = card.getBoundingClientRect()
+  const buttonRect = menuButton.getBoundingClientRect()
+
+  const startX = cardRect.right - 24
+  const startY = cardRect.top + 28
+  const endX = buttonRect.left + buttonRect.width / 2
+  const endY = buttonRect.bottom + 6
+  const controlX = Math.max(startX, endX) + 40
+  const controlY = (startY + endY) / 2
+
+  coachmarkPath.value = `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`
+  coachmarkLabelStyle.value = {
+    top: `${buttonRect.bottom + 6}px`,
+    right: `${window.innerWidth - buttonRect.right}px`,
+  }
+}
+
+// Zero-exercise state is guaranteed on mount (exercises.exercises starts
+// empty before fetchExercises resolves) and again if the fetch confirms it —
+// re-measure whenever the welcome card is the thing actually on screen.
+watch(
+  () => exercises.activeExercises.length === 0 && !workout.activeWorkoutId,
+  (showing) => {
+    if (showing) updateCoachmark()
+  },
+  { immediate: true },
+)
 
 // Backlog item 3: sets from the previous workout against this template,
 // grouped by exercise in the order they were logged, so the "last time"
@@ -274,7 +322,7 @@ function dismissVolumeChart() {
     </div>
 
     <template v-else-if="!workout.activeWorkoutId">
-      <div class="progress-strip">
+      <div v-if="exercises.activeExercises.length > 0" class="progress-strip">
         <div class="stat-tile">
           <span class="stat-value">{{ workout.workoutsThisWeek }}</span>
           <span class="stat-label">{{ workout.workoutsThisWeek === 1 ? 'workout' : 'workouts' }} this week</span>
@@ -285,17 +333,52 @@ function dismissVolumeChart() {
         </div>
       </div>
 
-      <div v-if="exercises.activeExercises.length === 0" class="card notice">
-        <p>Add an exercise before logging a workout — there's nothing to pick from yet.</p>
-        <button type="button" class="ghost" @click="emit('navigate', 'exercises')">Go to Exercises</button>
+      <div v-if="exercises.activeExercises.length === 0" class="welcome-wrap">
+        <div ref="heroCardRef" class="card welcome-card">
+          <div class="mascot mascot-lg">
+            <img src="/icon-512.png" alt="" />
+          </div>
+          <p class="welcome-title">Welcome to REP</p>
+          <p class="welcome-copy">
+            This is where your workouts live. Add your first exercise to start logging sets and watching your
+            progress build.
+          </p>
+          <button type="button" class="welcome-cta" @click="emit('navigate', 'exercises')">
+            Add your first exercise
+          </button>
+        </div>
+
+        <svg class="coachmark-svg" aria-hidden="true">
+          <defs>
+            <marker id="coachmark-arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)" />
+            </marker>
+          </defs>
+          <path
+            :d="coachmarkPath"
+            stroke="var(--accent)"
+            stroke-width="2"
+            stroke-dasharray="5 6"
+            fill="none"
+            stroke-linecap="round"
+            marker-end="url(#coachmark-arrowhead)"
+          />
+        </svg>
+        <div class="coachmark-label" :style="coachmarkLabelStyle">More lives in the menu</div>
       </div>
 
       <template v-else>
-        <p v-if="templates.activeTemplates.length === 0" class="row-sub hint">
-          Templates are optional — they track progress on a recurring workout. Freeform logging works fine without
-          one, or <button type="button" class="link-button" @click="emit('navigate', 'templates')">create one</button>
-          under Templates.
-        </p>
+        <div v-if="templates.activeTemplates.length === 0" class="card template-hint">
+          <div class="mascot mascot-sm">
+            <img src="/icon-512.png" alt="" />
+          </div>
+          <p class="template-hint-copy">
+            Nice, you're ready to log. Templates help you repeat a workout and track its progress over time.
+            <button type="button" class="link-button" @click="emit('navigate', 'templates')">
+              Create a template
+            </button>
+          </p>
+        </div>
 
         <form class="card" @submit.prevent="handleStart">
           <label for="workout-template">Template (optional)</label>
@@ -541,17 +624,113 @@ function dismissVolumeChart() {
   gap: 12px;
 }
 
-.notice {
+.welcome-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 320px;
+  padding: 32px 26px;
   text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  margin-bottom: 0;
 }
 
-.notice p {
-  margin: 0 0 12px;
+.mascot {
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mascot-lg {
+  width: 88px;
+  height: 88px;
+}
+
+.mascot-lg img {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+}
+
+.mascot-sm {
+  width: 40px;
+  height: 40px;
+}
+
+.mascot-sm img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.welcome-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.welcome-copy {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.welcome-cta {
+  width: 100%;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.coachmark-svg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.coachmark-label {
+  position: fixed;
+  max-width: 128px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  line-height: 1.35;
   color: var(--text-dim);
+  text-align: right;
+  z-index: 5;
+  pointer-events: none;
 }
 
-.hint {
-  margin: 0 0 16px;
+.template-hint {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.template-hint-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .link-button {
