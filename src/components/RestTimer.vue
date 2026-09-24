@@ -4,30 +4,35 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 // Backlog item 28: in-app rest screen shown after logging a set for an
 // exercise with rest_seconds configured. Distinct from item 15's push
 // notification (src/stores/pushSubscription.ts), which stays as the
-// backgrounded-tab fallback — see the visibility check in WorkoutLogger.vue's
-// handleAddSet for how the two are kept from firing together.
+// fallback for whenever the tab actually goes to the background during the
+// rest period — see handleRestVisibilityChange in WorkoutLogger.vue.
+//
+// `endsAt` (not `restSeconds` alone) is passed in from WorkoutLogger.vue so
+// both this screen and that visibility-fallback check compute the same
+// "time left" off one fixed timestamp, rather than each starting its own
+// clock a tick apart.
 
 const props = defineProps<{
   exerciseName: string
-  restSeconds: number
+  endsAt: number
+  totalSeconds: number
 }>()
 
 const emit = defineEmits<{
   (e: 'dismiss'): void
 }>()
 
-const remaining = ref(props.restSeconds)
+function secondsLeft(): number {
+  return Math.max(0, Math.round((props.endsAt - Date.now()) / 1000))
+}
+
+const remaining = ref(secondsLeft())
 let intervalId: ReturnType<typeof setInterval> | undefined
 
 onMounted(() => {
-  // Computed from a fixed end time rather than decremented per tick, so an
-  // interval delayed by tab throttling still reports the correct remaining
-  // time instead of drifting slow.
-  const endsAt = Date.now() + props.restSeconds * 1000
   intervalId = setInterval(() => {
-    const secondsLeft = Math.max(0, Math.round((endsAt - Date.now()) / 1000))
-    remaining.value = secondsLeft
-    if (secondsLeft <= 0) {
+    remaining.value = secondsLeft()
+    if (remaining.value <= 0) {
       clearInterval(intervalId)
       navigator.vibrate?.(200)
       emit('dismiss')
@@ -45,7 +50,7 @@ const remainingLabel = computed(() => {
   return `${m}:${String(s).padStart(2, '0')}`
 })
 
-const progressPercent = computed(() => (remaining.value / props.restSeconds) * 100)
+const progressPercent = computed(() => (remaining.value / props.totalSeconds) * 100)
 </script>
 
 <template>

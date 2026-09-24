@@ -56,10 +56,12 @@ onMounted(() => {
   if (templates.templates.length === 0) templates.fetchTemplates()
   workout.fetchProgressStats()
   window.addEventListener('resize', updateCoachmark)
+  document.addEventListener('visibilitychange', handleRestVisibilityChange)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateCoachmark)
+  document.removeEventListener('visibilitychange', handleRestVisibilityChange)
 })
 
 // Backlog item 27: the coachmark arrow points at App.vue's real menu button,
@@ -214,13 +216,30 @@ watch(
 // rather than just unlikely.
 const addingSet = ref(false)
 
-// Backlog item 28: the in-app rest screen (RestTimer.vue) when the tab is
-// foregrounded — countdown, progress bar, and skip are all visible right
-// away. Item 15's push notification stays as the backgrounded-tab fallback;
-// since the in-app screen already covers the foreground case, firing both
-// would just double up the alert, so this picks one based on document.hidden
-// at the moment the set lands.
-const activeRest = ref<{ exerciseName: string; restSeconds: number } | null>(null)
+// Backlog item 28: the in-app rest screen (RestTimer.vue) shows the
+// countdown/progress bar/skip option while the tab stays foregrounded. Item
+// 15's push notification is the fallback for whenever the tab actually goes
+// to the background *during* the rest period — not just a check at the
+// moment the set is logged (found 2026-09-24 in device testing: logging a
+// set is itself done in the foreground, so an add-time-only check on
+// document.hidden always picked the in-app path, and locking the phone or
+// switching apps mid-rest then suspends that screen's setInterval with
+// nothing having been sent as a fallback — silence on both counts). Tracked
+// by end time (not remaining seconds) so both this screen and the
+// visibility handler below compute the same "time left" independent of how
+// long since the rest actually started.
+const activeRest = ref<{ exerciseName: string; endsAt: number; totalSeconds: number } | null>(null)
+let restPushSent = false
+
+// Fires once per rest period, the first time the tab actually goes hidden
+// while one is active — locking the screen or switching apps counts, same
+// as backgrounding a browser tab.
+function handleRestVisibilityChange() {
+  if (!document.hidden || !activeRest.value || restPushSent) return
+  restPushSent = true
+  const remaining = Math.max(1, Math.round((activeRest.value.endsAt - Date.now()) / 1000))
+  push.sendRestReminder(activeRest.value.exerciseName, remaining)
+}
 
 async function handleAddSet() {
   errorMessage.value = ''
@@ -235,14 +254,17 @@ async function handleAddSet() {
     rpe.value = null
     const restSeconds = exercises.exercises.find((e) => e.id === exerciseId.value)?.rest_seconds
     if (restSeconds) {
-      const name = exerciseName(exerciseId.value)
-      if (document.hidden) {
-        // Kicked off in the background so it never delays the next set —
-        // the Edge Function holds the actual rest delay server-side.
-        push.sendRestReminder(name, restSeconds)
-      } else {
-        activeRest.value = { exerciseName: name, restSeconds }
+      restPushSent = false
+      activeRest.value = {
+        exerciseName: exerciseName(exerciseId.value),
+        endsAt: Date.now() + restSeconds * 1000,
+        totalSeconds: restSeconds,
       }
+      // Covers the rare case where the set is logged while already
+      // backgrounded (e.g. a delayed background response) — nothing will
+      // ever see the in-app screen, so send the fallback immediately
+      // instead of waiting on a visibilitychange that already happened.
+      handleRestVisibilityChange()
     }
   }
 }
@@ -585,7 +607,8 @@ function dismissVolumeChart() {
     <RestTimer
       v-if="activeRest"
       :exercise-name="activeRest.exerciseName"
-      :rest-seconds="activeRest.restSeconds"
+      :ends-at="activeRest.endsAt"
+      :total-seconds="activeRest.totalSeconds"
       @dismiss="activeRest = null"
     />
   </div>

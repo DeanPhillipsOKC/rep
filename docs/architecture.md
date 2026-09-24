@@ -257,12 +257,20 @@ dispatched server-side independent of the client:
    `self.registration.showNotification(...)` and `notificationclick` by focusing an existing
    app window or opening a new one.
 4. **Foreground UI (backlog item 28):** `RestTimer.vue` is a full-screen countdown shown
-   in-app instead of relying on the push — mascot art, a draining progress bar, and a Skip
-   Rest button. `WorkoutLogger.vue`'s `handleAddSet` picks one or the other per `addSet` based
-   on `document.hidden` at that moment: foregrounded shows `RestTimer.vue` and skips the push
-   entirely (it would just duplicate an already-visible countdown); backgrounded skips the
-   in-app screen (nothing would see it) and sends the push as before. The two never fire
-   together for the same rest period.
+   in-app while the tab is foregrounded — mascot art, a draining progress bar, and a Skip
+   Rest button, driven by a fixed `endsAt` timestamp rather than a plain decrementing timer.
+   The push stays as the fallback, but *not* decided once at `addSet` time — logging a set is
+   itself done in the foreground, so an add-time-only check on `document.hidden` always picked
+   the in-app screen, and backgrounding or locking the phone mid-rest then suspends that
+   screen's `setInterval` with no push ever having been sent (found in device testing
+   2026-09-24: silence on both counts). Instead, `WorkoutLogger.vue` registers a
+   `visibilitychange` listener for as long as a rest period is active
+   (`handleRestVisibilityChange`) and sends the push the first time the tab actually goes
+   hidden, with however many seconds are actually left at that moment — covering "logged the
+   set, then locked the screen" as well as "logged the set already backgrounded." Skipped only
+   when the tab never goes hidden during the rest period, since `RestTimer.vue` running to
+   completion in the foreground is already a real alert (vibration + on-screen countdown
+   hitting zero).
 
 **Secrets, never client-exposed** (Edge Function secrets, same handling as the service role
 key — `supabase secrets set NAME=value`): `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`,
