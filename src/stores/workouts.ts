@@ -15,6 +15,18 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const activeSets = ref<SetEntry[]>([])
   const previousWorkout = ref<WorkoutWithSets | null>(null)
 
+  // Backlog item 11: addSet's insert can still be in flight when the user
+  // (or a fast test script) moves straight on to finishing/starting a
+  // workout. Anything that reads or depends on "this workout's sets are
+  // fully committed" — fetchPreviousWorkout's query, finishWorkout's
+  // empty-workout delete — awaits this first so it can't run ahead of a
+  // write it was racing.
+  const pendingWrites = new Set<PromiseLike<unknown>>()
+
+  async function waitForPendingWrites() {
+    if (pendingWrites.size > 0) await Promise.all(pendingWrites)
+  }
+
   // Backlog item 4: set by the (unawaited) record check kicked off from
   // addSet below. A plain ref rather than addSet's return value so the
   // record check can run in the background without slowing down the add —
@@ -29,6 +41,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // startWorkout so the just-created row can't show up as its own "previous"
   // workout.
   async function fetchPreviousWorkout(templateId: string) {
+    await waitForPendingWrites()
+
     const { data, error } = await supabase
       .from('workouts')
       .select('*, sets!inner(*, exercises(name)), workout_templates(name)')
@@ -44,6 +58,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   }
 
   async function startWorkout(notes: string | null = null, templateId: string | null = null) {
+    await waitForPendingWrites()
+
     const { data: userData } = await supabase.auth.getUser()
     const userId = userData.user?.id
     if (!userId) return { error: new Error('Not signed in') }
@@ -115,7 +131,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     // value can't be trusted. The `sets_set_index` DB trigger (backlog
     // item 10, supabase/schema.sql) overwrites it server-side with the
     // real position, which is what comes back in `data` below.
-    const { data, error } = await supabase
+    const insert = supabase
       .from('sets')
       .insert({
         workout_id: workoutId,
@@ -129,6 +145,10 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       .select()
       .single()
 
+    pendingWrites.add(insert)
+    const { data, error } = await insert
+    pendingWrites.delete(insert)
+
     if (!error && data) {
       if (activeWorkoutId.value === workoutId) activeSets.value.push(data)
       checkForRecord(exerciseId, data.id, reps * weight)
@@ -141,6 +161,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // (see fetchPreviousWorkout) and would skew any future reporting that
   // scans `workouts` directly. Delete it instead of leaving an empty row.
   async function finishWorkout() {
+    await waitForPendingWrites()
+
     if (activeWorkoutId.value && activeSets.value.length === 0) {
       await supabase.from('workouts').delete().eq('id', activeWorkoutId.value)
     }

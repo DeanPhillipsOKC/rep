@@ -88,9 +88,21 @@ function pickSuggested(id: string) {
 // logged, since fatigue means later sets aren't representative of earlier
 // ones. Re-runs on every addSet too, not just on exercise selection, so
 // picking the same exercise again for set 2 refreshes the pre-fill.
+//
+// Backlog item 11: tracks the loggedCount it last filled for, so the
+// activeSets watcher below (which fires on ANY exercise's add, not just the
+// selected one) can tell "this exercise's count changed" from "some other
+// exercise's addSet response landed in the background." Without that check,
+// a superset partner's slow-arriving response can re-run this mid-keystroke
+// and silently wipe reps/weight back to null/prefill under the user's
+// fingers, turning their next "Add set" tap into a no-op (see the guard in
+// handleAddSet).
+let lastFilledCount: number | null = null
+
 function applyPrefill(id: string) {
   const previousSets = previousSetsByExercise.value[id]
   const loggedCount = workout.activeSets.filter((s) => s.exercise_id === id).length
+  lastFilledCount = loggedCount
   const matchingSet = previousSets?.[loggedCount]
   if (!matchingSet) {
     reps.value = null
@@ -110,15 +122,29 @@ watch(exerciseId, (id) => {
 watch(
   () => workout.activeSets.length,
   () => {
-    if (exerciseId.value) applyPrefill(exerciseId.value)
+    if (!exerciseId.value) return
+    const loggedCount = workout.activeSets.filter((s) => s.exercise_id === exerciseId.value).length
+    if (loggedCount === lastFilledCount) return
+    applyPrefill(exerciseId.value)
   },
 )
+
+// Backlog item 11: without this, nothing stops a second "Add set" tap from
+// firing while the first is still in flight, so two inserts can race over
+// the network and commit in the opposite order from how they were tapped —
+// set_index (assigned by DB commit order, supabase/schema.sql) then
+// disagrees with what the user actually logged first. Disabling the button
+// for the duration of the request makes overlapping submissions impossible
+// rather than just unlikely.
+const addingSet = ref(false)
 
 async function handleAddSet() {
   errorMessage.value = ''
   if (!exerciseId.value || reps.value === null || weight.value === null) return
 
+  addingSet.value = true
   const { error } = await workout.addSet(exerciseId.value, reps.value, weight.value, weightUnit.value, rpe.value)
+  addingSet.value = false
   if (error) {
     errorMessage.value = error.message
   } else {
@@ -253,7 +279,7 @@ async function handleFinish() {
             </div>
           </div>
 
-          <button type="submit">Add set</button>
+          <button type="submit" :disabled="addingSet">Add set</button>
         </form>
       </template>
 
