@@ -89,7 +89,8 @@ select {
 }
 
 input,
-select {
+select,
+textarea {
   display: block;
   width: 100%;
   min-height: 48px;
@@ -100,8 +101,16 @@ select {
   appearance: none;
 }
 
+textarea {
+  padding: 10px 14px;
+  font: inherit;
+  color: var(--text);
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
