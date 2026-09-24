@@ -7,6 +7,7 @@ export interface Exercise {
   category: string | null
   is_archived: boolean
   setup_notes: string | null
+  rest_seconds: number | null
 }
 
 export interface WorkoutTemplate {

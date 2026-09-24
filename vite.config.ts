@@ -11,6 +11,13 @@ export default defineConfig({
   plugins: [
     vue(),
     VitePWA({
+      // injectManifest (rather than the default generateSW) so src/sw.ts can
+      // hand-add a push/notificationclick handler for backlog item 15's rest
+      // timer alerts — generateSW only lets you configure runtime caching,
+      // not add arbitrary event listeners.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'favicon.ico'],
       manifest: {
@@ -27,7 +34,7 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
-      workbox: {
+      injectManifest: {
         // Caches the app shell so it loads without network — see the
         // "offline writes" note in docs/architecture.md. Runtime data
         // caching for Supabase requests is handled by the app's own

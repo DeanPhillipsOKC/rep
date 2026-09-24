@@ -68,6 +68,17 @@ export const useExercisesStore = defineStore('exercises', () => {
     return { error }
   }
 
+  // Backlog item 15: per-exercise rest duration, same shape/pattern as
+  // setup_notes above. null clears it (no rest timer alert on this exercise).
+  async function updateRestSeconds(id: string, restSeconds: number | null) {
+    const { error } = await supabase.from('exercises').update({ rest_seconds: restSeconds }).eq('id', id)
+    if (!error) {
+      const exercise = exercises.value.find((e) => e.id === id)
+      if (exercise) exercise.rest_seconds = restSeconds
+    }
+    return { error }
+  }
+
   return {
     exercises,
     activeExercises,
@@ -78,5 +89,6 @@ export const useExercisesStore = defineStore('exercises', () => {
     archiveExercise,
     updateExerciseName,
     updateSetupNotes,
+    updateRestSeconds,
   }
 })

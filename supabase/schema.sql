@@ -13,6 +13,11 @@
 -- trigger added after the initial rollout, backlog item 10): run the
 -- `create or replace function set_sets_index` and `create trigger
 -- sets_set_index` statements below (the `sets` table must already exist).
+--
+-- Applying to an already-provisioned database (rest_seconds + push
+-- notifications added after the initial rollout, backlog item 15): run
+--   alter table exercises add column rest_seconds int null check (rest_seconds > 0);
+-- then the `create table push_subscriptions` statement below.
 
 create table profiles (
   id           uuid primary key references auth.users(id),
@@ -26,7 +31,8 @@ create table exercises (
   name        text not null,
   category    text,                          -- e.g. push / pull / legs / cardio
   is_archived boolean not null default false,
-  setup_notes text                           -- e.g. machine seat height, incline position
+  setup_notes text,                          -- e.g. machine seat height, incline position
+  rest_seconds int null check (rest_seconds > 0)  -- backlog item 15: per-exercise rest timer
 );
 
 create table workout_templates (
@@ -85,3 +91,16 @@ $$ language plpgsql;
 create trigger sets_set_index
   before insert on sets
   for each row execute function set_sets_index();
+
+-- Backlog item 15: one row per installed device that has opted into rest
+-- timer push notifications. `endpoint` is globally unique per the Push API
+-- spec, so re-subscribing the same device (e.g. after clearing permission
+-- and re-enabling) upserts in place instead of accumulating dead rows.
+create table push_subscriptions (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references profiles(id),
+  endpoint   text not null unique,
+  p256dh     text not null,
+  auth       text not null,
+  created_at timestamptz not null default now()
+);

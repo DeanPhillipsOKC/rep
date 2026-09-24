@@ -128,6 +128,15 @@ exercises
   category      text            -- e.g. push / pull / legs / cardio
   is_archived   boolean default false
   setup_notes   text null       -- machine seat height, incline position, etc.
+  rest_seconds  int null        -- per-exercise rest timer duration; null = no alert
+
+push_subscriptions
+  id          uuid  PK
+  user_id     uuid  FK -> profiles(id)
+  endpoint    text  unique      -- Push API endpoint URL, globally unique per device
+  p256dh      text              -- PushSubscription.keys.p256dh
+  auth        text              -- PushSubscription.keys.auth
+  created_at  timestamptz
 
 workouts
   id            uuid  PK
@@ -151,6 +160,7 @@ Notes:
 - `weight_unit` is stored per set rather than as a global setting. Cheap now, avoids a migration later.
 - `exercises` is per-user rather than a shared global catalog. Two users, no benefit to sharing, and it keeps RLS uniform.
 - Soft-delete exercises via `is_archived` so historical sets keep resolving to a name.
+- `push_subscriptions` has no `is_archived`/soft-delete — a dead subscription (uninstalled app, revoked permission) just fails to deliver a push; nothing reads this table for anything else, so there's no history to preserve.
 
 ## Row-level security
 
@@ -159,10 +169,11 @@ This is the actual security boundary. Application code is not.
 Enable RLS on every table. No exceptions, including tables that seem harmless.
 
 ```sql
-alter table profiles  enable row level security;
-alter table exercises enable row level security;
-alter table workouts  enable row level security;
-alter table sets      enable row level security;
+alter table profiles          enable row level security;
+alter table exercises         enable row level security;
+alter table workouts          enable row level security;
+alter table sets              enable row level security;
+alter table push_subscriptions enable row level security;
 ```
 
 Policy shape for directly-owned tables:
@@ -213,10 +224,52 @@ See `supabase/schema.sql` and `supabase/policies.sql` for the runnable versions 
 - Provide a maskable icon (Android adaptive icon shape) in addition to the plain square icons — Android Chrome's install/home-screen rendering wants one.
 - Provide the full iOS icon set including `apple-touch-icon`. iOS ignores parts of the web manifest and needs its own meta tags. (iPhone-only concern.)
 - Service worker caches the app shell for offline load. Workout logging in a gym with poor signal is the common case, so the shell must load without network.
+- The service worker is hand-written (`src/sw.ts`, built via `vite-plugin-pwa`'s `injectManifest` strategy, not the default `generateSW`) because rest timer alerts (below) need a custom `push`/`notificationclick` handler that `generateSW` has no hook for. `injectManifest` still auto-generates and injects the precache list (`self.__WB_MANIFEST`) — the app-shell caching behavior is unchanged, just declared in hand-written code instead of config.
 - **Offline writes:** queue mutations in IndexedDB and sync when connectivity returns. This is the single most valuable feature for real gym use. Build it early rather than retrofitting.
 - Android Chrome fires `beforeinstallprompt`; use it to show a native-feeling install button instead of an in-app hint.
 - iOS gives no install prompt at all. Add a one-time in-app hint explaining the Share → Add to Home Screen flow. (iPhone-only concern.)
 - Add a data export (JSON or CSV download). Cheap insurance against storage eviction or a Supabase project pause.
+
+## Push notifications (rest timer alerts)
+
+Backlog item 15. A per-exercise rest timer (`exercises.rest_seconds`) needs to notify the
+user when rest is over even if the phone is locked or the PWA isn't in the foreground — a
+plain `setTimeout` + local `Notification` doesn't survive that on iOS (aggressively
+suspended) and isn't guaranteed on Android either. This uses real Web Push (VAPID),
+dispatched server-side independent of the client:
+
+1. **Subscribe:** a deliberate "Enable rest timer alerts" button (`ExerciseList.vue`) calls
+   `Notification.requestPermission()` then `serviceWorkerRegistration.pushManager.subscribe()`
+   with the VAPID public key (`src/stores/pushSubscription.ts`). Must be a direct user-gesture
+   handler — iOS refuses to prompt otherwise, and won't allow this at all until the PWA is
+   installed to the home screen. The resulting `PushSubscription` (endpoint + keys) is upserted
+   into `push_subscriptions`, keyed on `endpoint` (globally unique per device).
+2. **Dispatch:** right after `addSet` succeeds, if the exercise has a `rest_seconds` set,
+   `WorkoutLogger.vue` fires an unawaited call to the `rest-timer-notify` Edge Function
+   (`supabase/functions/rest-timer-notify/`) with the device's current subscription and the
+   delay. The function itself does `await sleep(restSeconds)` then sends the push via the
+   `web-push` npm package (imported with Deno's `npm:` specifier — Supabase Edge Functions run
+   on Deno) and the VAPID private key. No `pg_cron`/polling: a 30-120s sleep is async wait, not
+   CPU time, and comfortably fits the free-tier Edge Function limits (150s wall clock, 2s
+   **active** CPU, 256MB memory — confirmed 2026-09-24, re-verify at build time per the
+   free-tier-limits-change note below).
+3. **Service worker:** `src/sw.ts` (see PWA configuration above) handles `push` by calling
+   `self.registration.showNotification(...)` and `notificationclick` by focusing an existing
+   app window or opening a new one.
+
+**Secrets, never client-exposed** (Edge Function secrets, same handling as the service role
+key — `supabase secrets set NAME=value`): `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`,
+`VAPID_SUBJECT` (a `mailto:` contact address, required by the Web Push protocol). The public
+half is *also* needed client-side as `VITE_VAPID_PUBLIC_KEY` (safe to ship — it identifies
+this app to the push service, it isn't a secret) — set in `.env.local` for dev and Cloudflare
+Pages env vars for prod, same as the Supabase URL/anon key.
+
+**Deploying/updating the function:** `supabase functions deploy rest-timer-notify` (default
+JWT verification stays on — `supabase.functions.invoke` from the client attaches the signed-in
+user's access token, so this can't be reached unauthenticated). No DDL/deploy execution path
+is available to an agent working in this repo (same constraint as schema migrations, see
+`docs/backlog-archive.md`) — deploying the function and setting its secrets is a human step
+via the Supabase CLI or dashboard.
 
 ## Operational notes
 

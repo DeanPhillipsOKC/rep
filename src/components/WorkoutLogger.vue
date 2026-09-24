@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
+import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
 import VolumeChart from './VolumeChart.vue'
 import type { SetEntry, SetWithExercise, WeightUnit } from '../lib/types'
 
 const exercises = useExercisesStore()
+const push = usePushSubscriptionStore()
 const templates = useTemplatesStore()
 const workout = useWorkoutsStore()
 
@@ -150,6 +152,10 @@ async function handleAddSet() {
     errorMessage.value = error.message
   } else {
     rpe.value = null
+    // Backlog item 15: kicked off in the background so it never delays the
+    // next set — the Edge Function holds the actual rest delay server-side.
+    const restSeconds = exercises.exercises.find((e) => e.id === exerciseId.value)?.rest_seconds
+    if (restSeconds) push.sendRestReminder(exerciseName(exerciseId.value), restSeconds)
   }
 }
 

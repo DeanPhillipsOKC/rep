@@ -22,27 +22,20 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 15 | Per-exercise rest timer with notification | 8 | 8 | 1.0 |
+
+Nothing in the backlog right now beyond the human setup/device-verification items below — see `docs/backlog-archive.md` for what's shipped.
 
 ## Features
 
-### 15. Per-exercise rest timer with notification `[Effort: 8, Value: 8, ROI: 1.0]`
-
-Configure a rest duration per exercise; after logging a set, count down and notify the user when rest is over so they don't have to watch a clock between sets. Primary motivating case is the iPhone user (owner is Android) — real durations both users actually want are in the 30–90s range (owner prefers 90s, the iPhone user prefers 30s).
-
-**Design decision (researched — don't relitigate):** a plain `setTimeout` + local Notification only reliably fires while the PWA's own process is alive, which iOS aggressively suspends the moment the app leaves the foreground (including just locking the screen) — Android is more lenient but not guaranteed either. Reliably notifying through a locked phone requires real Web Push, dispatched server-side independent of whatever the client is doing. This needs no Mac or Apple Developer account — iOS Safari 16.4+ implements the same standard Web Push (VAPID) protocol as Chrome/Firefox, just gated behind the PWA being added to the home screen first.
-
-Shape:
-
-- **Schema:** nullable `rest_seconds` column on `exercises` (same shape as `setup_notes`, item 8), editable inline in `ExerciseList.vue`. Per-user isolation already falls out of `exercises` being a per-user table — no extra design needed for the two of them wanting different durations on their own copy of an exercise.
-- **Subscribe flow:** a new `push_subscriptions` table (RLS-scoped like everything else) storing each installed device's `PushSubscription` (endpoint + keys). Client subscribes via `serviceWorkerRegistration.pushManager.subscribe()` with a VAPID public key, behind a deliberate "Enable rest timer alerts" button — iOS requires the PWA be installed to the home screen first and won't allow prompting for permission on load, only from a user gesture inside the installed app.
-- **Service worker:** gains a `push` handler (`self.registration.showNotification(...)`) and a `notificationclick` handler to focus the app.
-- **Dispatch:** on logging a set for an exercise with a configured `rest_seconds`, the client makes one call (while still active) to a Supabase Edge Function with the subscription + delay. The function just `await sleep(rest_seconds)` then sends the push directly via the `web-push` library (Deno-compatible) and VAPID private key (an Edge Function secret, never client-exposed, same handling as the service role key) — no `pg_cron`/polling needed.
-- **Confirmed fits free tier (checked 2026-09-24, [Supabase Edge Function limits docs](https://supabase.com/docs/guides/functions/limits)):** free-plan wall clock cap is 150s per invocation (400s on paid), CPU time cap is 2s of *active* computation per request (excludes async waiting, which is what the sleep is), memory 256MB. A 90s-max sleep + a few ms to sign/send one push fits comfortably inside both, with ~60s of headroom left on the wall-clock cap. Re-verify at build time in case Supabase changes these (per the free-tier-limits-change note in `docs/architecture.md#operational-notes`) — also worth a 2-line throwaway function first to confirm the runtime doesn't treat a long idle `sleep` any differently from active work before building the real thing.
-- Needs a **[human]** device-verification pass once built (notification permission prompt + actual delivery, both a locked-and-relocked iPhone and Android) — add that as a checklist item below when this ships.
+Nothing queued right now.
 
 ## Human setup / device verification
 
+- [ ] **[human]** Backlog item 15 (per-exercise rest timer with push notification) is fully coded and e2e-verified but not live yet — three deploy steps only a human can do:
+  - [ ] Set `VITE_VAPID_PUBLIC_KEY` in Cloudflare Pages env vars (same value as in `.env.local`).
+  - [ ] Deploy the Edge Function: `supabase functions deploy rest-timer-notify` (needs `supabase login` — no CLI session exists in this environment).
+  - [ ] Set its secrets: `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:dephillips1977@gmail.com` — ask Claude for the generated key values (shared in-session only, never committed to the repo).
+  - [ ] Device-verification pass once deployed: grant notification permission via the "Enable rest timer alerts" button and confirm actual delivery on both a locked-and-relocked iPhone and Android. See `docs/architecture.md#push-notifications`.
 - [ ] **[human]** Hostile-read RLS test: now that both accounts have signed in at least once, sign in as one user and attempt to read/write the other's rows by ID directly against the REST API. Confirm both fail. (`docs/architecture.md#row-level-security`)
 - [ ] **[human]** Android, installed PWA: retry install now that manifest icons are fixed (they previously 404'd, silently failing Chrome's installability check). If the `⋮` menu still doesn't offer a real "Install app" option, get a screenshot for diagnosis.
 - [ ] **[human]** iPhone verification (secondary): confirm iCloud Keychain sync is enabled; test passkey registration inside the installed home-screen PWA (not just a Safari tab); confirm the "Add to Home Screen" flow and app icon.

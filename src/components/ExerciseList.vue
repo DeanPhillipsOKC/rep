@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
+import { usePushSubscriptionStore } from '../stores/pushSubscription'
 
 const exercises = useExercisesStore()
+const push = usePushSubscriptionStore()
 const name = ref('')
 const category = ref('')
 const errorMessage = ref('')
+const enablingPush = ref(false)
 
 // Exercise id currently showing its setup-notes editor, and the draft text
 // for it — null means no row is being edited.
@@ -16,9 +19,20 @@ const notesDraft = ref('')
 const editingNameId = ref<string | null>(null)
 const nameDraft = ref('')
 
+// Same pattern again for the per-exercise rest timer duration (backlog item 15).
+const editingRestId = ref<string | null>(null)
+const restDraft = ref<number | null>(null)
+
 onMounted(() => {
   exercises.fetchExercises()
+  push.refreshStatus()
 })
+
+async function handleEnablePush() {
+  enablingPush.value = true
+  await push.enable()
+  enablingPush.value = false
+}
 
 async function handleCreate() {
   errorMessage.value = ''
@@ -65,11 +79,46 @@ async function saveName(id: string) {
     editingNameId.value = null
   }
 }
+
+function startEditingRest(id: string, currentRestSeconds: number | null) {
+  editingRestId.value = id
+  restDraft.value = currentRestSeconds
+}
+
+async function saveRest(id: string) {
+  errorMessage.value = ''
+  // v-model.number leaves an emptied input as '' rather than null/NaN.
+  const seconds = restDraft.value && restDraft.value > 0 ? restDraft.value : null
+  const { error } = await exercises.updateRestSeconds(id, seconds)
+  if (error) {
+    errorMessage.value = error.message
+  } else {
+    editingRestId.value = null
+  }
+}
 </script>
 
 <template>
   <div>
     <h2>Exercises</h2>
+
+    <div class="card push-card">
+      <h3>Rest timer alerts</h3>
+      <p class="row-sub">
+        Notifies you when a per-exercise rest timer runs out, even if your phone is locked.
+        Configure a duration on any exercise below, then enable alerts on each device you
+        use to log workouts.
+      </p>
+      <p v-if="!push.supported" class="row-sub">
+        Not supported on this device/browser. On iPhone, add this app to the home screen
+        first (Share → Add to Home Screen), then open it from there.
+      </p>
+      <p v-else-if="push.subscribed" class="row-sub">Alerts are enabled on this device.</p>
+      <button v-else type="button" :disabled="enablingPush" @click="handleEnablePush">
+        Enable rest timer alerts
+      </button>
+      <p v-if="push.errorMessage" class="error">{{ push.errorMessage }}</p>
+    </div>
 
     <form class="card" @submit.prevent="handleCreate">
       <label for="exercise-name">Name</label>
@@ -99,6 +148,9 @@ async function saveName(id: string) {
             <div v-if="exercise.setup_notes && editingNotesId !== exercise.id" class="row-notes">
               {{ exercise.setup_notes }}
             </div>
+            <div v-if="exercise.rest_seconds && editingRestId !== exercise.id" class="row-sub">
+              Rest: {{ exercise.rest_seconds }}s
+            </div>
           </div>
           <div class="row-actions">
             <button
@@ -115,6 +167,13 @@ async function saveName(id: string) {
               @click="startEditingNotes(exercise.id, exercise.setup_notes)"
             >
               {{ exercise.setup_notes ? 'Edit notes' : 'Add notes' }}
+            </button>
+            <button
+              type="button"
+              class="ghost small"
+              @click="startEditingRest(exercise.id, exercise.rest_seconds)"
+            >
+              {{ exercise.rest_seconds ? 'Edit rest timer' : 'Add rest timer' }}
             </button>
             <button type="button" class="ghost small" @click="exercises.archiveExercise(exercise.id)">
               Archive
@@ -144,6 +203,22 @@ async function saveName(id: string) {
             <button type="button" class="ghost small" @click="editingNotesId = null">Cancel</button>
           </div>
         </form>
+
+        <form v-if="editingRestId === exercise.id" class="notes-form" @submit.prevent="saveRest(exercise.id)">
+          <label :for="`rest-${exercise.id}`">Rest timer (seconds)</label>
+          <input
+            :id="`rest-${exercise.id}`"
+            v-model.number="restDraft"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            placeholder="e.g. 90"
+          />
+          <div class="notes-actions">
+            <button type="submit">Save</button>
+            <button type="button" class="ghost small" @click="editingRestId = null">Cancel</button>
+          </div>
+        </form>
       </li>
     </ul>
     <p v-if="!exercises.loading && exercises.activeExercises.length === 0" class="empty">
@@ -159,6 +234,14 @@ async function saveName(id: string) {
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 20px;
+}
+
+.push-card h3 {
+  margin-top: 0;
+}
+
+.push-card .row-sub {
+  margin-bottom: 12px;
 }
 
 .error {
