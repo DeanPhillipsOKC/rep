@@ -22,12 +22,24 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-
-Nothing in the backlog right now beyond the human setup/device-verification items below — see `docs/backlog-archive.md` for what's shipped.
+| 16 | Fix exercise row action buttons overflowing on mobile | 2 | 5 | 2.5 |
 
 ## Features
 
-Nothing queued right now.
+### 16. Fix exercise row action buttons overflowing on mobile `[Effort: 2, Value: 5, ROI: 2.5]`
+
+Found 2026-09-24 testing backlog item 15 on a real Android phone: `ExerciseList.vue`'s
+`.row-actions` button group (Edit name / Edit notes / Add rest timer / Archive) no longer
+fits on one line at phone width now that there are four buttons instead of three (item 15
+added "Add/Edit rest timer"). The row doesn't wrap them, so it overflows the card and the
+rightmost button(s) (Archive) get clipped off-screen instead of wrapping to a second line
+or the row growing taller. Screenshot on file from the reporting session showed "Archi..."
+cut off at the container edge on every exercise row.
+
+Likely fix: let `.row-actions` wrap (`flex-wrap: wrap`) and/or stack the title block above
+the actions on narrow viewports instead of the current side-by-side `.row` layout — same
+`.row`/`.row-actions` pattern is reused in `WorkoutLogger.vue`'s active-set list, so check
+whether that needs the same fix once this one's confirmed working.
 
 ## Human setup / device verification
 
