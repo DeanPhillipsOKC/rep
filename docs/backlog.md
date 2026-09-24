@@ -23,6 +23,7 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 34 | Setup notes box sits smushed against the exercise picker on the Log screen | 1 | 1 | 1 |
+| 36 | Rest timer bunny breathing animation is too subtle | 1 | 1 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
 | 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
@@ -33,6 +34,10 @@ Priority order (highest ROI first), kept in sync with the tags below:
 ### 34. Setup notes box sits smushed against the exercise picker on the Log screen `[Effort: 1, Value: 1, ROI: 1]`
 
 Reported 2026-09-24 while manually testing item 25. `WorkoutLogger.vue`'s `.setup-notes` box (shown under the "Exercise" `<select>` when the selected exercise has setup notes) has `margin: -4px 0 4px` — the negative top margin pulls it up flush against the select's bottom edge instead of leaving normal spacing, so the two visually merge into one control. Fix direction: drop the negative top margin (or replace with a small positive one) and re-check spacing against the fields below it.
+
+### 36. Rest timer bunny breathing animation is too subtle `[Effort: 1, Value: 1, ROI: 1]`
+
+Reported 2026-09-24 by the user: the bunny mascot's breathing loop on the rest timer screen (`RestTimer.vue`'s `rest-breathe` keyframes, shared by `.rest-glow` and `.rest-bunny`) barely reads as motion. Keep the pace as-is — only the amount of movement should grow. Fix direction: in the `@keyframes rest-breathe` block, increase the 50% keyframe's `translateY(-6px)` to a noticeably larger offset (e.g. somewhere around -14px to -18px, worth eyeballing against the real mascot art rather than guessing exactly), leaving the `4s ease-in-out infinite` timing untouched; bump `scale(1.035)` up slightly too if the larger vertical travel still reads as flat. Purely a CSS tweak, no template/script changes — re-check the glow (`.rest-glow`) doesn't clip against the card edges at the larger offset.
 
 ### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
 
