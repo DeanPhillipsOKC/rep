@@ -256,6 +256,13 @@ dispatched server-side independent of the client:
 3. **Service worker:** `src/sw.ts` (see PWA configuration above) handles `push` by calling
    `self.registration.showNotification(...)` and `notificationclick` by focusing an existing
    app window or opening a new one.
+4. **Foreground UI (backlog item 28):** `RestTimer.vue` is a full-screen countdown shown
+   in-app instead of relying on the push — mascot art, a draining progress bar, and a Skip
+   Rest button. `WorkoutLogger.vue`'s `handleAddSet` picks one or the other per `addSet` based
+   on `document.hidden` at that moment: foregrounded shows `RestTimer.vue` and skips the push
+   entirely (it would just duplicate an already-visible countdown); backgrounded skips the
+   in-app screen (nothing would see it) and sends the push as before. The two never fire
+   together for the same rest period.
 
 **Secrets, never client-exposed** (Edge Function secrets, same handling as the service role
 key — `supabase secrets set NAME=value`): `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`,

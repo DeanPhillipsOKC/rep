@@ -4,6 +4,7 @@ import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
+import RestTimer from './RestTimer.vue'
 import VolumeChart from './VolumeChart.vue'
 import type { SetEntry, SetWithExercise, WeightUnit } from '../lib/types'
 
@@ -213,6 +214,14 @@ watch(
 // rather than just unlikely.
 const addingSet = ref(false)
 
+// Backlog item 28: the in-app rest screen (RestTimer.vue) when the tab is
+// foregrounded — countdown, progress bar, and skip are all visible right
+// away. Item 15's push notification stays as the backgrounded-tab fallback;
+// since the in-app screen already covers the foreground case, firing both
+// would just double up the alert, so this picks one based on document.hidden
+// at the moment the set lands.
+const activeRest = ref<{ exerciseName: string; restSeconds: number } | null>(null)
+
 async function handleAddSet() {
   errorMessage.value = ''
   if (!exerciseId.value || reps.value === null || weight.value === null) return
@@ -224,10 +233,17 @@ async function handleAddSet() {
     errorMessage.value = error.message
   } else {
     rpe.value = null
-    // Backlog item 15: kicked off in the background so it never delays the
-    // next set — the Edge Function holds the actual rest delay server-side.
     const restSeconds = exercises.exercises.find((e) => e.id === exerciseId.value)?.rest_seconds
-    if (restSeconds) push.sendRestReminder(exerciseName(exerciseId.value), restSeconds)
+    if (restSeconds) {
+      const name = exerciseName(exerciseId.value)
+      if (document.hidden) {
+        // Kicked off in the background so it never delays the next set —
+        // the Edge Function holds the actual rest delay server-side.
+        push.sendRestReminder(name, restSeconds)
+      } else {
+        activeRest.value = { exerciseName: name, restSeconds }
+      }
+    }
   }
 }
 
@@ -565,6 +581,13 @@ function dismissVolumeChart() {
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
     <div v-if="recordToast" class="record-toast">{{ recordToast }}</div>
+
+    <RestTimer
+      v-if="activeRest"
+      :exercise-name="activeRest.exerciseName"
+      :rest-seconds="activeRest.restSeconds"
+      @dismiss="activeRest = null"
+    />
   </div>
 </template>
 
