@@ -43,8 +43,8 @@ whether that needs the same fix once this one's confirmed working.
 
 ## Human setup / device verification
 
-- [ ] **[human]** Backlog item 15 (per-exercise rest timer with push notification): confirmed working end-to-end on Android, unlocked (2026-09-24). Still open:
-  - [ ] Locked-phone delivery: lock the screen before the rest timer elapses and confirm the notification still arrives (with sound/vibration — added 2026-09-24).
+- [ ] **[human]** Backlog item 15 (per-exercise rest timer with push notification): confirmed working end-to-end on Android, unlocked, including sound (2026-09-24 — the one apparent "no sound" case was the phone's Bluetooth being connected to a car, not a code issue). Still open:
+  - [ ] Locked-phone delivery: lock the screen before the rest timer elapses and confirm the notification still arrives.
   - [ ] iPhone verification: same flow, on the iPhone user's device.
   - [ ] Revoke the temporary Supabase personal access token used for the CLI deploy (dashboard → Access Tokens) now that it's no longer needed.
 - [ ] **[human]** Hostile-read RLS test: now that both accounts have signed in at least once, sign in as one user and attempt to read/write the other's rows by ID directly against the REST API. Confirm both fail. (`docs/architecture.md#row-level-security`)
