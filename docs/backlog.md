@@ -22,7 +22,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
 | 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
@@ -37,10 +36,6 @@ Requested 2026-09-24, split out from item 31 (shipped, `docs/backlog-archive.md`
 ### 30. Remove the unused `exercises.category` field `[Effort: 2, Value: 2, ROI: 1]`
 
 Decided 2026-09-24 (user call, replacing the prior "what is category actually for" open question): drop it rather than invent a use. It's a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing filters, groups, or otherwise behaves differently based on it. Remove the input from `ExerciseList.vue`'s create form and the `<div v-if="exercise.category">` display, drop the param from `createExercise` (`src/stores/exercises.ts`), and drop the column via a migration the user applies directly in the Supabase SQL editor (same no-DDL-access pattern as every other schema change here) — `alter table exercises drop column category;`. If a real use for it turns up later, re-add it fresh rather than trying to resurrect this one. Touches `docs/architecture.md`'s data-model table. Note for item 24 (pencil/trash icon redesign, not yet built): its write-up currently lists "category" as one of the fields the consolidated edit flyout should cover — drop that if this item ships first.
-
-### 25. Archiving an exercise doesn't remove it from templates it's already attached to `[Effort: 3, Value: 3, ROI: 1]`
-
-Found 2026-09-25 while reviewing the archive flow. `archiveExercise` (`src/stores/exercises.ts`) only flips `exercises.is_archived`; it never touches `workout_template_exercises`, and nothing reading template exercises (`templates.exercisesByTemplate`, consumed by `TemplateManager.vue`'s exercise list and `WorkoutLogger.vue`'s suggested chips/`availableExercises` for a templated workout) filters on the joined exercise's `is_archived`. Net effect: archiving correctly hides an exercise from the create-exercise flow, the freeform workout picker, and new template-exercise-add dropdowns — but if it's already attached to a template, it keeps appearing as a suggested chip and a loggable option every time that template is used, with no indication anywhere that it's archived. Fix direction: filter the template-exercise read path (or its consumers) by `exercise.is_archived`, so an archived exercise stops surfacing for future workouts against templates it's still attached to (past logged sets are unaffected either way — they read the set's own `exercise_id`, not this list). Separately worth deciding: should archiving warn first when the exercise is attached to at least one active template ("used in Leg Day — archiving removes it from future workouts there")? Leaning yes, but that's better folded into whatever confirm-step UI item 24 builds for delete than shipped as a standalone alert here.
 
 ### 29. Rotating words-of-encouragement copy on the rest timer screen `[Effort: 2, Value: 2, ROI: 1]`
 

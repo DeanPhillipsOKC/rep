@@ -128,6 +128,16 @@ const visiblePreviousExercises = computed(() => {
   return exerciseId.value ? entries.filter(([exId]) => exId === exerciseId.value) : entries
 })
 
+// Backlog item 25: a template can still reference an exercise after it's
+// been archived (archiving only flips exercises.is_archived, it doesn't
+// touch workout_template_exercises), so this filters archived exercises out
+// of the suggested chips and the picker below rather than treating the join
+// table as the source of truth for what's loggable.
+const activeTemplateExercises = computed(() => {
+  if (!workout.activeTemplateId) return []
+  return (templates.exercisesByTemplate[workout.activeTemplateId] ?? []).filter((te) => !te.exercises?.is_archived)
+})
+
 // Backlog item 21: logging against a template restricts the exercise picker
 // to that template's exercises — the suggested chips below were already
 // scoped this way, but the dropdown itself wasn't, so picking from it (not
@@ -138,7 +148,7 @@ const visiblePreviousExercises = computed(() => {
 // workout with no template keeps the full exercise list.
 const availableExercises = computed(() => {
   if (!workout.activeTemplateId) return exercises.activeExercises
-  return (templates.exercisesByTemplate[workout.activeTemplateId] ?? []).map((te) => ({
+  return activeTemplateExercises.value.map((te) => ({
     id: te.exercise_id,
     name: te.exercises?.name ?? 'Unknown',
   }))
@@ -461,7 +471,7 @@ function dismissVolumeChart() {
 
         <div v-if="workout.activeTemplateId" class="suggested">
           <button
-            v-for="te in templates.exercisesByTemplate[workout.activeTemplateId]"
+            v-for="te in activeTemplateExercises"
             :key="te.id"
             type="button"
             class="ghost chip"
