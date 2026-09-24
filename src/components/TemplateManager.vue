@@ -78,6 +78,15 @@ function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
 
+// Backlog item 25 follow-up: checks the live exercises store rather than
+// te.exercises.is_archived from the cached join — that join is a snapshot
+// from whenever this template's exercises were last fetched (only once per
+// session, see toggleExpand), so it goes stale the moment an exercise still
+// attached here gets archived later in the same session.
+function isExerciseArchived(id: string): boolean {
+  return exercises.exercises.find((e) => e.id === id)?.is_archived ?? false
+}
+
 // Backlog item 14: inline edit for an exercise's target set count, same
 // pattern as WorkoutLogger.vue's set editor — one row's id tracked here,
 // null means no row is being edited.
@@ -132,7 +141,10 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
               <div class="exercise-row">
                 <span class="row-index">{{ index + 1 }}</span>
                 <span class="row-body">
-                  <span class="row-title">{{ te.exercises?.name ?? exerciseName(te.exercise_id) }}</span>
+                  <span class="row-title">
+                    {{ te.exercises?.name ?? exerciseName(te.exercise_id) }}
+                    <span v-if="isExerciseArchived(te.exercise_id)" class="archived-tag">Archived</span>
+                  </span>
                   <span v-if="te.target_sets" class="row-sub">{{ te.target_sets }} sets</span>
                 </span>
                 <span class="reorder">
@@ -257,6 +269,16 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
 .row-sub {
   font-size: 0.8rem;
   color: var(--text-dim);
+}
+
+.archived-tag {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1px 6px;
+  margin-left: 4px;
 }
 
 .ghost {

@@ -28,7 +28,7 @@ export interface WorkoutTemplateExercise {
 // Shape returned by the nested select in templates.ts (template exercise +
 // its exercise name), used to render a template's exercise list.
 export interface TemplateExerciseWithName extends WorkoutTemplateExercise {
-  exercises: { name: string; is_archived: boolean } | null
+  exercises: { name: string } | null
 }
 
 export interface Workout {

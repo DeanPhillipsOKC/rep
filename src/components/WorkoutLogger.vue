@@ -132,10 +132,17 @@ const visiblePreviousExercises = computed(() => {
 // been archived (archiving only flips exercises.is_archived, it doesn't
 // touch workout_template_exercises), so this filters archived exercises out
 // of the suggested chips and the picker below rather than treating the join
-// table as the source of truth for what's loggable.
+// table as the source of truth for what's loggable. Checks the live
+// exercises store rather than te.exercises.is_archived from the cached join
+// — that join is a snapshot from whenever the template's exercises were
+// last fetched, which templates.exercisesByTemplate only ever does once per
+// template per session, so it goes stale the moment an exercise still
+// showing in it gets archived later in the same session.
 const activeTemplateExercises = computed(() => {
   if (!workout.activeTemplateId) return []
-  return (templates.exercisesByTemplate[workout.activeTemplateId] ?? []).filter((te) => !te.exercises?.is_archived)
+  return (templates.exercisesByTemplate[workout.activeTemplateId] ?? []).filter(
+    (te) => !exercises.exercises.find((e) => e.id === te.exercise_id)?.is_archived,
+  )
 })
 
 // Backlog item 21: logging against a template restricts the exercise picker

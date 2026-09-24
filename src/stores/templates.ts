@@ -54,7 +54,7 @@ export const useTemplatesStore = defineStore('templates', () => {
   async function fetchTemplateExercises(templateId: string) {
     const { data, error } = await supabase
       .from('workout_template_exercises')
-      .select('*, exercises(name, is_archived)')
+      .select('*, exercises(name)')
       .eq('template_id', templateId)
       .order('position')
 
@@ -71,7 +71,7 @@ export const useTemplatesStore = defineStore('templates', () => {
     const { data, error } = await supabase
       .from('workout_template_exercises')
       .insert({ template_id: templateId, exercise_id: exerciseId, position, target_sets: targetSets })
-      .select('*, exercises(name, is_archived)')
+      .select('*, exercises(name)')
       .single()
 
     if (!error && data) {
