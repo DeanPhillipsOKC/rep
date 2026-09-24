@@ -22,11 +22,16 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 12 | Adding an exercise to a template can race a concurrent add | 2 | 2 | 1.0 |
 | 14 | Edit target set count on a template exercise after creation | 3 | 3 | 1.0 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
 
 ## Features
+
+### 14. Edit target set count on a template exercise after creation `[Effort: 3, Value: 3, ROI: 1.0]`
+
+`workout_template_exercises.target_sets` (`supabase/schema.sql`) is set once at creation time (`handleAddExercise` in `TemplateManager.vue`) and displayed (`{{ te.target_sets }} sets`) but has no edit affordance afterward — changing a routine's target set count means removing and re-adding the exercise, losing its position.
+
+- Needs `updateTemplateExercise` (or similar) in `src/stores/templates.ts` (RLS already covers this — same owner-inherited `for all` policy pattern as item 13, no migration needed) and an inline edit affordance next to each exercise row in `TemplateManager.vue`, same pattern as items 7/8's inline edits.
 
 ### 6. Post-workout volume chart `[Effort: 8, Value: 8, ROI: 1.0]`
 
@@ -36,19 +41,6 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Projected line:** for any workout instance where one or more template exercises were skipped or under-completed, backfill the missing exercise(s)' numbers from that exercise's own most recent prior appearance (straight carry-forward) before summing volume for that point.
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
 - **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
-
-### 12. Adding an exercise to a template can race a concurrent add `[Effort: 2, Value: 2, ROI: 1.0]`
-
-**Discovered while verifying item 11's fix** (see `docs/backlog-archive.md`) — same shape of bug, different component: `TemplateManager.vue`'s "Add" button for adding an exercise to a template (`handleAddExercise`) isn't disabled while its request is in flight, so a second submission (e.g. adding a second exercise right after the first) can fire before the first's insert has committed.
-
-- Observed once during a 15-repeat run of `e2e/pre-fill.spec.ts`'s "logged in parallel" spec: an `.exercise-row` for the second-added exercise never appeared, timing out at 5s. Not yet reproduced in isolation or characterized further — treat this as a lead, not a confirmed root cause.
-- Fix direction, if confirmed: same pattern as item 11's third leg — track an in-flight/submitting ref and disable the "Add" button for the duration of the request, so a real user (or a fast script) can't fire overlapping submissions.
-
-### 14. Edit target set count on a template exercise after creation `[Effort: 3, Value: 3, ROI: 1.0]`
-
-`workout_template_exercises.target_sets` (`supabase/schema.sql`) is set once at creation time (`handleAddExercise` in `TemplateManager.vue`) and displayed (`{{ te.target_sets }} sets`) but has no edit affordance afterward — changing a routine's target set count means removing and re-adding the exercise, losing its position.
-
-- Needs `updateTemplateExercise` (or similar) in `src/stores/templates.ts` (RLS already covers this — same owner-inherited `for all` policy pattern as item 13, no migration needed) and an inline edit affordance next to each exercise row in `TemplateManager.vue`, same pattern as items 7/8's inline edits.
 
 ## Human setup / device verification
 

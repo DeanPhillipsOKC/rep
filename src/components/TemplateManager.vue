@@ -41,10 +41,18 @@ async function toggleExpand(templateId: string) {
   }
 }
 
+// Backlog item 12: same race as WorkoutLogger's addingSet (item 11) — without
+// this, a second "Add" tap can fire before the first insert commits, racing
+// over the network. Disabling the button for the duration of the request
+// makes overlapping submissions impossible rather than just unlikely.
+const addingExercise = ref(false)
+
 async function handleAddExercise(templateId: string) {
   errorMessage.value = ''
   if (!exerciseId.value) return
+  addingExercise.value = true
   const { error } = await templates.addExerciseToTemplate(templateId, exerciseId.value, targetSets.value)
+  addingExercise.value = false
   if (error) {
     errorMessage.value = error.message
   } else {
@@ -137,7 +145,7 @@ function exerciseName(id: string): string {
               placeholder="Sets"
               class="sets-input"
             />
-            <button type="submit">Add</button>
+            <button type="submit" :disabled="addingExercise">Add</button>
           </form>
         </div>
       </li>
