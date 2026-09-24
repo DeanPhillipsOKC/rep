@@ -39,6 +39,7 @@ Priority order (highest ROI first), kept in sync with the tags below:
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
 - [ ] **[human]** *Future discussion:* what is the `exercises.category` field actually for? It's currently just a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing in the app filters, groups, or otherwise behaves differently based on it. Needs a decision: define a real purpose for it (e.g. filtering the exercise picker, grouping template exercises) or drop the field if it's not earning its keep.
+- [ ] **[human]** *Future discussion, own session:* establish a real UI direction before the interface gets busier. So far the REP rebrand (2026-09-24) has only recolored existing markup and dropped in a logo — no decision yet on layout/density patterns (card structure, spacing scale, how much fits on one screen) as more features (PRs, streaks, category filtering, etc.) land on top of it. Needs deliberate design pass, not more ad-hoc styling per feature.
 
 ---
 
