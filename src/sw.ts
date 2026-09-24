@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 
+import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 
 // vite-plugin-pwa's injectManifest strategy replaces __WB_MANIFEST with the
@@ -9,6 +10,20 @@ import { precacheAndRoute } from 'workbox-precaching'
 declare let self: ServiceWorkerGlobalScope
 
 precacheAndRoute(self.__WB_MANIFEST)
+
+// generateSW auto-adds this pair for `registerType: 'autoUpdate'`; injectManifest
+// doesn't, so it has to be done by hand here — without it, a newly installed SW
+// sits in "waiting" until every open tab/PWA window fully closes, which for an
+// installed, rarely-fully-quit PWA meant it never happened without an
+// uninstall/reinstall. `clientsClaim()` then hands control of already-open
+// clients to the new SW as soon as it activates, instead of only future
+// navigations. Paired with `registerSW({ immediate: true })` in main.ts, which
+// posts SKIP_WAITING as soon as an update is found and reloads the page on
+// `controllerchange`.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+clientsClaim()
 
 // Backlog item 15: rest timer alerts. The payload is plain JSON sent by
 // the Edge Function (supabase/functions/rest-timer-notify) — see

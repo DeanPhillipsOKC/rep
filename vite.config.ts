@@ -19,6 +19,13 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
+      // The default auto-injected registerSW.js just calls
+      // navigator.serviceWorker.register() once on load and does nothing
+      // else — no periodic update checks, no SKIP_WAITING message, no
+      // reload on activation. main.ts instead imports the real
+      // virtual:pwa-register client, which does all of that; injecting
+      // both would double-register the service worker.
+      injectRegister: false,
       includeAssets: ['apple-touch-icon.png', 'favicon.ico', 'favicon-16x16.png', 'favicon-32x32.png'],
       manifest: {
         name: 'REP',

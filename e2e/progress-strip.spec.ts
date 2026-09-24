@@ -15,6 +15,10 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
 
   await signInAsTestUser(page)
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
+  // fetchProgressStats() (workouts.ts) runs in the background from onMounted
+  // alongside the exercises/templates fetches — wait for it to land instead
+  // of racing the stat tile's initial `0` placeholder.
+  await page.waitForLoadState('networkidle')
 
   const weekCountBefore = Number(await page.locator('.stat-tile').first().locator('.stat-value').textContent())
 
