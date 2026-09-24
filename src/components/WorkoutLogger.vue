@@ -99,8 +99,10 @@ async function updateCoachmark() {
 // Zero-exercise state is guaranteed on mount (exercises.exercises starts
 // empty before fetchExercises resolves) and again if the fetch confirms it —
 // re-measure whenever the welcome card is the thing actually on screen.
+// Gated on !exercises.loading (backlog item 33) so this doesn't fire for a
+// user who already has exercises while their first fetch is still in flight.
 watch(
-  () => exercises.activeExercises.length === 0 && !workout.activeWorkoutId,
+  () => !exercises.loading && exercises.activeExercises.length === 0 && !workout.activeWorkoutId,
   (showing) => {
     if (showing) updateCoachmark()
   },
@@ -360,77 +362,79 @@ function dismissVolumeChart() {
     </div>
 
     <template v-else-if="!workout.activeWorkoutId">
-      <div v-if="exercises.activeExercises.length > 0" class="progress-strip">
-        <div class="stat-tile">
-          <span class="stat-value">{{ workout.workoutsThisWeek }}</span>
-          <span class="stat-label">{{ workout.workoutsThisWeek === 1 ? 'workout' : 'workouts' }} this week</span>
-        </div>
-        <div v-if="workout.recentPrExerciseName" class="stat-tile stat-tile-pr">
-          <span class="stat-value">PR</span>
-          <span class="stat-label">{{ workout.recentPrExerciseName }}</span>
-        </div>
-      </div>
-
-      <div v-if="exercises.activeExercises.length === 0" class="welcome-wrap">
-        <div ref="heroCardRef" class="card welcome-card">
-          <div class="mascot mascot-lg">
-            <img src="/icon-512.png" alt="" />
+      <template v-if="!exercises.loading">
+        <div v-if="exercises.activeExercises.length > 0" class="progress-strip">
+          <div class="stat-tile">
+            <span class="stat-value">{{ workout.workoutsThisWeek }}</span>
+            <span class="stat-label">{{ workout.workoutsThisWeek === 1 ? 'workout' : 'workouts' }} this week</span>
           </div>
-          <p class="welcome-title">Welcome to REP</p>
-          <p class="welcome-copy">
-            This is where your workouts live. Add your first exercise to start logging sets and watching your
-            progress build.
-          </p>
-          <button type="button" class="welcome-cta" @click="emit('navigate', 'exercises')">
-            Add your first exercise
-          </button>
+          <div v-if="workout.recentPrExerciseName" class="stat-tile stat-tile-pr">
+            <span class="stat-value">PR</span>
+            <span class="stat-label">{{ workout.recentPrExerciseName }}</span>
+          </div>
         </div>
 
-        <svg class="coachmark-svg" aria-hidden="true">
-          <defs>
-            <marker id="coachmark-arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-              <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)" />
-            </marker>
-          </defs>
-          <path
-            :d="coachmarkPath"
-            stroke="var(--accent)"
-            stroke-width="2"
-            stroke-dasharray="5 6"
-            fill="none"
-            stroke-linecap="round"
-            marker-end="url(#coachmark-arrowhead)"
-          />
-        </svg>
-        <div class="coachmark-label" :style="coachmarkLabelStyle">More lives in the menu</div>
-      </div>
-
-      <template v-else>
-        <div v-if="templates.activeTemplates.length === 0" class="card template-hint">
-          <div class="mascot mascot-sm">
-            <img src="/icon-512.png" alt="" />
-          </div>
-          <p class="template-hint-copy">
-            Nice, you're ready to log. Templates help you repeat a workout and track its progress over time.
-            <button type="button" class="link-button" @click="emit('navigate', 'templates')">
-              Create a template
+        <div v-if="exercises.activeExercises.length === 0" class="welcome-wrap">
+          <div ref="heroCardRef" class="card welcome-card">
+            <div class="mascot mascot-lg">
+              <img src="/icon-512.png" alt="" />
+            </div>
+            <p class="welcome-title">Welcome to REP</p>
+            <p class="welcome-copy">
+              This is where your workouts live. Add your first exercise to start logging sets and watching your
+              progress build.
+            </p>
+            <button type="button" class="welcome-cta" @click="emit('navigate', 'exercises')">
+              Add your first exercise
             </button>
-          </p>
+          </div>
+
+          <svg class="coachmark-svg" aria-hidden="true">
+            <defs>
+              <marker id="coachmark-arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)" />
+              </marker>
+            </defs>
+            <path
+              :d="coachmarkPath"
+              stroke="var(--accent)"
+              stroke-width="2"
+              stroke-dasharray="5 6"
+              fill="none"
+              stroke-linecap="round"
+              marker-end="url(#coachmark-arrowhead)"
+            />
+          </svg>
+          <div class="coachmark-label" :style="coachmarkLabelStyle">More lives in the menu</div>
         </div>
 
-        <form class="card" @submit.prevent="handleStart">
-          <label for="workout-template">Template (optional)</label>
-          <select id="workout-template" v-model="templateId">
-            <option value="">No template — freeform</option>
-            <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
-              {{ template.name }}
-            </option>
-          </select>
+        <template v-else>
+          <div v-if="templates.activeTemplates.length === 0" class="card template-hint">
+            <div class="mascot mascot-sm">
+              <img src="/icon-512.png" alt="" />
+            </div>
+            <p class="template-hint-copy">
+              Nice, you're ready to log. Templates help you repeat a workout and track its progress over time.
+              <button type="button" class="link-button" @click="emit('navigate', 'templates')">
+                Create a template
+              </button>
+            </p>
+          </div>
 
-          <label for="workout-notes">Notes (optional)</label>
-          <input id="workout-notes" v-model="notes" type="text" />
-          <button type="submit">Start workout</button>
-        </form>
+          <form class="card" @submit.prevent="handleStart">
+            <label for="workout-template">Template (optional)</label>
+            <select id="workout-template" v-model="templateId">
+              <option value="">No template — freeform</option>
+              <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
+                {{ template.name }}
+              </option>
+            </select>
+
+            <label for="workout-notes">Notes (optional)</label>
+            <input id="workout-notes" v-model="notes" type="text" />
+            <button type="submit">Start workout</button>
+          </form>
+        </template>
       </template>
     </template>
 

@@ -22,7 +22,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 33 | Welcome-card/coachmark flashes on Log-screen refresh for users who already have exercises | 2 | 3 | 1.5 |
 | 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
@@ -30,10 +29,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
-
-### 33. Welcome-card/coachmark flashes on Log-screen refresh for users who already have exercises `[Effort: 2, Value: 3, ROI: 1.5]`
-
-Reported 2026-09-24. `WorkoutLogger.vue`'s zero-exercise welcome card and menu coachmark (item 27) are gated on `exercises.activeExercises.length === 0` (lines ~352/101), but `exercises.exercises` starts empty in the Pinia store on every fresh page load — `onMounted` (line 55) only *starts* `fetchExercises()`, it doesn't await it before the template renders. Result: for a user who already has exercises, reloading the Log screen briefly shows the "Welcome to REP" card and the "More lives in the menu" coachmark arrow before the fetch resolves and they disappear — a visible flash that reads as a bug, not onboarding, to someone who's past onboarding. Fix direction: track fetch status (e.g. a `loaded`/`loading` ref in `useExercisesStore` or a local one in `WorkoutLogger.vue`, set on mount before calling `fetchExercises` and cleared once it resolves) and don't render the welcome card/coachmark — or anything else keyed off "zero exercises" — until that first fetch has actually completed. A brief neutral/blank state (or nothing at all) while loading beats confidently showing the wrong thing.
 
 ### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
 
