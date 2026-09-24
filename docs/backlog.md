@@ -23,6 +23,7 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 36 | Rest timer bunny breathing animation is too subtle | 1 | 1 | 1 |
+| 37 | Setup notes box is shorter (top to bottom) than the exercise picker above it | 1 | 1 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
 | 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
@@ -33,6 +34,10 @@ Priority order (highest ROI first), kept in sync with the tags below:
 ### 36. Rest timer bunny breathing animation is too subtle `[Effort: 1, Value: 1, ROI: 1]`
 
 Reported 2026-09-24 by the user: the bunny mascot's breathing loop on the rest timer screen (`RestTimer.vue`'s `rest-breathe` keyframes, shared by `.rest-glow` and `.rest-bunny`) barely reads as motion. Keep the pace as-is — only the amount of movement should grow. Fix direction: in the `@keyframes rest-breathe` block, increase the 50% keyframe's `translateY(-6px)` to a noticeably larger offset (e.g. somewhere around -14px to -18px, worth eyeballing against the real mascot art rather than guessing exactly), leaving the `4s ease-in-out infinite` timing untouched; bump `scale(1.035)` up slightly too if the larger vertical travel still reads as flat. Purely a CSS tweak, no template/script changes — re-check the glow (`.rest-glow`) doesn't clip against the card edges at the larger offset.
+
+### 37. Setup notes box is shorter (top to bottom) than the exercise picker above it `[Effort: 1, Value: 1, ROI: 1]`
+
+Reported 2026-09-24 while re-checking item 34's fix (spacing itself is now correct — this is a separate, smaller follow-on). `WorkoutLogger.vue`'s `.setup-notes` box (padding `8px 10px`, no `min-height`) sits visibly shorter top-to-bottom than the "Exercise" `<select>` above it, which gets `min-height: 48px` from `src/style.css`'s shared `input, select, textarea` rule. Fix direction: add `min-height: 48px` to `.setup-notes` (a `min-height` still lets the box grow taller for multi-line notes, so this doesn't clip longer text) and re-check vertical centering of the note text inside the taller box — may need `display: flex; align-items: center` alongside it.
 
 ### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
 
