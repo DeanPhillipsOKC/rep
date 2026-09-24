@@ -19,6 +19,18 @@
 // deliver a push rather than exposing another user's data.
 import webpush from 'npm:web-push@3.6.7'
 
+// Required for supabase.functions.invoke() to work from a browser at all:
+// the platform lets an unauthenticated OPTIONS preflight through (browsers
+// never attach Authorization to preflights) so the function itself can
+// answer it, but without these headers on that response the browser's CORS
+// check fails before it ever sends the real POST — the Edge Function's
+// sleep+send code then never runs, silently, with no error surfaced
+// anywhere in the app. Found 2026-09-24 debugging exactly that symptom.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY')
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:dephillips1977@gmail.com'
@@ -48,10 +60,14 @@ function sleep(ms: number) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     return new Response(JSON.stringify({ error: 'VAPID keys not configured' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
@@ -61,7 +77,7 @@ Deno.serve(async (req) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
@@ -69,13 +85,13 @@ Deno.serve(async (req) => {
   if (!subscription?.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
     return new Response(JSON.stringify({ error: 'Missing or malformed subscription' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
   if (typeof restSeconds !== 'number' || restSeconds <= 0) {
     return new Response(JSON.stringify({ error: 'restSeconds must be a positive number' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
@@ -92,12 +108,12 @@ Deno.serve(async (req) => {
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 502,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })
