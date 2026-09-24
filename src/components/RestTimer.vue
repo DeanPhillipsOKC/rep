@@ -222,7 +222,7 @@ const progressPercent = computed(() => (remaining.value / props.totalSeconds) * 
     transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-6px) scale(1.035);
+    transform: translateY(-16px) scale(1.06);
   }
 }
 
