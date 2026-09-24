@@ -963,7 +963,7 @@ function dismissVolumeChart() {
   background: var(--surface-2);
   border-radius: var(--radius);
   padding: 8px 10px;
-  margin: -4px 0 4px;
+  margin: 8px 0 4px;
   white-space: pre-wrap;
 }
 

@@ -22,7 +22,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 34 | Setup notes box sits smushed against the exercise picker on the Log screen | 1 | 1 | 1 |
 | 36 | Rest timer bunny breathing animation is too subtle | 1 | 1 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
@@ -30,10 +29,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
-
-### 34. Setup notes box sits smushed against the exercise picker on the Log screen `[Effort: 1, Value: 1, ROI: 1]`
-
-Reported 2026-09-24 while manually testing item 25. `WorkoutLogger.vue`'s `.setup-notes` box (shown under the "Exercise" `<select>` when the selected exercise has setup notes) has `margin: -4px 0 4px` — the negative top margin pulls it up flush against the select's bottom edge instead of leaving normal spacing, so the two visually merge into one control. Fix direction: drop the negative top margin (or replace with a small positive one) and re-check spacing against the fields below it.
 
 ### 36. Rest timer bunny breathing animation is too subtle `[Effort: 1, Value: 1, ROI: 1]`
 
