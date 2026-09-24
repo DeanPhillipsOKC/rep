@@ -12,6 +12,10 @@ const errorMessage = ref('')
 const editingNotesId = ref<string | null>(null)
 const notesDraft = ref('')
 
+// Same pattern for renaming an exercise.
+const editingNameId = ref<string | null>(null)
+const nameDraft = ref('')
+
 onMounted(() => {
   exercises.fetchExercises()
 })
@@ -39,6 +43,26 @@ async function saveNotes(id: string) {
     errorMessage.value = error.message
   } else {
     editingNotesId.value = null
+  }
+}
+
+function startEditingName(id: string, currentName: string) {
+  editingNameId.value = id
+  nameDraft.value = currentName
+}
+
+async function saveName(id: string) {
+  errorMessage.value = ''
+  const trimmed = nameDraft.value.trim()
+  if (!trimmed) {
+    errorMessage.value = 'Name cannot be empty.'
+    return
+  }
+  const { error } = await exercises.updateExerciseName(id, trimmed)
+  if (error) {
+    errorMessage.value = error.message
+  } else {
+    editingNameId.value = null
   }
 }
 </script>
@@ -78,6 +102,14 @@ async function saveNotes(id: string) {
           </div>
           <div class="row-actions">
             <button
+              v-if="editingNameId !== exercise.id"
+              type="button"
+              class="ghost small"
+              @click="startEditingName(exercise.id, exercise.name)"
+            >
+              Edit name
+            </button>
+            <button
               type="button"
               class="ghost small"
               @click="startEditingNotes(exercise.id, exercise.setup_notes)"
@@ -89,6 +121,15 @@ async function saveNotes(id: string) {
             </button>
           </div>
         </div>
+
+        <form v-if="editingNameId === exercise.id" class="notes-form" @submit.prevent="saveName(exercise.id)">
+          <label :for="`name-${exercise.id}`">Name</label>
+          <input :id="`name-${exercise.id}`" v-model="nameDraft" type="text" required />
+          <div class="notes-actions">
+            <button type="submit">Save</button>
+            <button type="button" class="ghost small" @click="editingNameId = null">Cancel</button>
+          </div>
+        </form>
 
         <form v-if="editingNotesId === exercise.id" class="notes-form" @submit.prevent="saveNotes(exercise.id)">
           <label :for="`notes-${exercise.id}`">Setup notes</label>

@@ -22,7 +22,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 7 | Edit exercise name | 2 | 3 | 1.5 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
 | 10 | Fix set_index race in addSet | 3 | 3 | 1.0 |
 
@@ -36,10 +35,6 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Projected line:** for any workout instance where one or more template exercises were skipped or under-completed, backfill the missing exercise(s)' numbers from that exercise's own most recent prior appearance (straight carry-forward) before summing volume for that point.
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
 - **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
-
-### 7. Edit exercise name `[Effort: 2, Value: 3, ROI: 1.5]`
-
-Exercises currently support create and archive only (`src/stores/exercises.ts`) — no way to fix a typo'd or rename an existing exercise's `name` without archiving it and losing its history linkage. Add an edit affordance (inline or a small form) that updates `name` on the existing row, same RLS as today.
 
 ### 10. Fix set_index race in addSet `[Effort: 3, Value: 3, ROI: 1.0]`
 
