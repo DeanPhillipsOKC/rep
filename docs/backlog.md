@@ -23,8 +23,20 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 16 | Fix exercise row action buttons overflowing on mobile | 2 | 5 | 2.5 |
+| 17 | Collapse "enable rest timer alerts" card once already enabled | 1 | 2 | 2.0 |
 
 ## Features
+
+### 17. Collapse "enable rest timer alerts" card once already enabled `[Effort: 1, Value: 2, ROI: 2.0]`
+
+Found 2026-09-24 device-testing backlog item 15: once notifications are enabled on a
+device, `ExerciseList.vue`'s "Rest timer alerts" card still shows the full heading +
+description (just swaps the button for "Alerts are enabled on this device."), wasting
+space above the exercise list on every visit. Either shrink the whole card down to a
+one-line confirmation once `push.subscribed` is true, or drop it entirely — user doesn't
+care which, just wants the real estate back. No need for a way to re-disable from the UI;
+clearing site data/revoking the OS-level permission is enough of an escape hatch for a
+two-user prototype.
 
 ### 16. Fix exercise row action buttons overflowing on mobile `[Effort: 2, Value: 5, ROI: 2.5]`
 
@@ -43,11 +55,9 @@ whether that needs the same fix once this one's confirmed working.
 
 ## Human setup / device verification
 
-- [ ] **[human]** Backlog item 15 (per-exercise rest timer with push notification) is fully coded and e2e-verified but not live yet — three deploy steps only a human can do:
-  - [ ] Set `VITE_VAPID_PUBLIC_KEY` in Cloudflare Pages env vars (same value as in `.env.local`).
-  - [ ] Deploy the Edge Function: `supabase functions deploy rest-timer-notify` (needs `supabase login` — no CLI session exists in this environment).
-  - [ ] Set its secrets: `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:dephillips1977@gmail.com` — ask Claude for the generated key values (shared in-session only, never committed to the repo).
-  - [ ] Device-verification pass once deployed: grant notification permission via the "Enable rest timer alerts" button and confirm actual delivery on both a locked-and-relocked iPhone and Android. See `docs/architecture.md#push-notifications`.
+- [ ] **[human]** Backlog item 15 (per-exercise rest timer with push notification): deploy steps done — Cloudflare env var set, Edge Function deployed (including a 2026-09-24 CORS fix, deployed via `supabase functions deploy` using a temporary personal access token), secrets set. Still open:
+  - [ ] Device-verification pass: confirm actual delivery on an unlocked phone first, then locked-and-relocked, on both Android and iPhone. See `docs/architecture.md#push-notifications`.
+  - [ ] Revoke the temporary Supabase personal access token used for the CLI deploy (dashboard → Access Tokens) now that it's no longer needed.
 - [ ] **[human]** Hostile-read RLS test: now that both accounts have signed in at least once, sign in as one user and attempt to read/write the other's rows by ID directly against the REST API. Confirm both fail. (`docs/architecture.md#row-level-security`)
 - [ ] **[human]** Android, installed PWA: retry install now that manifest icons are fixed (they previously 404'd, silently failing Chrome's installability check). If the `⋮` menu still doesn't offer a real "Install app" option, get a screenshot for diagnosis.
 - [ ] **[human]** iPhone verification (secondary): confirm iCloud Keychain sync is enabled; test passkey registration inside the installed home-screen PWA (not just a Safari tab); confirm the "Add to Home Screen" flow and app icon.
