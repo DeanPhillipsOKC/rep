@@ -26,6 +26,22 @@ function secondsLeft(): number {
   return Math.max(0, Math.round((props.endsAt - Date.now()) / 1000))
 }
 
+// Backlog item 29: rotating encouragement copy, deliberately split out from
+// item 28 so the core rest screen didn't grow scope creep from a
+// copy-rotation system. Picked once per mount (i.e. once per rest period,
+// since WorkoutLogger.vue's `v-if="activeRest"` remounts this component
+// fresh for each rest) rather than re-picked on a timer, so the headline
+// doesn't change mid-rest.
+const encouragements = [
+  'Nice work — take a breather',
+  "Take a load off. You've earned it.",
+  'Keep it up.',
+  'Solid set. Recover up.',
+  'Breathe. You’re crushing it.',
+  'Great effort. Reset for the next one.',
+]
+const headline = encouragements[Math.floor(Math.random() * encouragements.length)]
+
 const remaining = ref(secondsLeft())
 let intervalId: ReturnType<typeof setInterval> | undefined
 
@@ -67,7 +83,7 @@ const progressPercent = computed(() => (remaining.value / props.totalSeconds) * 
       </div>
 
       <div class="rest-copy">
-        <p class="rest-headline">Nice work — take a breather</p>
+        <p class="rest-headline">{{ headline }}</p>
         <p class="rest-countdown">{{ remainingLabel }}</p>
         <p class="rest-context">Next: {{ exerciseName }}</p>
       </div>

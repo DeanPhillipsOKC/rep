@@ -23,7 +23,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 37 | Setup notes box is shorter (top to bottom) than the exercise picker above it | 1 | 1 | 1 |
-| 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
 | 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
@@ -41,10 +40,6 @@ Requested 2026-09-24, split out from item 31 (shipped, `docs/backlog-archive.md`
 ### 30. Remove the unused `exercises.category` field `[Effort: 2, Value: 2, ROI: 1]`
 
 Decided 2026-09-24 (user call, replacing the prior "what is category actually for" open question): drop it rather than invent a use. It's a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing filters, groups, or otherwise behaves differently based on it. Remove the input from `ExerciseList.vue`'s create form and the `<div v-if="exercise.category">` display, drop the param from `createExercise` (`src/stores/exercises.ts`), and drop the column via a migration the user applies directly in the Supabase SQL editor (same no-DDL-access pattern as every other schema change here) — `alter table exercises drop column category;`. If a real use for it turns up later, re-add it fresh rather than trying to resurrect this one. Touches `docs/architecture.md`'s data-model table. Note for item 24 (pencil/trash icon redesign, not yet built): its write-up currently lists "category" as one of the fields the consolidated edit flyout should cover — drop that if this item ships first.
-
-### 29. Rotating words-of-encouragement copy on the rest timer screen `[Effort: 2, Value: 2, ROI: 1]`
-
-Spitballed 2026-09-24 alongside item 28, deliberately split out so the core rest-screen build (item 28) doesn't grow scope creep from a copy-rotation system. Instead of one fixed line ("Nice work — take a breather"), cycle through a small hand-written set of encouraging phrases ("Take a load off. You've earned it.", "Keep it up.", etc.) — picked randomly or rotated per rest, on the same headline slot item 28's screen already has. Depends on item 28 shipping first (same screen, same headline element).
 
 ### 24. Redesign exercise row actions into pencil/trash icons instead of four text buttons `[Effort: 5, Value: 3, ROI: 0.6]`
 

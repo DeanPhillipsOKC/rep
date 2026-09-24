@@ -30,12 +30,14 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page })
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
 
-  await expect(page.getByText('Nice work — take a breather')).toBeVisible()
+  // Backlog item 29: the headline now rotates between a few phrases, so
+  // assert on the element rather than a specific string.
+  await expect(page.locator('.rest-headline')).toBeVisible()
   await expect(page.getByText(`Next: ${exerciseName}`)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Skip Rest' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Skip Rest' }).click()
-  await expect(page.getByText('Nice work — take a breather')).toHaveCount(0)
+  await expect(page.locator('.rest-headline')).toHaveCount(0)
 
   // The rest screen coming and going doesn't touch the set that was logged.
   await expect(page.locator('li.row-wrap', { hasText: exerciseName })).toContainText('10 × 45lb')
