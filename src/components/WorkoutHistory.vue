@@ -44,6 +44,20 @@ async function confirmDelete(id: string) {
     <p v-if="!workout.loading && workout.history.length === 0" class="empty">No workouts logged yet.</p>
 
     <div v-for="entry in workout.history" :key="entry.id" class="card">
+      <button
+        type="button"
+        class="icon-button delete-trigger"
+        aria-label="Delete workout"
+        @click="confirmingDeleteId = entry.id"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <line x1="10" y1="11" x2="10" y2="17" />
+          <line x1="14" y1="11" x2="14" y2="17" />
+        </svg>
+      </button>
+
       <div class="entry-header">
         <h3>{{ formatDate(entry.performed_at) }}</h3>
         <span v-if="entry.workout_templates" class="template-tag">{{ entry.workout_templates.name }}</span>
@@ -66,20 +80,13 @@ async function confirmDelete(id: string) {
           <button type="button" class="ghost small" @click="confirmingDeleteId = null">Cancel</button>
         </div>
       </div>
-      <button
-        v-else
-        type="button"
-        class="ghost small delete-trigger"
-        @click="confirmingDeleteId = entry.id"
-      >
-        Delete
-      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -93,6 +100,7 @@ async function confirmDelete(id: string) {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
+  padding-right: 32px;
 }
 
 .entry-header h3 {
@@ -151,8 +159,29 @@ async function confirmDelete(id: string) {
   padding: 32px 0;
 }
 
+.icon-button {
+  width: 36px;
+  height: 36px;
+  min-height: auto;
+  padding: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  color: var(--danger);
+}
+
 .delete-trigger {
-  margin-top: 12px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
 .confirm-delete {

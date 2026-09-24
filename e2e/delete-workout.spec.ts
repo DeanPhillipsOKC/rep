@@ -31,15 +31,15 @@ test('delete a workout from History', async ({ page }) => {
   const card = page.locator('.card', { hasText: notes })
   await expect(card).toBeVisible()
 
-  // Clicking Delete shows a confirm step rather than deleting immediately.
-  await card.getByRole('button', { name: 'Delete' }).click()
+  // Clicking the delete icon shows a confirm step rather than deleting immediately.
+  await card.getByRole('button', { name: 'Delete workout' }).click()
   await expect(card.getByText("Delete this workout? This can't be undone.")).toBeVisible()
 
   // Cancelling backs out without deleting.
   await card.getByRole('button', { name: 'Cancel' }).click()
   await expect(card).toBeVisible()
 
-  await card.getByRole('button', { name: 'Delete' }).click()
+  await card.getByRole('button', { name: 'Delete workout' }).click()
   await card.getByRole('button', { name: 'Confirm delete' }).click()
   await expect(page.locator('.card', { hasText: notes })).toHaveCount(0)
 
