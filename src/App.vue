@@ -16,7 +16,10 @@ const appVersion = __APP_VERSION__
   <main>
     <AuthGate>
       <header class="app-header">
-        <h1>REP</h1>
+        <div class="brand">
+          <img src="/icon-192.png" alt="" class="brand-logo" />
+          <h1>REP</h1>
+        </div>
         <button type="button" class="ghost" @click="auth.signOut()">Sign out</button>
       </header>
 
@@ -58,6 +61,18 @@ main {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
 }
 
 .app-header h1 {

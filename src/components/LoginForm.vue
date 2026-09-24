@@ -30,7 +30,11 @@ async function handlePasskeySignIn() {
 
 <template>
   <div class="screen">
-    <h1>REP</h1>
+    <div class="brand">
+      <img src="/icon-192.png" alt="" class="brand-logo" />
+      <h1>REP</h1>
+      <p class="tagline">Small wins. Stronger every set.</p>
+    </div>
 
     <button
       v-if="auth.supportsPasskeys()"
@@ -61,9 +65,33 @@ async function handlePasskeySignIn() {
   padding: 48px 16px;
 }
 
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.brand-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  margin-bottom: 12px;
+}
+
 .screen h1 {
   text-align: center;
-  margin-bottom: 24px;
+  margin: 0;
+}
+
+.tagline {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
 }
 
 .primary {
