@@ -127,6 +127,7 @@ exercises
   name          text
   category      text            -- e.g. push / pull / legs / cardio
   is_archived   boolean default false
+  setup_notes   text null       -- machine seat height, incline position, etc.
 
 workouts
   id            uuid  PK

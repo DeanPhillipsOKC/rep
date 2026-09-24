@@ -4,6 +4,10 @@
 -- Applying to an already-provisioned database (workout_templates added after
 -- the initial rollout): run the two new `create table` statements below, then
 --   alter table workouts add column template_id uuid null references workout_templates(id);
+--
+-- Applying to an already-provisioned database (setup_notes added after the
+-- initial rollout): run
+--   alter table exercises add column setup_notes text;
 
 create table profiles (
   id           uuid primary key references auth.users(id),
@@ -16,7 +20,8 @@ create table exercises (
   user_id     uuid not null references profiles(id),
   name        text not null,
   category    text,                          -- e.g. push / pull / legs / cardio
-  is_archived boolean not null default false
+  is_archived boolean not null default false,
+  setup_notes text                           -- e.g. machine seat height, incline position
 );
 
 create table workout_templates (

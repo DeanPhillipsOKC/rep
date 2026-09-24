@@ -22,7 +22,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 8 | Exercise setup notes | 3 | 5 | 1.67 |
 | 5 | On-demand data-wipe script | 2 | 3 | 1.5 |
 | 7 | Edit exercise name | 2 | 3 | 1.5 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
@@ -49,14 +48,6 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 ### 7. Edit exercise name `[Effort: 2, Value: 3, ROI: 1.5]`
 
 Exercises currently support create and archive only (`src/stores/exercises.ts`) — no way to fix a typo'd or rename an existing exercise's `name` without archiving it and losing its history linkage. Add an edit affordance (inline or a small form) that updates `name` on the existing row, same RLS as today.
-
-### 8. Exercise setup notes `[Effort: 3, Value: 5, ROI: 1.67]`
-
-**User request:** add freeform notes to an exercise (e.g. machine seat height, incline position) and see them while logging a set for that exercise, so setup is consistent workout to workout.
-
-- Schema: `exercises` gains a nullable `setup_notes text` column (or similarly named — distinct from a per-workout `workouts.notes`, which is about that day's session, not the machine).
-- Editable wherever exercise name/category are managed (see item 7 for the edit affordance this can share).
-- Surface in `WorkoutLogger.vue`: show the selected exercise's notes near the set-entry form, not just in the Exercises tab, since that's the moment it's needed.
 
 ### 10. Fix set_index race in addSet `[Effort: 3, Value: 3, ROI: 1.0]`
 

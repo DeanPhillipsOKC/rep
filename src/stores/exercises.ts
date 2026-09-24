@@ -50,6 +50,15 @@ export const useExercisesStore = defineStore('exercises', () => {
     return { error }
   }
 
+  async function updateSetupNotes(id: string, setupNotes: string | null) {
+    const { error } = await supabase.from('exercises').update({ setup_notes: setupNotes }).eq('id', id)
+    if (!error) {
+      const exercise = exercises.value.find((e) => e.id === id)
+      if (exercise) exercise.setup_notes = setupNotes
+    }
+    return { error }
+  }
+
   return {
     exercises,
     activeExercises,
@@ -58,5 +67,6 @@ export const useExercisesStore = defineStore('exercises', () => {
     fetchExercises,
     createExercise,
     archiveExercise,
+    updateSetupNotes,
   }
 })

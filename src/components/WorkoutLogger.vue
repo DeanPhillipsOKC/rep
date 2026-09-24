@@ -130,6 +130,13 @@ function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
 
+// Backlog item 8: surface setup notes (machine seat height, etc.) right
+// where a set gets logged, not just in the Exercises tab.
+const selectedExerciseNotes = computed(() => {
+  if (!exerciseId.value) return null
+  return exercises.exercises.find((e) => e.id === exerciseId.value)?.setup_notes ?? null
+})
+
 async function handleFinish() {
   await workout.finishWorkout()
   notes.value = ''
@@ -202,6 +209,8 @@ async function handleFinish() {
               {{ exercise.name }}
             </option>
           </select>
+
+          <p v-if="selectedExerciseNotes" class="setup-notes">{{ selectedExerciseNotes }}</p>
 
           <div class="grid-2">
             <div>
@@ -372,6 +381,16 @@ async function handleFinish() {
 
 .error {
   color: var(--danger);
+}
+
+.setup-notes {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin: -4px 0 4px;
+  white-space: pre-wrap;
 }
 
 .record-toast {
