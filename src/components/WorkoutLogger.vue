@@ -12,6 +12,13 @@ const push = usePushSubscriptionStore()
 const templates = useTemplatesStore()
 const workout = useWorkoutsStore()
 
+// Backlog item 26: pre-start guidance points a brand-new account at the
+// Exercises/Templates tabs instead of App.vue owning that navigation —
+// same emit-and-let-the-parent-switch-`view` pattern AppMenu.vue uses.
+const emit = defineEmits<{
+  (e: 'navigate', view: 'exercises' | 'templates'): void
+}>()
+
 const notes = ref('')
 const templateId = ref('')
 const exerciseId = ref('')
@@ -278,19 +285,32 @@ function dismissVolumeChart() {
         </div>
       </div>
 
-      <form class="card" @submit.prevent="handleStart">
-        <label for="workout-template">Template (optional)</label>
-        <select id="workout-template" v-model="templateId">
-          <option value="">No template — freeform</option>
-          <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
-            {{ template.name }}
-          </option>
-        </select>
+      <div v-if="exercises.activeExercises.length === 0" class="card notice">
+        <p>Add an exercise before logging a workout — there's nothing to pick from yet.</p>
+        <button type="button" class="ghost" @click="emit('navigate', 'exercises')">Go to Exercises</button>
+      </div>
 
-        <label for="workout-notes">Notes (optional)</label>
-        <input id="workout-notes" v-model="notes" type="text" />
-        <button type="submit">Start workout</button>
-      </form>
+      <template v-else>
+        <p v-if="templates.activeTemplates.length === 0" class="row-sub hint">
+          Templates are optional — they track progress on a recurring workout. Freeform logging works fine without
+          one, or <button type="button" class="link-button" @click="emit('navigate', 'templates')">create one</button>
+          under Templates.
+        </p>
+
+        <form class="card" @submit.prevent="handleStart">
+          <label for="workout-template">Template (optional)</label>
+          <select id="workout-template" v-model="templateId">
+            <option value="">No template — freeform</option>
+            <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
+              {{ template.name }}
+            </option>
+          </select>
+
+          <label for="workout-notes">Notes (optional)</label>
+          <input id="workout-notes" v-model="notes" type="text" />
+          <button type="submit">Start workout</button>
+        </form>
+      </template>
     </template>
 
     <div v-else>
@@ -519,6 +539,30 @@ function dismissVolumeChart() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.notice {
+  text-align: center;
+}
+
+.notice p {
+  margin: 0 0 12px;
+  color: var(--text-dim);
+}
+
+.hint {
+  margin: 0 0 16px;
+}
+
+.link-button {
+  display: inline;
+  min-height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
 }
 
 .empty {

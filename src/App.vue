@@ -41,7 +41,7 @@ const appVersion = __APP_VERSION__
       <p v-if="view === 'log'" class="tagline">Small wins. Stronger every set.</p>
 
       <section class="content">
-        <WorkoutLogger v-if="view === 'log'" />
+        <WorkoutLogger v-if="view === 'log'" @navigate="view = $event" />
         <ExerciseList v-else-if="view === 'exercises'" />
         <TemplateManager v-else-if="view === 'templates'" />
         <WorkoutHistory v-else-if="view === 'history'" />
