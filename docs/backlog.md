@@ -22,8 +22,25 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
+| 22 | Exercise creation only captures name/category — notes and rest timer need a separate edit trip | 2 | 2 | 1 |
+| 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
+| 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
-No open feature items — check `docs/backlog-archive.md` for what's shipped, or the human-only checklist below for what's left to verify.
+## Features
+
+### 22. Exercise creation only captures name/category — notes and rest timer need a separate edit trip `[Effort: 2, Value: 2, ROI: 1]`
+
+Reported 2026-09-25. `ExerciseList.vue`'s create form (`handleCreate`) only takes name + category; setup notes and rest-timer duration can only be set afterward through their own per-row editors further down the list. Today, adding a new exercise with a rest timer is: add it, scroll down, find it in the list, open two more edit forms. Fix: extend the create form with the same setup-notes/rest-timer inputs the edit forms already use, and pass them through `createExercise` in `src/stores/exercises.ts` (currently only inserts `name`/`category`). Per-row editors stay for later changes — this only removes the forced immediate round-trip after creating. If item 24 lands first, build this into whatever the create form looks like by then; ordering between the two isn't load-bearing.
+
+### 25. Archiving an exercise doesn't remove it from templates it's already attached to `[Effort: 3, Value: 3, ROI: 1]`
+
+Found 2026-09-25 while reviewing the archive flow. `archiveExercise` (`src/stores/exercises.ts`) only flips `exercises.is_archived`; it never touches `workout_template_exercises`, and nothing reading template exercises (`templates.exercisesByTemplate`, consumed by `TemplateManager.vue`'s exercise list and `WorkoutLogger.vue`'s suggested chips/`availableExercises` for a templated workout) filters on the joined exercise's `is_archived`. Net effect: archiving correctly hides an exercise from the create-exercise flow, the freeform workout picker, and new template-exercise-add dropdowns — but if it's already attached to a template, it keeps appearing as a suggested chip and a loggable option every time that template is used, with no indication anywhere that it's archived. Fix direction: filter the template-exercise read path (or its consumers) by `exercise.is_archived`, so an archived exercise stops surfacing for future workouts against templates it's still attached to (past logged sets are unaffected either way — they read the set's own `exercise_id`, not this list). Separately worth deciding: should archiving warn first when the exercise is attached to at least one active template ("used in Leg Day — archiving removes it from future workouts there")? Leaning yes, but that's better folded into whatever confirm-step UI item 24 builds for delete than shipped as a standalone alert here.
+
+### 24. Redesign exercise row actions into pencil/trash icons instead of four text buttons `[Effort: 5, Value: 3, ROI: 0.6]`
+
+Reported 2026-09-25. Each row in `ExerciseList.vue` currently exposes four separate ghost buttons ("Edit name", "Edit notes"/"Add notes", "Edit rest timer"/"Add rest timer", "Archive"), each opening its own inline form — wordy today, and it only grows with item 22. User's preferred direction (over an ellipsis-triggered dropdown, which was also considered): two icon affordances on the right of the row — a pencil that opens one consolidated edit flyout covering name, category, setup notes, and rest timer together, and a trash-can (or X) that requires an explicit confirm step before removing the exercise.
+
+Depends on the archive-vs-delete decision below (**[human]**) — what the trash icon actually does and what its confirmation copy says both hinge on that call; don't build this until it's settled. Touches `e2e/exercise-edit-name.spec.ts`, `e2e/exercise-notes.spec.ts`, `e2e/rest-timer.spec.ts`, and any other spec locating today's text-labeled buttons — icon buttons will need `aria-label`s for those to target instead.
 
 ## Human setup / device verification
 
@@ -37,6 +54,7 @@ No open feature items — check `docs/backlog-archive.md` for what's shipped, or
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
 - [ ] **[human]** *Future discussion:* what is the `exercises.category` field actually for? It's currently just a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing in the app filters, groups, or otherwise behaves differently based on it. Needs a decision: define a real purpose for it (e.g. filtering the exercise picker, grouping template exercises) or drop the field if it's not earning its keep.
+- [ ] **[human]** *Blocks item 24:* "Archive" on an exercise (`ExerciseList.vue`'s "Archive" button, `exercises.is_archived`) has no restore path anywhere in the UI — no archived-exercises view, no "unarchive" action. From the user's perspective it already behaves exactly like a permanent delete; the "archive" label just implies a recoverability that doesn't exist. Needs a decision between: (a) build real restore (an archived-exercises list + unarchive action), or (b) keep today's soft-delete mechanism as-is at the DB level — it's what lets an exercise be removed without breaking the FK reference from existing `sets`/`workout_template_exercises` rows, since neither has an `ON DELETE` clause and a real hard delete would fail outright while any history references it — but relabel/reframe the UI as "Delete" with a confirmation step, dropping the "archive" pretense. (b) is the cheaper option and matches what the user described wanting ("if there's not a way to restore, we should just treat it as delete").
 
 ---
 
