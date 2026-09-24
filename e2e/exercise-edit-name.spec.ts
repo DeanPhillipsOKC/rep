@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 7: rename an existing exercise without
 // archiving it, and confirm the new name persists and shows up where the
@@ -11,7 +12,7 @@ test('edit exercise name: rename and see it reflected elsewhere', async ({ page 
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(originalName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(originalName)).toBeVisible()
@@ -26,7 +27,7 @@ test('edit exercise name: rename and see it reflected elsewhere', async ({ page 
   )
   await expect(page.getByText(originalName)).not.toBeVisible()
 
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await expect(page.getByLabel('Exercise').locator('option', { hasText: renamedName })).toHaveCount(1)
 })

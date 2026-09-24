@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 4: adding a set that beats the user's all-time
 // best (reps * weight) for that exercise shows a congratulatory toast. The
@@ -11,12 +12,12 @@ test('PR toast: shows on a new all-time best and stays quiet otherwise', async (
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 

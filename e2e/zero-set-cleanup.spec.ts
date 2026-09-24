@@ -11,7 +11,6 @@ test('finishing a workout with no sets deletes the workout row', async ({ page }
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Log' }).click()
   await page.getByLabel('Notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: 'Finish workout' }).click()

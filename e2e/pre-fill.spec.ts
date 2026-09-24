@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 3: starting a new workout against a template
 // that already has a logged instance shows a "Last time" card and pre-fills
@@ -14,14 +15,14 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   for (const name of [exerciseName, otherExerciseName]) {
     await page.getByLabel('Name').fill(name)
     await page.getByRole('button', { name: 'Add exercise' }).click()
     await expect(page.getByText(name)).toBeVisible()
   }
 
-  await page.getByRole('button', { name: 'Templates' }).click()
+  await goTo(page, 'Templates')
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()
@@ -32,7 +33,7 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   }
 
   // First workout against the template: log a set for each exercise, then finish.
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByLabel('Template (optional)').selectOption({ label: templateName })
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: exerciseName, exact: true }).click()
@@ -96,14 +97,14 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   for (const name of [exerciseName, otherExerciseName]) {
     await page.getByLabel('Name').fill(name)
     await page.getByRole('button', { name: 'Add exercise' }).click()
     await expect(page.getByText(name)).toBeVisible()
   }
 
-  await page.getByRole('button', { name: 'Templates' }).click()
+  await goTo(page, 'Templates')
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()
@@ -116,7 +117,7 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
   // First workout: superset both exercises for two rounds, with the first
   // exercise's second set deliberately lighter (fatigue) so a "last set
   // logged" pre-fill would be obviously wrong for set 1 next time.
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByLabel('Template (optional)').selectOption({ label: templateName })
   await page.getByRole('button', { name: 'Start workout' }).click()
 

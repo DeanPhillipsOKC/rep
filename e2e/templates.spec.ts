@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 2 (workout templates): create a template,
 // attach an exercise to it, start a workout against it, and confirm the
@@ -11,12 +12,12 @@ test('templates: create, log a workout against one, and see it in history', asyn
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Templates' }).click()
+  await goTo(page, 'Templates')
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()
@@ -24,7 +25,7 @@ test('templates: create, log a workout against one, and see it in history', asyn
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.locator('.exercise-row', { hasText: exerciseName })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByLabel('Template (optional)').selectOption({ label: templateName })
   await page.getByRole('button', { name: 'Start workout' }).click()
 
@@ -39,6 +40,6 @@ test('templates: create, log a workout against one, and see it in history', asyn
 
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  await page.getByRole('button', { name: 'History' }).click()
+  await goTo(page, 'History')
   await expect(page.locator('.template-tag').first()).toHaveText(templateName)
 })

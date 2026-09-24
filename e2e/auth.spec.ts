@@ -19,5 +19,6 @@ test('build version is visible on-page, not just in the title', async ({ page })
 
 test('loads signed in when a test session is injected', async ({ page }) => {
   await signInAsTestUser(page)
+  await page.getByRole('button', { name: 'Open menu' }).click()
   await expect(page.getByRole('button', { name: /sign out/i })).toBeVisible()
 })

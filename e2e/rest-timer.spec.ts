@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 15's schema/UI half: configuring a per-exercise
 // rest timer duration, add/edit/persist, same inline-editor pattern as
@@ -14,7 +15,7 @@ test('exercise rest timer: add, edit, and clear a duration', async ({ page }) =>
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()

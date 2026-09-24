@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 6: post-workout volume-over-time chart, shown
 // after finishing any workout logged against a template. Template's
@@ -17,7 +18,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(trackedName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(trackedName)).toBeVisible()
@@ -25,7 +26,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(otherName)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Templates' }).click()
+  await goTo(page, 'Templates')
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()
@@ -39,7 +40,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
   // — a successful add clears reps/weight back to null (no prior workout to
   // pre-fill from, see WorkoutLogger.vue's applyPrefill), so filling ahead
   // of that landing risks the next fill being wiped out from under it.
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByLabel('Template (optional)').selectOption({ label: templateName })
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })

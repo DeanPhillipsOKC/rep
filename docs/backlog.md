@@ -23,24 +23,12 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 19 | Progress strip on the Log home screen (workouts this week / recent PR) | 3 | 5 | 1.7 |
-| 18 | Home screen redesign: Log-first layout with hamburger menu | 5 | 8 | 1.6 |
 
 ## Features
 
-### 18. Home screen redesign: Log-first layout with hamburger menu `[Effort: 5, Value: 8, ROI: 1.6]`
-
-Log is used every session; Exercises/Templates/History are once-in-a-while setup, but `App.vue`'s current `.tabs` row (`src/App.vue`) gives all four equal visual weight, and "Sign out" sits as a persistent header button. Design pass done in a dedicated session (2026-09-24) — mockup at the private Artifact `https://claude.ai/artifact/R4VgEv6St39HjEdVU1im2P` (owner-only; not shared). Resolves the `[human]` "establish a real UI direction" discussion item.
-
-- `view` in `App.vue` defaults to, and effectively stays on, `'log'` — drop the tab row entirely; `WorkoutLogger` becomes the only thing rendered directly under the header.
-- Header keeps the logo + "REP" wordmark; replace the "Sign out" ghost button with a `≡` icon button (44px target, `aria-label="Open menu"`, `aria-expanded`/`aria-controls`) that opens a new menu component.
-- Menu (mockup uses a right-side drawer over a dimmed/scrimmed background — a bottom sheet is a reasonable alternative if it fits the rest of the app better) lists Log (marked current, pinned at top so the menu still orients), Exercises, Templates, History, a divider, then Sign out. Each item gets an icon (dumbbell for Exercises, layers for Templates, clock for History, plus-circle for Log, log-out for Sign out) — inline stroke SVG, no icon library, matching the mockup's set.
-- Close on: tapping the scrim, a close (X) button, Escape, and on picking a destination. Trap focus while open; return focus to the `≡` button on close.
-- Tagline ("Small wins. Stronger every set." — already used in `src/components/LoginForm.vue:36`) shown under the logo on the Log screen, small and dim, not a tweak-able prop, just literal copy.
-- `Exercises`/`Templates`/`History` keep their existing components/logic untouched — this is purely navigation chrome moving from a tab row into the menu, plus the header/hamburger/drawer markup and CSS.
-
 ### 19. Progress strip on the Log home screen (workouts this week / recent PR) `[Effort: 3, Value: 5, ROI: 1.7]`
 
-Depends on item 18 (the strip sits under the tagline on the redesigned Log screen). Mockup shows two stats: a workout count for the current week and a "new record" callout, to make the tagline's "stronger every set" idea visible rather than just stated.
+Item 18 (nav redesign) shipped, so this is now unblocked. Mockup shows two stats: a workout count for the current week and a "new record" callout, to make the tagline's "stronger every set" idea visible rather than just stated.
 
 - "N workouts this week": count `workouts` rows (`performed_at`, `supabase/schema.sql`) for the signed-in user within the current calendar week. Straightforward count query, no new schema.
 - "Recent PR" is the harder half — there's no persisted record of *when* a PR happened, only the ephemeral in-memory check in `src/stores/workouts.ts` (`newRecord`, backlog-archive.md item 4) that drives the toast and is gone once the session ends. Options to resolve during implementation, pick one:

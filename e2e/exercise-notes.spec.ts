@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 8: add setup notes to an exercise, confirm
 // they persist in the Exercises tab, and confirm they surface next to the
@@ -12,7 +13,7 @@ test('exercise setup notes: add, edit, and see them while logging', async ({ pag
 
   await signInAsTestUser(page)
 
-  await page.getByRole('button', { name: 'Exercises' }).click()
+  await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()
@@ -30,7 +31,7 @@ test('exercise setup notes: add, edit, and see them while logging', async ({ pag
   await row.getByRole('button', { name: 'Save' }).click()
   await expect(row.locator('.row-notes')).toHaveText(updatedNotes)
 
-  await page.getByRole('button', { name: 'Log' }).click()
+  await goTo(page, 'Log')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import AppMenu from './components/AppMenu.vue'
 import AuthGate from './components/AuthGate.vue'
 import ExerciseList from './components/ExerciseList.vue'
 import TemplateManager from './components/TemplateManager.vue'
@@ -9,6 +10,7 @@ import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
 const view = ref<'log' | 'exercises' | 'templates' | 'history'>('log')
+const menuOpen = ref(false)
 const appVersion = __APP_VERSION__
 </script>
 
@@ -20,21 +22,23 @@ const appVersion = __APP_VERSION__
           <img src="/icon-192.png" alt="" class="brand-logo" />
           <h1>REP</h1>
         </div>
-        <button type="button" class="ghost" @click="auth.signOut()">Sign out</button>
+        <button
+          type="button"
+          class="menu-button"
+          aria-label="Open menu"
+          aria-controls="app-menu-drawer"
+          :aria-expanded="menuOpen"
+          @click="menuOpen = true"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
       </header>
 
-      <nav class="tabs">
-        <button type="button" :class="{ active: view === 'log' }" @click="view = 'log'">Log</button>
-        <button type="button" :class="{ active: view === 'exercises' }" @click="view = 'exercises'">
-          Exercises
-        </button>
-        <button type="button" :class="{ active: view === 'templates' }" @click="view = 'templates'">
-          Templates
-        </button>
-        <button type="button" :class="{ active: view === 'history' }" @click="view = 'history'">
-          History
-        </button>
-      </nav>
+      <p v-if="view === 'log'" class="tagline">Small wins. Stronger every set.</p>
 
       <section class="content">
         <WorkoutLogger v-if="view === 'log'" />
@@ -42,6 +46,14 @@ const appVersion = __APP_VERSION__
         <TemplateManager v-else-if="view === 'templates'" />
         <WorkoutHistory v-else-if="view === 'history'" />
       </section>
+
+      <AppMenu
+        :open="menuOpen"
+        :current-view="view"
+        @update:open="menuOpen = $event"
+        @navigate="view = $event"
+        @sign-out="auth.signOut()"
+      />
     </AuthGate>
 
     <footer class="app-version">{{ appVersion }}</footer>
@@ -79,36 +91,25 @@ main {
   margin: 0;
 }
 
-.app-header .ghost {
+.menu-button {
+  width: 44px;
+  height: 44px;
   min-height: auto;
-  padding: 8px 12px;
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-dim);
-  font-weight: 500;
-}
-
-.tabs {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  gap: 8px;
-  padding: 0 16px 12px;
-  background: var(--bg);
-}
-
-.tabs button {
-  flex: 1;
+  padding: 0;
+  border-radius: 12px;
   background: var(--surface);
-  border-color: var(--border);
-  color: var(--text-dim);
+  border: 1px solid var(--border);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.tabs button.active {
-  background: var(--surface-2);
-  color: var(--text);
-  border-color: var(--accent);
+.tagline {
+  margin: 0 16px 16px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .content {
