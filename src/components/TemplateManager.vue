@@ -47,11 +47,24 @@ async function toggleExpand(templateId: string) {
 // makes overlapping submissions impossible rather than just unlikely.
 const addingExercise = ref(false)
 
+// Target sets is optional, so its input has no `required` guard — like
+// WorkoutLogger.vue's RPE field, v-model.number leaves an emptied field as
+// '' rather than coercing it to null, and that '' sent straight through to
+// Postgres's numeric target_sets column throws "invalid input syntax for
+// type numeric".
+function normalizeTargetSets(value: number | null): number | null {
+  return (value as unknown) === '' ? null : value
+}
+
 async function handleAddExercise(templateId: string) {
   errorMessage.value = ''
   if (!exerciseId.value) return
   addingExercise.value = true
-  const { error } = await templates.addExerciseToTemplate(templateId, exerciseId.value, targetSets.value)
+  const { error } = await templates.addExerciseToTemplate(
+    templateId,
+    exerciseId.value,
+    normalizeTargetSets(targetSets.value),
+  )
   addingExercise.value = false
   if (error) {
     errorMessage.value = error.message
@@ -78,7 +91,11 @@ function startEditingExercise(te: { id: string; target_sets: number | null }) {
 
 async function saveExerciseEdit(templateId: string, templateExerciseId: string) {
   errorMessage.value = ''
-  const { error } = await templates.updateTemplateExercise(templateId, templateExerciseId, editTargetSets.value)
+  const { error } = await templates.updateTemplateExercise(
+    templateId,
+    templateExerciseId,
+    normalizeTargetSets(editTargetSets.value),
+  )
   if (error) {
     errorMessage.value = error.message
   } else {

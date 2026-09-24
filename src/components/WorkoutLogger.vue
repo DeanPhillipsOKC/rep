@@ -253,12 +253,27 @@ function handleRestVisibilityChange() {
   push.sendRestReminder(activeRest.value.exerciseName, remaining)
 }
 
+// RPE is optional, so its input has no `required` guard forcing reps/weight
+// to a real value before submit — v-model.number leaves an emptied field as
+// '' rather than coercing it to null, and that '' sent straight through to
+// Postgres's numeric rpe column is what throws "invalid input syntax for
+// type numeric".
+function normalizeRpe(value: number | null): number | null {
+  return (value as unknown) === '' ? null : value
+}
+
 async function handleAddSet() {
   errorMessage.value = ''
   if (!exerciseId.value || reps.value === null || weight.value === null) return
 
   addingSet.value = true
-  const { error } = await workout.addSet(exerciseId.value, reps.value, weight.value, weightUnit.value, rpe.value)
+  const { error } = await workout.addSet(
+    exerciseId.value,
+    reps.value,
+    weight.value,
+    weightUnit.value,
+    normalizeRpe(rpe.value),
+  )
   addingSet.value = false
   if (error) {
     errorMessage.value = error.message
@@ -301,7 +316,13 @@ function startEditingSet(set: SetEntry) {
 async function saveSetEdit(id: string) {
   errorMessage.value = ''
   if (editReps.value === null || editWeight.value === null) return
-  const { error } = await workout.updateSet(id, editReps.value, editWeight.value, editWeightUnit.value, editRpe.value)
+  const { error } = await workout.updateSet(
+    id,
+    editReps.value,
+    editWeight.value,
+    editWeightUnit.value,
+    normalizeRpe(editRpe.value),
+  )
   if (error) {
     errorMessage.value = error.message
   } else {
