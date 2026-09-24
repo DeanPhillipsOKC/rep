@@ -23,7 +23,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
-| 10 | Fix set_index race in addSet | 3 | 3 | 1.0 |
 
 ## Features
 
@@ -35,13 +34,6 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Projected line:** for any workout instance where one or more template exercises were skipped or under-completed, backfill the missing exercise(s)' numbers from that exercise's own most recent prior appearance (straight carry-forward) before summing volume for that point.
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
 - **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
-
-### 10. Fix set_index race in addSet `[Effort: 3, Value: 3, ROI: 1.0]`
-
-**Discovered while shipping item 4** (see `docs/backlog-archive.md`), not caused by it — reproduces on plain `main` too. `addSet` in `src/stores/workouts.ts` derives `set_index` from `activeSets.value.length`, read synchronously per call. Two `addSet` calls fired close together (e.g. logging a superset — different exercises back to back without waiting for the first insert to resolve) can both read the same length before either has inserted, so both rows land with the same `set_index`. This corrupts the position-based pre-fill (item 9, `docs/backlog-archive.md`) for that workout — confirmed via `e2e/pre-fill.spec.ts`'s "set position tracks across exercises logged in parallel" spec, which fails intermittently (~1 in 4-8 runs) on unmodified `main`.
-
-- A client-side queue was tried and made it worse (a queued call whose turn came up after the workout was finished silently dropped the set instead of colliding) — the correct fix likely needs `set_index` assigned server-side (e.g. a Postgres default/trigger computing `count(*) + 1` scoped to `workout_id`, inside the same transaction as the insert), not a client-side workaround.
-- Low urgency for real usage (two users, not usually mashing "Add set" across exercises within tens of milliseconds of each other) but worth fixing since it's a real data-integrity bug, not just a test flake.
 
 ## Human setup / device verification
 

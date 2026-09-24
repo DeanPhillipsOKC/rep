@@ -105,17 +105,22 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   ) {
     // Captured before the await below — finishWorkout() can clear
     // activeWorkoutId.value/activeSets.value while this call is in flight,
-    // and the insert must still target the workout/index it started with.
+    // and the insert must still target the workout it started with.
     const workoutId = activeWorkoutId.value
-    const setIndex = activeSets.value.length
     if (!workoutId) return { error: new Error('No active workout') }
 
+    // set_index below is a placeholder only, to satisfy the not-null
+    // column — two addSet calls fired close together can both read the
+    // same activeSets.value.length before either insert lands, so this
+    // value can't be trusted. The `sets_set_index` DB trigger (backlog
+    // item 10, supabase/schema.sql) overwrites it server-side with the
+    // real position, which is what comes back in `data` below.
     const { data, error } = await supabase
       .from('sets')
       .insert({
         workout_id: workoutId,
         exercise_id: exerciseId,
-        set_index: setIndex,
+        set_index: activeSets.value.length,
         reps,
         weight,
         weight_unit: weightUnit,
