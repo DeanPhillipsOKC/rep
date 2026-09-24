@@ -24,9 +24,23 @@ Priority order (highest ROI first), kept in sync with the tags below:
 |---|------|--------|-------|-----|
 | 22 | Exercise creation only captures name/category — notes and rest timer need a separate edit trip | 2 | 2 | 1 |
 | 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
+| 27 | Warm up the first-run Log-screen guidance (item 26) with a designed welcome card and menu coachmark | 3 | 3 | 1 |
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
+
+### 27. Warm up the first-run Log-screen guidance (item 26) with a designed welcome card and menu coachmark `[Effort: 3, Value: 3, ROI: 1]`
+
+Reported 2026-09-24, follow-up to item 26 (shipped `90da0ea`). The zero-exercise notice and zero-template hint work but read as sterile system copy ("Add an exercise before logging a workout") rather than a welcome. User reviewed a design pass and approved it — mockups: `https://claude.ai/artifact/ES3pq5pFkw3dQQ62cdHaCv` (private; two artboards, `Main.dc.html` and `TemplateHint.dc.html`).
+
+Implement in `WorkoutLogger.vue`:
+- **Zero-exercise state** (currently the `.notice` card): replace with a warm hero card — circular mascot avatar (`/icon-512.png`, already in `public/`), "Welcome to REP" heading, one short sentence on what the app does, "Add your first exercise" button (same `emit('navigate', 'exercises')` as today). Add a small dashed-arrow SVG coachmark pointing from the card toward the hamburger menu button in the header, with a short label ("More lives in the menu") — a preview hint, not a tour step, don't over-build this into a multi-step onboarding flow. Hide the progress strip on this screen specifically (`workoutsThisWeek === 0` here is guaranteed and isn't a welcoming first thing to see) — the strip should still show once at least one exercise exists.
+- **Zero-template hint** (currently the `.hint` paragraph): replace with a small card — mascot avatar (smaller, ~40px), one sentence, inline "Create a template" link styled like the existing `.link-button`. Sits above the Start workout form, same as today, still non-blocking.
+- Match `src/style.css`'s existing tokens exactly (`--accent`, `--surface`, `--border`, etc.) — no new colors. Copy stays plain: no em dashes, no exclamation-heavy phrasing, nothing that reads templated.
+
+The coachmark SVG needs a real anchor point in `App.vue`'s actual header layout (`.menu-button`, top-right, 44px) rather than the mockup's approximate phone-frame coordinates — expect to adjust the path once it's rendering against the live header instead of eyeballing it again.
+
+No store/schema changes. No existing e2e spec asserts on the current notice/hint copy or the "Go to Exercises" button text (checked), so this should be a pure markup/style/copy change; still run the full suite since it touches `WorkoutLogger.vue`'s pre-start template structure.
 
 ### 22. Exercise creation only captures name/category — notes and rest timer need a separate edit trip `[Effort: 2, Value: 2, ROI: 1]`
 
