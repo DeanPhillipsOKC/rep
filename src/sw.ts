@@ -30,7 +30,7 @@ self.addEventListener('push', (event: PushEvent) => {
   const options: NotificationOptions & { renotify?: boolean; vibrate?: number[] } = {
     body: data.body ?? 'Time for your next set.',
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/badge-96.png',
     tag: 'rest-timer',
     renotify: true,
     vibrate: [200, 100, 200],
