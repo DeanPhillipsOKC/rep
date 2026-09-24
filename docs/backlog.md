@@ -20,7 +20,20 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-_No open feature items — see `docs/backlog-archive.md` for what's shipped._
+| # | Item | Effort | Value | ROI |
+|---|------|--------|-------|-----|
+| 15 | Per-exercise rest timer with notification | 5 | 5 | 1.0 |
+
+## Features
+
+### 15. Per-exercise rest timer with notification `[Effort: 5, Value: 5, ROI: 1.0]`
+
+Configure a rest duration per exercise; after logging a set, count down and notify the user when rest is over so they don't have to watch a clock between sets.
+
+- Add a configurable rest duration (seconds, nullable) per exercise — same shape as `setup_notes` (item 8): a column on `exercises`, editable inline in `ExerciseList.vue`.
+- After logging a set for an exercise with a configured duration, `WorkoutLogger.vue` starts a visible countdown; on completion, notify via the Notification API (`Notification` / `registration.showNotification()`), with `navigator.vibrate` as a companion/fallback. Request notification permission once, same UX shape as the existing passkey prompt.
+- **Feasibility decision (researched — don't relitigate):** a PWA can reliably fire a local notification on timer completion only while its own process is still alive — realistic for the gym use case (phone nearby, tab open, screen may briefly dim). It is **not** reliable if the phone is locked/backgrounded for the *entire* rest period, especially on iOS, without real Web Push infrastructure (VAPID keys, a subscription store, and something server-side to trigger the push at the right moment) — which conflicts with this project's zero-recurring-cost / small-surface-area constraints (`docs/architecture.md#guiding-constraints`). Build the foreground-reliable version; treat "notifies even through a full phone lock" as an explicit non-goal unless the user later wants to invest in that infrastructure.
+- Needs a **[human]** device-verification pass once built (notification permission prompt + actual delivery) on both the Android and iPhone installed PWA — add that as a checklist item below when this ships.
 
 ## Human setup / device verification
 
