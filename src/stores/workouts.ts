@@ -290,6 +290,17 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     newRecord.value = null
   }
 
+  // Backlog item 31: remove a finished workout logged in error (duplicate,
+  // wrong day, test data). `sets.workout_id` has `on delete cascade`
+  // (supabase/schema.sql), so deleting the workout row alone is enough.
+  async function deleteWorkout(id: string) {
+    const { error } = await supabase.from('workouts').delete().eq('id', id)
+    if (!error) {
+      history.value = history.value.filter((w) => w.id !== id)
+    }
+    return { error }
+  }
+
   async function fetchHistory() {
     loading.value = true
     errorMessage.value = ''
@@ -326,6 +337,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     deleteSet,
     finishWorkout,
     fetchHistory,
+    deleteWorkout,
     fetchPreviousWorkout,
     fetchTemplateVolumeHistory,
     clearVolumeHistory,

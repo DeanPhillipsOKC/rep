@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useWorkoutsStore } from '../stores/workouts'
 
 const workout = useWorkoutsStore()
+const errorMessage = ref('')
+
+// Backlog item 31: id of the card showing its "are you sure" delete confirm
+// — null means none. Same inline-toggle pattern as ExerciseList.vue's
+// editing state, since this action is destructive with no undo.
+const confirmingDeleteId = ref<string | null>(null)
 
 onMounted(() => {
   workout.fetchHistory()
@@ -17,6 +23,15 @@ function formatDate(iso: string): string {
     minute: '2-digit',
   })
 }
+
+async function confirmDelete(id: string) {
+  errorMessage.value = ''
+  const { error } = await workout.deleteWorkout(id)
+  if (error) {
+    errorMessage.value = error.message
+  }
+  confirmingDeleteId.value = null
+}
 </script>
 
 <template>
@@ -25,6 +40,7 @@ function formatDate(iso: string): string {
 
     <p v-if="workout.loading">Loading…</p>
     <p v-if="workout.errorMessage" class="error">{{ workout.errorMessage }}</p>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     <p v-if="!workout.loading && workout.history.length === 0" class="empty">No workouts logged yet.</p>
 
     <div v-for="entry in workout.history" :key="entry.id" class="card">
@@ -42,6 +58,22 @@ function formatDate(iso: string): string {
           </span>
         </li>
       </ul>
+
+      <div v-if="confirmingDeleteId === entry.id" class="confirm-delete">
+        <span class="row-sub">Delete this workout? This can't be undone.</span>
+        <div class="confirm-actions">
+          <button type="button" class="danger small" @click="confirmDelete(entry.id)">Confirm delete</button>
+          <button type="button" class="ghost small" @click="confirmingDeleteId = null">Cancel</button>
+        </div>
+      </div>
+      <button
+        v-else
+        type="button"
+        class="ghost small delete-trigger"
+        @click="confirmingDeleteId = entry.id"
+      >
+        Delete
+      </button>
     </div>
   </div>
 </template>
@@ -117,5 +149,47 @@ function formatDate(iso: string): string {
 .empty {
   text-align: center;
   padding: 32px 0;
+}
+
+.delete-trigger {
+  margin-top: 12px;
+}
+
+.confirm-delete {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.ghost.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.danger.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 </style>
