@@ -2,10 +2,11 @@
    Dark theme matches theme_color/background_color in vite.config.ts —
    this is a phone app used mid-workout, not a marketing page.
    Palette is REP's "Harvest Hare" brand kit (rep-theme-tokens.json). Rose is the
-   dominant accent; secondary/highlight/success are reserved for PRs, streaks and
-   completed-set states, not yet consumed by any component. Text on any of those
-   fills must be --accent-text (Midnight Plum) — white fails contrast on all of
-   them, per the kit's usage notes. */
+   dominant accent; secondary/highlight are reserved for streaks and completed-set
+   states, not yet consumed by any component. --success is used by the Log home
+   screen's "recent PR" stat tile (WorkoutLogger.vue). Text on any of these fills
+   must be --accent-text (Midnight Plum) — white fails contrast on all of them,
+   per the kit's usage notes. */
 
 :root {
   color-scheme: dark;

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
+import { findRecentPr } from '../lib/progress'
 import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
 import type { SetEntry, WeightUnit, WorkoutWithSets } from '../lib/types'
 
@@ -89,6 +90,51 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   function clearVolumeHistory() {
     volumeHistory.value = []
     volumeHistoryError.value = ''
+  }
+
+  // Backlog item 19: Log home screen's progress strip. Recomputed on every
+  // load rather than persisted — cheap, no migration, but only ever shows
+  // "since your last workout" (see docs/backlog.md#19 for the tradeoff).
+  const workoutsThisWeek = ref(0)
+  const recentPrExerciseName = ref<string | null>(null)
+
+  async function fetchProgressStats() {
+    const startOfWeek = new Date()
+    startOfWeek.setHours(0, 0, 0, 0)
+    startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7))
+
+    const [{ count }, { data: recent }] = await Promise.all([
+      supabase.from('workouts').select('id', { count: 'exact', head: true }).gte('performed_at', startOfWeek.toISOString()),
+      supabase
+        .from('workouts')
+        .select('id, sets(exercise_id, reps, weight, exercises(name))')
+        .order('performed_at', { ascending: false })
+        .limit(1),
+    ])
+    workoutsThisWeek.value = count ?? 0
+
+    const recentWorkout = recent?.[0] as unknown as (WorkoutWithSets & { id: string }) | undefined
+    if (!recentWorkout || recentWorkout.sets.length === 0) {
+      recentPrExerciseName.value = null
+      return
+    }
+
+    const exerciseIds = [...new Set(recentWorkout.sets.map((s) => s.exercise_id))]
+    const { data: historicalSets } = await supabase
+      .from('sets')
+      .select('exercise_id, reps, weight')
+      .in('exercise_id', exerciseIds)
+      .neq('workout_id', recentWorkout.id)
+
+    recentPrExerciseName.value = findRecentPr(
+      recentWorkout.sets.map((s) => ({
+        exerciseId: s.exercise_id,
+        exerciseName: s.exercises?.name ?? 'Unknown',
+        reps: s.reps,
+        weight: s.weight,
+      })),
+      (historicalSets ?? []).map((s) => ({ exerciseId: s.exercise_id, reps: s.reps, weight: s.weight }))
+    )
   }
 
   async function startWorkout(notes: string | null = null, templateId: string | null = null) {
@@ -272,6 +318,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     volumeHistory,
     volumeHistoryError,
     newRecord,
+    workoutsThisWeek,
+    recentPrExerciseName,
     startWorkout,
     addSet,
     updateSet,
@@ -281,5 +329,6 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     fetchPreviousWorkout,
     fetchTemplateVolumeHistory,
     clearVolumeHistory,
+    fetchProgressStats,
   }
 })

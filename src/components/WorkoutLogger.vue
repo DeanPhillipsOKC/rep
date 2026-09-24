@@ -46,6 +46,7 @@ watch(
 onMounted(() => {
   if (exercises.exercises.length === 0) exercises.fetchExercises()
   if (templates.templates.length === 0) templates.fetchTemplates()
+  workout.fetchProgressStats()
 })
 
 // Backlog item 3: sets from the previous workout against this template,
@@ -230,6 +231,7 @@ async function handleFinish() {
     await workout.fetchTemplateVolumeHistory(finishedTemplateId, templateExercises)
     showingVolumeChart.value = true
   }
+  workout.fetchProgressStats()
 }
 
 function dismissVolumeChart() {
@@ -248,19 +250,32 @@ function dismissVolumeChart() {
       <button type="button" class="ghost finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
     </div>
 
-    <form v-else-if="!workout.activeWorkoutId" class="card" @submit.prevent="handleStart">
-      <label for="workout-template">Template (optional)</label>
-      <select id="workout-template" v-model="templateId">
-        <option value="">No template — freeform</option>
-        <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
-          {{ template.name }}
-        </option>
-      </select>
+    <template v-else-if="!workout.activeWorkoutId">
+      <div class="progress-strip">
+        <div class="stat-tile">
+          <span class="stat-value">{{ workout.workoutsThisWeek }}</span>
+          <span class="stat-label">{{ workout.workoutsThisWeek === 1 ? 'workout' : 'workouts' }} this week</span>
+        </div>
+        <div v-if="workout.recentPrExerciseName" class="stat-tile stat-tile-pr">
+          <span class="stat-value">PR</span>
+          <span class="stat-label">{{ workout.recentPrExerciseName }}</span>
+        </div>
+      </div>
 
-      <label for="workout-notes">Notes (optional)</label>
-      <input id="workout-notes" v-model="notes" type="text" />
-      <button type="submit">Start workout</button>
-    </form>
+      <form class="card" @submit.prevent="handleStart">
+        <label for="workout-template">Template (optional)</label>
+        <select id="workout-template" v-model="templateId">
+          <option value="">No template — freeform</option>
+          <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
+            {{ template.name }}
+          </option>
+        </select>
+
+        <label for="workout-notes">Notes (optional)</label>
+        <input id="workout-notes" v-model="notes" type="text" />
+        <button type="submit">Start workout</button>
+      </form>
+    </template>
 
     <div v-else>
       <p v-if="exercises.activeExercises.length === 0" class="empty">
@@ -433,6 +448,47 @@ function dismissVolumeChart() {
 </template>
 
 <style scoped>
+.progress-strip {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-tile {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-tile-pr {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.stat-tile-pr .stat-value,
+.stat-tile-pr .stat-label {
+  color: var(--accent-text);
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

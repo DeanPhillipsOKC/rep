@@ -1,0 +1,41 @@
+import { test, expect } from '@playwright/test'
+import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
+
+// Covers docs/backlog.md item 19: Log home screen's progress strip. Reads
+// the "workouts this week" tile before/after so the test doesn't depend on
+// the shared test account's pre-existing count (other specs also log
+// workouts). Tests run with a single worker (playwright.config.ts), so no
+// other spec can log a workout between this test's before/after reads.
+test('progress strip: workouts-this-week count and recent-PR tile update after finishing a workout', async ({
+  page,
+}) => {
+  const stamp = Date.now()
+  const exerciseName = `E2E Deadlift ${stamp}`
+
+  await signInAsTestUser(page)
+  await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
+
+  const weekCountBefore = Number(await page.locator('.stat-tile').first().locator('.stat-value').textContent())
+
+  await goTo(page, 'Exercises')
+  await page.getByLabel('Name').fill(exerciseName)
+  await page.getByRole('button', { name: 'Add exercise' }).click()
+  await expect(page.getByText(exerciseName)).toBeVisible()
+
+  await goTo(page, 'Log')
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await page.getByLabel('Reps').fill('5')
+  await page.getByLabel('Weight').fill('135')
+  await page.getByRole('button', { name: 'Add set' }).click()
+  await expect(page.locator('.row', { hasText: exerciseName })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Finish workout' }).click()
+
+  await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
+  await expect(page.locator('.stat-tile').first().locator('.stat-value')).toHaveText(String(weekCountBefore + 1))
+
+  // First-ever set for this exercise is an all-time best, so it's this
+  // workout's (and therefore the strip's) recent PR.
+  await expect(page.locator('.stat-tile-pr .stat-label')).toHaveText(exerciseName)
+})
