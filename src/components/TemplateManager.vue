@@ -13,6 +13,21 @@ const expandedId = ref<string | null>(null)
 const exerciseId = ref('')
 const targetSets = ref<number | null>(null)
 
+// Backlog item 35: id of the row showing its "are you sure" archive confirm
+// — null means none. Same inline-toggle pattern as WorkoutHistory.vue's
+// delete confirm, since archiving here has no restore path (see item 24's
+// still-open human decision).
+const confirmingArchiveId = ref<string | null>(null)
+
+async function confirmArchive(templateId: string) {
+  errorMessage.value = ''
+  const { error } = await templates.archiveTemplate(templateId)
+  if (error) {
+    errorMessage.value = error.message
+  }
+  confirmingArchiveId.value = null
+}
+
 onMounted(() => {
   templates.fetchTemplates()
   if (exercises.exercises.length === 0) exercises.fetchExercises()
@@ -128,11 +143,18 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
 
     <ul class="list">
       <li v-for="template in templates.activeTemplates" :key="template.id" class="row-wrap">
-        <div class="row" @click="toggleExpand(template.id)">
+        <div v-if="confirmingArchiveId !== template.id" class="row" @click="toggleExpand(template.id)">
           <span class="row-title">{{ template.name }}</span>
-          <button type="button" class="ghost small" @click.stop="templates.archiveTemplate(template.id)">
+          <button type="button" class="ghost small" @click.stop="confirmingArchiveId = template.id">
             Archive
           </button>
+        </div>
+        <div v-else class="row confirm-archive">
+          <span class="row-sub">Archive this template? This can't be undone.</span>
+          <div class="confirm-actions">
+            <button type="button" class="danger small" @click="confirmArchive(template.id)">Confirm archive</button>
+            <button type="button" class="ghost small" @click="confirmingArchiveId = null">Cancel</button>
+          </div>
         </div>
 
         <div v-if="expandedId === template.id" class="expanded">
@@ -288,6 +310,25 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
 }
 
 .ghost.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.danger.small {
   min-height: 36px;
   padding: 0 12px;
   font-size: 0.85rem;
