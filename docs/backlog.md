@@ -22,12 +22,27 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
+| 31 | Ability to delete a workout from History | 2 | 3 | 1.5 |
 | 25 | Archiving an exercise doesn't remove it from templates it's already attached to | 3 | 3 | 1 |
 | 28 | In-app rest timer screen: animated bunny, cooldown progress bar, skip option | 5 | 5 | 1 |
 | 29 | Rotating words-of-encouragement copy on the rest timer screen | 2 | 2 | 1 |
+| 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
+| 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
+
+### 31. Ability to delete a workout from History `[Effort: 2, Value: 3, ROI: 1.5]`
+
+Requested 2026-09-24. `WorkoutHistory.vue` is read-only today — no way to remove a workout logged in error (duplicate, wrong day, test data) once it's finished. Distinct from item 13 (already shipped), which covers editing/deleting an individual *set* while a workout is still in progress; this is deleting the whole workout row after the fact, from History. `sets.workout_id` already has `on delete cascade` (`supabase/schema.sql`), so deleting the `workouts` row alone is enough — no separate cleanup of its sets needed. Fix direction: a delete affordance per History card, behind a confirm step (destructive, no undo) — `useWorkoutsStore` needs a new `deleteWorkout(id)` removing the row and updating `history` locally, same pattern as `archiveExercise`. Worth deciding alongside item 32 whether both live behind one shared "edit workout" entry point or delete stays its own simpler action.
+
+### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
+
+Requested 2026-09-24, split out from item 31 as a separate item since editing is materially more work than deleting. Once a workout is finished, `WorkoutHistory.vue` offers no way to fix a wrong rep/weight/RPE entry, add or remove a set, or edit the workout's notes — the only escape today is deleting the whole workout (item 31) and re-logging it. Fix direction: reuse as much of the active-workout edit/delete-a-set UI from item 13 as reasonably fits a finished workout's card, plus notes editing. Needs a decision on scope: allow adding a brand-new set to a past workout (re-triggers `set_index`/volume-chart implications for any template it's linked to), or restrict editing to sets that already exist. Depends on item 31 landing first isn't required, but sharing a UI entry point ("Edit" on the History card) is worth designing once instead of twice.
+
+### 30. Remove the unused `exercises.category` field `[Effort: 2, Value: 2, ROI: 1]`
+
+Decided 2026-09-24 (user call, replacing the prior "what is category actually for" open question): drop it rather than invent a use. It's a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing filters, groups, or otherwise behaves differently based on it. Remove the input from `ExerciseList.vue`'s create form and the `<div v-if="exercise.category">` display, drop the param from `createExercise` (`src/stores/exercises.ts`), and drop the column via a migration the user applies directly in the Supabase SQL editor (same no-DDL-access pattern as every other schema change here) — `alter table exercises drop column category;`. If a real use for it turns up later, re-add it fresh rather than trying to resurrect this one. Touches `docs/architecture.md`'s data-model table. Note for item 24 (pencil/trash icon redesign, not yet built): its write-up currently lists "category" as one of the fields the consolidated edit flyout should cover — drop that if this item ships first.
 
 ### 25. Archiving an exercise doesn't remove it from templates it's already attached to `[Effort: 3, Value: 3, ROI: 1]`
 
@@ -59,7 +74,6 @@ Depends on the archive-vs-delete decision below (**[human]**) — what the trash
 - [ ] **[human]** *(optional, cosmetic)* WebAuthn Relying Party Display Name in the Supabase dashboard (Authentication → Passkeys) still reads "Workout Tracker" from before the REP rebrand — some browsers surface this string in the passkey UI. Update it there if you want it to match; it's a dashboard setting, not something in the repo.
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
-- [ ] **[human]** *Future discussion:* what is the `exercises.category` field actually for? It's currently just a free-text label (push/pull/legs/cardio suggested via a datalist) set at creation and shown under the exercise's name — nothing in the app filters, groups, or otherwise behaves differently based on it. Needs a decision: define a real purpose for it (e.g. filtering the exercise picker, grouping template exercises) or drop the field if it's not earning its keep.
 - [ ] **[human]** *Blocks item 24:* "Archive" on an exercise (`ExerciseList.vue`'s "Archive" button, `exercises.is_archived`) has no restore path anywhere in the UI — no archived-exercises view, no "unarchive" action. From the user's perspective it already behaves exactly like a permanent delete; the "archive" label just implies a recoverability that doesn't exist. Needs a decision between: (a) build real restore (an archived-exercises list + unarchive action), or (b) keep today's soft-delete mechanism as-is at the DB level — it's what lets an exercise be removed without breaking the FK reference from existing `sets`/`workout_template_exercises` rows, since neither has an `ON DELETE` clause and a real hard delete would fail outright while any history references it — but relabel/reframe the UI as "Delete" with a confirmation step, dropping the "archive" pretense. (b) is the cheaper option and matches what the user described wanting ("if there's not a way to restore, we should just treat it as delete").
 
 ---
