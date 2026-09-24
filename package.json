@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc -b --noEmit",
     "test:session": "node scripts/create-test-session.mjs",
+    "wipe:account": "node scripts/wipe-account-data.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

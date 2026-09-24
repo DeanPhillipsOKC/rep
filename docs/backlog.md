@@ -22,19 +22,11 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 5 | On-demand data-wipe script | 2 | 3 | 1.5 |
 | 7 | Edit exercise name | 2 | 3 | 1.5 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
 | 10 | Fix set_index race in addSet | 3 | 3 | 1.0 |
 
 ## Features
-
-### 5. On-demand data-wipe script `[Effort: 2, Value: 3, ROI: 1.5]`
-
-A script (not wired into the UI) that clears all workout data for a given account, so repeated manual/exploratory test scenarios don't accumulate stale data.
-
-- Must take an explicit user id/email argument and refuse to run without one — never a blanket wipe that could hit both real accounts.
-- Service-role key, local-only — same handling constraints as item 1.
 
 ### 6. Post-workout volume chart `[Effort: 8, Value: 8, ROI: 1.0]`
 
