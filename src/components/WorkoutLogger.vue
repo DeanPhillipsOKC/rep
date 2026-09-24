@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
-import type { SetWithExercise, WeightUnit } from '../lib/types'
+import type { SetEntry, SetWithExercise, WeightUnit } from '../lib/types'
 
 const exercises = useExercisesStore()
 const templates = useTemplatesStore()
@@ -152,6 +152,41 @@ async function handleAddSet() {
   }
 }
 
+// Backlog item 13: inline edit for a set still in the active workout, same
+// pattern as ExerciseList.vue's name/notes editors — one row's id tracked
+// here, null means no row is being edited.
+const editingSetId = ref<string | null>(null)
+const editReps = ref<number | null>(null)
+const editWeight = ref<number | null>(null)
+const editWeightUnit = ref<WeightUnit>('lb')
+const editRpe = ref<number | null>(null)
+
+function startEditingSet(set: SetEntry) {
+  editingSetId.value = set.id
+  editReps.value = set.reps
+  editWeight.value = set.weight
+  editWeightUnit.value = set.weight_unit
+  editRpe.value = set.rpe
+}
+
+async function saveSetEdit(id: string) {
+  errorMessage.value = ''
+  if (editReps.value === null || editWeight.value === null) return
+  const { error } = await workout.updateSet(id, editReps.value, editWeight.value, editWeightUnit.value, editRpe.value)
+  if (error) {
+    errorMessage.value = error.message
+  } else {
+    editingSetId.value = null
+  }
+}
+
+async function handleDeleteSet(id: string) {
+  errorMessage.value = ''
+  if (editingSetId.value === id) editingSetId.value = null
+  const { error } = await workout.deleteSet(id)
+  if (error) errorMessage.value = error.message
+}
+
 function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
@@ -284,15 +319,74 @@ async function handleFinish() {
       </template>
 
       <ol class="list">
-        <li v-for="(set, index) in workout.activeSets" :key="set.id" class="row">
-          <span class="row-index">{{ index + 1 }}</span>
-          <span class="row-body">
-            <span class="row-title">{{ exerciseName(set.exercise_id) }}</span>
-            <span class="row-sub">
-              {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
-              <template v-if="set.rpe !== null"> · RPE {{ set.rpe }}</template>
+        <li v-for="(set, index) in workout.activeSets" :key="set.id" class="row-wrap">
+          <div class="row">
+            <span class="row-index">{{ index + 1 }}</span>
+            <span class="row-body">
+              <span class="row-title">{{ exerciseName(set.exercise_id) }}</span>
+              <span class="row-sub">
+                {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
+                <template v-if="set.rpe !== null"> · RPE {{ set.rpe }}</template>
+              </span>
             </span>
-          </span>
+            <div class="row-actions">
+              <button type="button" class="ghost small" @click="startEditingSet(set)">Edit</button>
+              <button type="button" class="ghost small" @click="handleDeleteSet(set.id)">Delete</button>
+            </div>
+          </div>
+
+          <form v-if="editingSetId === set.id" class="set-edit-form" @submit.prevent="saveSetEdit(set.id)">
+            <div class="grid-2">
+              <div>
+                <label :for="`edit-reps-${set.id}`">Reps</label>
+                <input
+                  :id="`edit-reps-${set.id}`"
+                  v-model.number="editReps"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  required
+                />
+              </div>
+              <div>
+                <label :for="`edit-weight-${set.id}`">Weight</label>
+                <input
+                  :id="`edit-weight-${set.id}`"
+                  v-model.number="editWeight"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  step="0.5"
+                  required
+                />
+              </div>
+            </div>
+            <div class="grid-2">
+              <div>
+                <label :for="`edit-unit-${set.id}`">Unit</label>
+                <select :id="`edit-unit-${set.id}`" v-model="editWeightUnit">
+                  <option value="lb">lb</option>
+                  <option value="kg">kg</option>
+                </select>
+              </div>
+              <div>
+                <label :for="`edit-rpe-${set.id}`">RPE (optional)</label>
+                <input
+                  :id="`edit-rpe-${set.id}`"
+                  v-model.number="editRpe"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  max="10"
+                  step="0.5"
+                />
+              </div>
+            </div>
+            <div class="set-edit-actions">
+              <button type="submit">Save</button>
+              <button type="button" class="ghost small" @click="editingSetId = null">Cancel</button>
+            </div>
+          </form>
         </li>
       </ol>
 
@@ -332,14 +426,18 @@ async function handleFinish() {
   margin-bottom: 20px;
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.row-wrap {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px 14px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
 }
 
 .row-index {
@@ -358,6 +456,7 @@ async function handleFinish() {
 .row-body {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .row-title {
@@ -369,10 +468,35 @@ async function handleFinish() {
   color: var(--text-dim);
 }
 
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.set-edit-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.set-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .ghost {
   background: transparent;
   border-color: var(--border);
   color: var(--text-dim);
+}
+
+.ghost.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .last-time-list {

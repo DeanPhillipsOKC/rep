@@ -160,6 +160,43 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // shouldn't survive — it shadows real workouts in the "last time" lookup
   // (see fetchPreviousWorkout) and would skew any future reporting that
   // scans `workouts` directly. Delete it instead of leaving an empty row.
+  // Backlog item 13: fix a fat-fingered reps/weight/rpe entry on a set still
+  // in the active, not-yet-finished workout. Only touches activeSets — the
+  // History view's past workouts have no edit affordance and shouldn't.
+  async function updateSet(
+    id: string,
+    reps: number,
+    weight: number,
+    weightUnit: WeightUnit,
+    rpe: number | null
+  ) {
+    const { error } = await supabase
+      .from('sets')
+      .update({ reps, weight, weight_unit: weightUnit, rpe })
+      .eq('id', id)
+    if (!error) {
+      const set = activeSets.value.find((s) => s.id === id)
+      if (set) {
+        set.reps = reps
+        set.weight = weight
+        set.weight_unit = weightUnit
+        set.rpe = rpe
+      }
+    }
+    return { error }
+  }
+
+  // Backlog item 13: remove a set logged in error from the active workout.
+  // Deliberately doesn't renumber set_index on the remaining rows — see
+  // docs/backlog-archive.md item 9's pre-fill note on why gaps are harmless.
+  async function deleteSet(id: string) {
+    const { error } = await supabase.from('sets').delete().eq('id', id)
+    if (!error) {
+      activeSets.value = activeSets.value.filter((s) => s.id !== id)
+    }
+    return { error }
+  }
+
   async function finishWorkout() {
     await waitForPendingWrites()
 
@@ -201,6 +238,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     newRecord,
     startWorkout,
     addSet,
+    updateSet,
+    deleteSet,
     finishWorkout,
     fetchHistory,
     fetchPreviousWorkout,

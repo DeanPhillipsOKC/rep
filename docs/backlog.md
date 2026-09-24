@@ -23,7 +23,6 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 12 | Adding an exercise to a template can race a concurrent add | 2 | 2 | 1.0 |
-| 13 | Edit/delete a set within an in-progress workout | 5 | 5 | 1.0 |
 | 14 | Edit target set count on a template exercise after creation | 3 | 3 | 1.0 |
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
 
@@ -44,14 +43,6 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 
 - Observed once during a 15-repeat run of `e2e/pre-fill.spec.ts`'s "logged in parallel" spec: an `.exercise-row` for the second-added exercise never appeared, timing out at 5s. Not yet reproduced in isolation or characterized further — treat this as a lead, not a confirmed root cause.
 - Fix direction, if confirmed: same pattern as item 11's third leg — track an in-flight/submitting ref and disable the "Add" button for the duration of the request, so a real user (or a fast script) can't fire overlapping submissions.
-
-### 13. Edit/delete a set within an in-progress workout `[Effort: 5, Value: 5, ROI: 1.0]`
-
-Right now `WorkoutLogger.vue`'s in-progress set list (`workout.activeSets`) is append-only — no way to fix a fat-fingered reps/weight entry or remove a set logged in error before finishing. Should only apply to the active, not-yet-finished workout (`activeWorkoutId`), not historical workouts in the History view.
-
-- Needs `updateSet`/`deleteSet` in `src/stores/workouts.ts` (RLS already covers this — `sets` has an owner-inherited `for all` policy, `supabase/policies.sql`, so no migration needed) and inline edit/delete affordances per row in the `<ol class="list">` in `WorkoutLogger.vue`, same pattern as the existing exercise-name/setup-notes inline edits.
-- Deleting a set doesn't need to renumber `set_index` on the remaining rows — position-based pre-fill (item 9, `docs/backlog-archive.md`) indexes into the JS-grouped array by position, not the raw `set_index` value, so gaps are harmless.
-- Editing/deleting the record-check-triggering set (item 4, PR toast) isn't in scope for the record recompute — leave the best-volume cache as-is; a stale "new record" toast for a since-edited/deleted set is a minor, acceptable inconsistency.
 
 ### 14. Edit target set count on a template exercise after creation `[Effort: 3, Value: 3, ROI: 1.0]`
 
