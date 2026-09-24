@@ -23,6 +23,7 @@ Priority order (highest ROI first), kept in sync with the tags below:
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
 | 6 | Post-workout volume chart | 8 | 8 | 1.0 |
+| 11 | Finishing/switching a workout can race an in-flight set write | 3 | 3 | 1.0 |
 
 ## Features
 
@@ -34,6 +35,14 @@ At the end of a workout, show total volume (Σ reps × weight across all sets) f
 - **Projected line:** for any workout instance where one or more template exercises were skipped or under-completed, backfill the missing exercise(s)' numbers from that exercise's own most recent prior appearance (straight carry-forward) before summing volume for that point.
 - **Decision (explicit — don't recompute):** no weighted-percentage formula. Missing/incomplete pieces are filled with the last-known values for that exercise, on the assumption the user wouldn't have done worse than before.
 - **Depends on:** templates (shipped — `docs/backlog-archive.md`; define what "complete" means) and the last-workout lookup (shipped — `docs/backlog-archive.md`; `fetchPreviousWorkout` in `src/stores/workouts.ts`).
+
+### 11. Finishing/switching a workout can race an in-flight set write `[Effort: 3, Value: 3, ROI: 1.0]`
+
+**Discovered while verifying item 10's fix** (see `docs/backlog-archive.md`) — a separate bug from the set_index race, not fixed by that trigger. `handleAddSet`/`handleFinish`/`handleStart` in `src/components/WorkoutLogger.vue` are each `async` and do `await` their own store call, but nothing stops the user (or `e2e/pre-fill.spec.ts`'s own script) from tapping "Add set" and then immediately "Finish workout" before the first tap's DB insert has actually committed — there's no pending-write guard in `finishWorkout`/`startWorkout` (`src/stores/workouts.ts`). When that happens, `fetchPreviousWorkout` for the *next* workout can run before the prior workout's last set has landed, so "last time" comes up one set short and position-based pre-fill (item 9, `docs/backlog-archive.md`) mismatches for that exercise.
+
+- Reproduced directly: re-ran `e2e/pre-fill.spec.ts`'s "set position tracks across exercises logged in parallel" spec ~15 times post-migration; a handful of runs failed with the previous workout showing fewer sets than were logged, and network logging showed no failed `sets` inserts — consistent with a timing gap between "test/user moves on" and "insert actually commits," not a data error.
+- Real-usage risk is narrow but not zero: a double-tap on a slow gym connection (the exact case `docs/architecture.md`'s offline-write section flags) could hit this.
+- Fix direction: track in-flight `addSet` calls (e.g. a pending-writes counter/ref in `workouts.ts`) and have `finishWorkout`/`startWorkout` await any that are still outstanding before proceeding, rather than assuming a click means the write already landed.
 
 ## Human setup / device verification
 
