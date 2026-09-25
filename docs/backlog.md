@@ -20,13 +20,12 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-1. Item 42 — First-launch onboarding screen [ROI 1.7]
-2. Item 43 — Redesigned sign-in screen (passkey-first) [ROI 1.7]
-3. Item 44 — Home screen visual refresh [ROI 1.7]
-4. Item 41 — Bottom tab bar navigation (replaces hamburger drawer) [ROI 1.6]
-5. Item 45 — History screen visual refresh [ROI 1.5]
-6. Item 46 — Templates screen visual refresh [ROI 1.5]
-7. Item 47 — Exercises screen visual refresh [ROI 1.5]
+1. Item 43 — Redesigned sign-in screen (passkey-first) [ROI 1.7]
+2. Item 44 — Home screen visual refresh [ROI 1.7]
+3. Item 41 — Bottom tab bar navigation (replaces hamburger drawer) [ROI 1.6]
+4. Item 45 — History screen visual refresh [ROI 1.5]
+5. Item 46 — Templates screen visual refresh [ROI 1.5]
+6. Item 47 — Exercises screen visual refresh [ROI 1.5]
 
 ## Features
 
@@ -34,7 +33,6 @@ Design source for items 41–47: private canvas mockup at
 https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced below match its
 canvas). Brand identity (RepBunny) is cute, functional, cool.
 
-- [ ] **First-launch onboarding screen** (item 42): add a welcome screen shown once before sign-in (mascot, "RepBunny" wordmark, tagline, single "Let's hop in" CTA into the sign-in screen) — the app currently opens straight into the login form with no first impression. Needs a local "has seen onboarding" flag (e.g. localStorage) so it doesn't reappear every launch. See the "Onboarding" artboard — its mascot image is staged at `public/onboarding-bunny.png`. Depends on items 39 and 40 (both shipped). [Effort: 3, Value: 5, ROI: 1.7]
 - [ ] **Redesigned sign-in screen (passkey-first)** (item 43): rework `LoginForm.vue` to lead with "Sign in with passkey" as the primary CTA — matching the actual auth model (no signup, two allowlisted users, passkey-first per `docs/architecture.md#authentication`) — and demote the email/magic-link path to a secondary fallback below a divider, instead of today's flat form. Purely a front-end restructure; calls the same `registerPasskey`/`signInWithPasskey`/magic-link paths already in place. See the "Auth" artboard. Depends on item 40. [Effort: 3, Value: 5, ROI: 1.7]
 - [ ] **Home screen visual refresh** (item 44): restyle the Log/Home screen's existing progress strip (item 19, archived) and template picker — swap the plain "workouts this week" number for a paw-print week tracker, give the PR tile a more celebratory treatment, and turn the template `<select>` into quick-pick chips above the existing form. No new data, same underlying state, restyled. See the "Home" artboard. Depends on item 40. [Effort: 3, Value: 5, ROI: 1.7]
 - [ ] **Bottom tab bar navigation** (item 41): replace `AppMenu.vue`'s hamburger drawer (item 18, archived) with a persistent bottom tab bar (Home / History / Templates / Exercises) so primary destinations are always one tap away instead of hidden behind a menu; frees the header for a lighter secondary action. Requires reworking `e2e/fixtures/nav.ts`'s `goTo` helper and every spec that uses it. See the bottom nav on every phone artboard. Depends on item 40 (active-tab color tokens). [Effort: 5, Value: 8, ROI: 1.6]

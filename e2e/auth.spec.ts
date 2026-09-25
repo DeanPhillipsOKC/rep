@@ -3,6 +3,7 @@ import { signInAsTestUser } from './fixtures/auth'
 
 test('shows the login form when signed out', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('button', { name: /let's hop in/i }).click()
   await expect(page.getByLabel('Email')).toBeVisible()
   await expect(page.getByRole('button', { name: /sign out/i })).not.toBeVisible()
 })
