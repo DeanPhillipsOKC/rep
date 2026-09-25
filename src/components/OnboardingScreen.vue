@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const emit = defineEmits<{ continue: [] }>()
+const appVersion = __APP_VERSION__
 </script>
 
 <template>
@@ -9,7 +10,7 @@ const emit = defineEmits<{ continue: [] }>()
 
     <div class="content">
       <div class="mascot">
-        <img src="/onboarding-bunny.png" alt="" />
+        <img src="/icon-512.png" alt="" />
       </div>
 
       <h1 class="wordmark">RepBunny</h1>
@@ -28,11 +29,7 @@ const emit = defineEmits<{ continue: [] }>()
         </svg>
       </button>
 
-      <div class="dots" aria-hidden="true">
-        <span class="dot active"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-      </div>
+      <p class="version">{{ appVersion }}</p>
     </div>
   </div>
 </template>
@@ -81,8 +78,8 @@ const emit = defineEmits<{ continue: [] }>()
 }
 
 .mascot {
-  width: 220px;
-  height: 220px;
+  width: 280px;
+  height: 280px;
   flex-shrink: 0;
 }
 
@@ -133,21 +130,10 @@ const emit = defineEmits<{ continue: [] }>()
   background: var(--accent-pressed);
 }
 
-.dots {
-  display: flex;
-  gap: 7px;
-  margin-top: 32px;
-}
-
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.dot.active {
-  width: 22px;
-  background: var(--accent);
+.version {
+  margin: 32px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  opacity: 0.6;
 }
 </style>
