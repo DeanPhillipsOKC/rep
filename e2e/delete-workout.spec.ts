@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
@@ -7,8 +7,7 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // Covers docs/backlog.md item 31: remove a finished workout logged in error
 // from History. `sets.workout_id` has `on delete cascade`, so this also
 // confirms the workout row itself is actually gone, not just hidden.
-test('delete a workout from History', async ({ page }) => {
-  const stamp = Date.now()
+test('delete a workout from History', async ({ page, stamp }) => {
   const exerciseName = `E2E Delete Workout ${stamp}`
   const notes = `E2E delete-workout ${stamp}`
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
@@ -8,8 +8,7 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // having to delete the whole thing (item 31) and re-log it. Scoped to sets
 // that already exist on the workout — adding a brand-new set to a finished
 // workout is out of scope for this item.
-test('edit notes and a set, and delete a set, on a past workout in History', async ({ page }) => {
-  const stamp = Date.now()
+test('edit notes and a set, and delete a set, on a past workout in History', async ({ page, stamp }) => {
   const exerciseName = `E2E Edit Past Workout ${stamp}`
   const notes = `E2E edit-past-workout ${stamp}`
   const updatedNotes = `${notes} (fixed)`

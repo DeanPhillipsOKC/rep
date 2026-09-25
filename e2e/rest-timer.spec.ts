@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
@@ -9,8 +9,7 @@ import { goTo } from './fixtures/nav'
 // browser permission grant and a deployed Edge Function — that's the
 // [human] device-verification pass noted in docs/backlog.md, not something
 // this spec can exercise headlessly.
-test('exercise rest timer: add, edit, and clear a duration', async ({ page }) => {
-  const stamp = Date.now()
+test('exercise rest timer: add, edit, and clear a duration', async ({ page, stamp }) => {
   const exerciseName = `E2E Leg Curl ${stamp}`
 
   await signInAsTestUser(page)

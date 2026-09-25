@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 8: add setup notes to an exercise, confirm
 // they persist in the Exercises tab, and confirm they surface next to the
 // set-entry form while logging a workout (not just in the Exercises tab).
-test('exercise setup notes: add, edit, and see them while logging', async ({ page }) => {
-  const stamp = Date.now()
+test('exercise setup notes: add, edit, and see them while logging', async ({ page, stamp }) => {
   const exerciseName = `E2E Leg Press ${stamp}`
   const initialNotes = 'Seat position 4, back pad 2'
   const updatedNotes = 'Seat position 5, back pad 2'

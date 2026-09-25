@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 
 // Covers docs/backlog.md item 9: a workout finished with zero sets logged
 // must not leave a `workouts` row behind. Confirms via the admin client that
 // the row is actually gone from the database, not just hidden from the UI.
-test('finishing a workout with no sets deletes the workout row', async ({ page }) => {
-  const stamp = Date.now()
+test('finishing a workout with no sets deletes the workout row', async ({ page, stamp }) => {
   const notes = `E2E zero-set ${stamp}`
 
   await signInAsTestUser(page)

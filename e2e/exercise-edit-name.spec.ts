@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 7: rename an existing exercise without
 // archiving it, and confirm the new name persists and shows up where the
 // exercise is used elsewhere (the workout logging exercise picker).
-test('edit exercise name: rename and see it reflected elsewhere', async ({ page }) => {
-  const stamp = Date.now()
+test('edit exercise name: rename and see it reflected elsewhere', async ({ page, stamp }) => {
   const originalName = `E2E Bench Press ${stamp}`
   const renamedName = `E2E Incline Bench Press ${stamp}`
 

@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 13: fix or remove a set logged in error while
 // a workout is still in progress, without having to finish and re-log.
-test('edit and delete a set in an active workout', async ({ page }) => {
-  const stamp = Date.now()
+test('edit and delete a set in an active workout', async ({ page, stamp }) => {
   const exerciseName = `E2E Overhead Press ${stamp}`
 
   await signInAsTestUser(page)

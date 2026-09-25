@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
@@ -6,8 +6,7 @@ import { goTo } from './fixtures/nav'
 // immediately on click with no way back — this checks the inline confirm
 // step (same pattern as WorkoutHistory.vue's workout delete) both cancels
 // without archiving and, once confirmed, actually archives.
-test('archiving a template requires an explicit confirm step', async ({ page }) => {
-  const stamp = Date.now()
+test('archiving a template requires an explicit confirm step', async ({ page, stamp }) => {
   const templateName = `E2E Archive Confirm ${stamp}`
 
   await signInAsTestUser(page)

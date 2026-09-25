@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 24: "Archive" (no restore path anywhere in the
 // UI) is relabeled "Delete" and now requires an explicit confirm step,
 // same inline-toggle pattern as e2e/template-archive-confirm.spec.ts.
-test('deleting an exercise requires an explicit confirm step', async ({ page }) => {
-  const stamp = Date.now()
+test('deleting an exercise requires an explicit confirm step', async ({ page, stamp }) => {
   const exerciseName = `E2E Delete Confirm ${stamp}`
 
   await signInAsTestUser(page)

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
@@ -10,8 +10,8 @@ import { goTo } from './fixtures/nav'
 // workouts, not scoped to the current workout or template.
 test('Record celebration: shows on a new all-time best, blocks until dismissed, and stays quiet otherwise', async ({
   page,
+  stamp,
 }) => {
-  const stamp = Date.now()
   const exerciseName = `E2E Overhead Press ${stamp}`
 
   await signInAsTestUser(page)
@@ -69,8 +69,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
 
 // Dismissing via a tap on the overlay itself (not just the "Nice!" button)
 // matches the approved mockup's "tap anywhere to dismiss" affordance.
-test('Record celebration: tapping the overlay also dismisses it', async ({ page }) => {
-  const stamp = Date.now()
+test('Record celebration: tapping the overlay also dismisses it', async ({ page, stamp }) => {
   const exerciseName = `E2E Incline Press ${stamp}`
 
   await signInAsTestUser(page)

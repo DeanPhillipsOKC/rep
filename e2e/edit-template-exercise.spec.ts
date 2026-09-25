@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 14: change a template exercise's target set
 // count after creation without removing and re-adding it (which would lose
 // its position in the routine).
-test('edit target set count on a template exercise', async ({ page }) => {
-  const stamp = Date.now()
+test('edit target set count on a template exercise', async ({ page, stamp }) => {
   const exerciseName = `E2E Incline Press ${stamp}`
   const templateName = `E2E Upper Day ${stamp}`
 

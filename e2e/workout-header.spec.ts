@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
@@ -8,8 +8,7 @@ import { goTo } from './fixtures/nav'
 // exercise chips and the exercise <select> both just set exerciseId, so
 // picking via either one should visibly highlight the matching chip rather
 // than leaving them looking like two unrelated controls.
-test('active workout shows a dynamic header, and the exercise chip/select stay in sync', async ({ page }) => {
-  const stamp = Date.now()
+test('active workout shows a dynamic header, and the exercise chip/select stay in sync', async ({ page, stamp }) => {
   const exerciseAName = `E2E Bench ${stamp}`
   const exerciseBName = `E2E Row ${stamp}`
   const templateName = `E2E Push Day ${stamp}`

@@ -1,12 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 22: setup notes and rest timer can be set on
 // the create form itself, without the forced round-trip through the
 // per-row editors (e2e/exercise-notes.spec.ts, e2e/rest-timer.spec.ts).
-test('create exercise: name, notes, and rest timer in one step', async ({ page }) => {
-  const stamp = Date.now()
+test('create exercise: name, notes, and rest timer in one step', async ({ page, stamp }) => {
   const exerciseName = `E2E Cable Row ${stamp}`
   const notes = 'Seat forward 2, wide grip'
 

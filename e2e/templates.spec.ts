@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
@@ -6,8 +6,7 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // Covers docs/backlog.md item 2 (workout templates): create a template,
 // attach an exercise to it, start a workout against it, and confirm the
 // template surfaces as a suggestion during logging and as a tag in history.
-test('templates: create, log a workout against one, and see it in history', async ({ page }) => {
-  const stamp = Date.now()
+test('templates: create, log a workout against one, and see it in history', async ({ page, stamp }) => {
   const exerciseName = `E2E Bench ${stamp}`
   const templateName = `E2E Push Day ${stamp}`
 

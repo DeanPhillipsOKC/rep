@@ -14,3 +14,9 @@ blob-report
 playwright/.cache
 
 logs/
+
+# Scratch file left behind by an agent session that couldn't delete it
+# (file-removal shell commands need interactive approval this sandbox
+# doesn't have); superseded by scripts/check-e2e-leaks.mjs. Safe to delete
+# by hand.
+scripts/_verify-cleanup.mjs

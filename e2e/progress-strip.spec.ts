@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
@@ -10,8 +10,8 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // other spec can log a workout between this test's before/after reads.
 test('progress strip: workouts-this-week count and recent-PR tile update after finishing a workout', async ({
   page,
+  stamp,
 }) => {
-  const stamp = Date.now()
   const exerciseName = `E2E Deadlift ${stamp}`
 
   await signInAsTestUser(page)

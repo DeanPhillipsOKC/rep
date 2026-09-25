@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
@@ -6,8 +6,7 @@ import { goTo } from './fixtures/nav'
 // exercises.is_archived, it never touches workout_template_exercises, so an
 // archived exercise attached to a template kept surfacing as a suggested
 // chip and a loggable dropdown option every time that template was used.
-test('archived exercise stops appearing in a template it is still attached to', async ({ page }) => {
-  const stamp = Date.now()
+test('archived exercise stops appearing in a template it is still attached to', async ({ page, stamp }) => {
   const exerciseName = `E2E Archived ${stamp}`
   const templateName = `E2E Push Day ${stamp}`
 

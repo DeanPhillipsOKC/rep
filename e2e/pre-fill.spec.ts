@@ -1,63 +1,63 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
-import { goTo } from './fixtures/nav'
-import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 
 // Covers docs/backlog.md item 3: starting a new workout against a template
 // that already has a logged instance shows a "Last time" card and pre-fills
 // the reps/weight fields from the most recent matching set. Also covers the
 // "Last time" card narrowing to the selected exercise once one is picked,
 // so a multi-exercise template doesn't force scrolling mid-workout.
-test('pre-fill: last workout of the same template surfaces on the next one', async ({ page }) => {
-  const stamp = Date.now()
+test('pre-fill: last workout of the same template surfaces on the next one', async ({ page, stamp }) => {
   const exerciseName = `E2E Squat ${stamp}`
   const otherExerciseName = `E2E Deadlift ${stamp}`
   const templateName = `E2E Leg Day ${stamp}`
 
-  await signInAsTestUser(page)
+  const userId = await signInAsTestUser(page)
 
-  await goTo(page, 'Exercises')
-  for (const name of [exerciseName, otherExerciseName]) {
-    await page.getByLabel('Name').fill(name)
-    await page.getByRole('button', { name: 'Add exercise' }).click()
-    await expect(page.getByText(name)).toBeVisible()
-  }
+  // The "last workout of the same template" this test pre-fills against is
+  // pre-existing state, not behavior under test — seed the exercises,
+  // template, and a completed prior workout directly via the admin client
+  // instead of driving the whole logging UI just to create fixture data
+  // (backlog item 57).
+  const admin = getAdminClient()
+  const { data: squat } = await admin
+    .from('exercises')
+    .insert({ user_id: userId, name: exerciseName })
+    .select('id')
+    .single()
+  const { data: deadlift } = await admin
+    .from('exercises')
+    .insert({ user_id: userId, name: otherExerciseName })
+    .select('id')
+    .single()
+  const { data: template } = await admin
+    .from('workout_templates')
+    .insert({ user_id: userId, name: templateName })
+    .select('id')
+    .single()
+  await admin.from('workout_template_exercises').insert([
+    { template_id: template!.id, exercise_id: squat!.id, position: 0 },
+    { template_id: template!.id, exercise_id: deadlift!.id, position: 1 },
+  ])
+  const { data: workout } = await admin
+    .from('workouts')
+    .insert({ user_id: userId, template_id: template!.id })
+    .select('id')
+    .single()
+  await admin
+    .from('sets')
+    .insert({ workout_id: workout!.id, exercise_id: squat!.id, set_index: 0, reps: 8, weight: 185, weight_unit: 'lb' })
+  await admin
+    .from('sets')
+    .insert({ workout_id: workout!.id, exercise_id: deadlift!.id, set_index: 0, reps: 5, weight: 225, weight_unit: 'lb' })
 
-  await goTo(page, 'Templates')
-  await page.getByLabel('Name').fill(templateName)
-  await page.getByRole('button', { name: 'Add template' }).click()
-  await page.getByText(templateName).click()
-  for (const name of [exerciseName, otherExerciseName]) {
-    await page.getByRole('combobox').selectOption({ label: name })
-    await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await expect(page.locator('.exercise-row', { hasText: name })).toBeVisible()
-  }
-
-  // First workout against the template: log a set for each exercise, then finish.
-  await goTo(page, 'Home')
-  await page.getByRole('button', { name: templateName, exact: true }).click()
-  await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByRole('button', { name: exerciseName, exact: true }).click()
-  await page.getByLabel('Reps').fill('8')
-  await page.getByLabel('Weight').fill('185')
-  await page.getByRole('button', { name: 'Add set' }).click()
-  await dismissCelebrationIfShown(page)
-  await expect(page.locator('.row', { hasText: exerciseName })).toBeVisible()
-  await page.getByRole('button', { name: otherExerciseName, exact: true }).click()
-  await page.getByLabel('Reps').fill('5')
-  await page.getByLabel('Weight').fill('225')
-  await page.getByRole('button', { name: 'Add set' }).click()
-  await dismissCelebrationIfShown(page)
-  await expect(page.locator('.row', { hasText: otherExerciseName })).toBeVisible()
-  await page.getByRole('button', { name: 'Finish workout' }).click()
-
-  // Finishing a templated workout with sets logged shows the volume chart
-  // (backlog item 6) instead of returning straight to the start form.
-  await page.getByRole('button', { name: 'Log another workout' }).click()
+  // Reload so the app's onMounted fetch picks up the seeded template —
+  // the initial navigation in signInAsTestUser happened before it existed.
+  await page.reload()
 
   // Second workout against the same template, but abandoned with no sets
   // logged (e.g. started by mistake). This must not shadow the real data
-  // from the first workout on the next lookup.
+  // from the seeded workout on the next lookup.
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: 'Finish workout' }).click()
@@ -65,7 +65,7 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   await page.getByRole('button', { name: 'Discard workout' }).click()
 
   // Third workout against the same template: should show the last workout
-  // that actually had sets (the first one), skipping the empty one.
+  // that actually had sets (the seeded one), skipping the empty one.
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
@@ -94,54 +94,60 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
 // workout's sets by set position, not always grab the last set logged —
 // otherwise a superset-style session (alternating exercises) pre-fills set 1
 // of today from set 2 of last time, which is backwards.
-test('pre-fill: set position tracks across exercises logged in parallel', async ({ page }) => {
-  const stamp = Date.now()
+test('pre-fill: set position tracks across exercises logged in parallel', async ({ page, stamp }) => {
   const exerciseName = `E2E Bench ${stamp}`
   const otherExerciseName = `E2E Row ${stamp}`
   const templateName = `E2E Push Pull ${stamp}`
 
-  await signInAsTestUser(page)
+  const userId = await signInAsTestUser(page)
 
-  await goTo(page, 'Exercises')
-  for (const name of [exerciseName, otherExerciseName]) {
-    await page.getByLabel('Name').fill(name)
-    await page.getByRole('button', { name: 'Add exercise' }).click()
-    await expect(page.getByText(name)).toBeVisible()
+  // The first (superset) workout is pre-existing state this test pre-fills
+  // against, not behavior under test — seed it directly via the admin
+  // client rather than driving the logging UI four times over just to set
+  // up fixture data (backlog item 57). Sets are inserted one at a time, in
+  // the same A/B/A/B order the original UI flow logged them in, so the
+  // set_index trigger (supabase/schema.sql) assigns the same relative
+  // per-exercise ordering pre-fill depends on. The first exercise's second
+  // set is deliberately lighter (fatigue) so a "last set logged" pre-fill
+  // would be obviously wrong for set 1 next time.
+  const admin = getAdminClient()
+  const { data: bench } = await admin
+    .from('exercises')
+    .insert({ user_id: userId, name: exerciseName })
+    .select('id')
+    .single()
+  const { data: row } = await admin
+    .from('exercises')
+    .insert({ user_id: userId, name: otherExerciseName })
+    .select('id')
+    .single()
+  const { data: template } = await admin
+    .from('workout_templates')
+    .insert({ user_id: userId, name: templateName })
+    .select('id')
+    .single()
+  await admin.from('workout_template_exercises').insert([
+    { template_id: template!.id, exercise_id: bench!.id, position: 0 },
+    { template_id: template!.id, exercise_id: row!.id, position: 1 },
+  ])
+  const { data: workout } = await admin
+    .from('workouts')
+    .insert({ user_id: userId, template_id: template!.id })
+    .select('id')
+    .single()
+  const rounds: Array<[string, number, number]> = [
+    [bench!.id, 10, 135],
+    [row!.id, 5, 225],
+    [bench!.id, 8, 115],
+    [row!.id, 5, 225],
+  ]
+  for (const [exerciseId, reps, weight] of rounds) {
+    await admin.from('sets').insert({ workout_id: workout!.id, exercise_id: exerciseId, reps, weight, weight_unit: 'lb' })
   }
 
-  await goTo(page, 'Templates')
-  await page.getByLabel('Name').fill(templateName)
-  await page.getByRole('button', { name: 'Add template' }).click()
-  await page.getByText(templateName).click()
-  for (const name of [exerciseName, otherExerciseName]) {
-    await page.getByRole('combobox').selectOption({ label: name })
-    await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await expect(page.locator('.exercise-row', { hasText: name })).toBeVisible()
-  }
-
-  // First workout: superset both exercises for two rounds, with the first
-  // exercise's second set deliberately lighter (fatigue) so a "last set
-  // logged" pre-fill would be obviously wrong for set 1 next time.
-  await goTo(page, 'Home')
-  await page.getByRole('button', { name: templateName, exact: true }).click()
-  await page.getByRole('button', { name: 'Start workout' }).click()
-
-  const addRound = async (reps: string, weight: string, name: string) => {
-    await page.getByRole('button', { name, exact: true }).click()
-    await page.getByLabel('Reps').fill(reps)
-    await page.getByLabel('Weight').fill(weight)
-    await page.getByRole('button', { name: 'Add set' }).click()
-    await dismissCelebrationIfShown(page)
-  }
-  await addRound('10', '135', exerciseName)
-  await addRound('5', '225', otherExerciseName)
-  await addRound('8', '115', exerciseName)
-  await addRound('5', '225', otherExerciseName)
-  await page.getByRole('button', { name: 'Finish workout' }).click()
-
-  // Finishing a templated workout with sets logged shows the volume chart
-  // (backlog item 6) instead of returning straight to the start form.
-  await page.getByRole('button', { name: 'Log another workout' }).click()
+  // Reload so the app's onMounted fetch picks up the seeded template —
+  // the initial navigation in signInAsTestUser happened before it existed.
+  await page.reload()
 
   // Second workout: set 1 for the first exercise should pre-fill from its
   // set 1 last time (10x135), not its set 2 (8x115).

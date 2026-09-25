@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc -b --noEmit",
     "test:session": "node scripts/create-test-session.mjs",
     "wipe:account": "node scripts/wipe-account-data.mjs",
+    "check:e2e-leaks": "node scripts/check-e2e-leaks.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

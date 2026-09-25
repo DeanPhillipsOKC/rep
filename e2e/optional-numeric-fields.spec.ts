@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
@@ -11,8 +11,7 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // the add/edit. Covers both call sites that hit it: adding a set with RPE
 // left blank, and adding/editing a template exercise with target sets left
 // blank.
-test('adding a set with RPE left blank does not error', async ({ page }) => {
-  const stamp = Date.now()
+test('adding a set with RPE left blank does not error', async ({ page, stamp }) => {
   const exerciseName = `E2E Blank Optional ${stamp}`
 
   await signInAsTestUser(page)
@@ -48,8 +47,7 @@ test('adding a set with RPE left blank does not error', async ({ page }) => {
   await expect(page.getByText('invalid input syntax')).toHaveCount(0)
 })
 
-test('adding a template exercise with target sets left blank does not error', async ({ page }) => {
-  const stamp = Date.now()
+test('adding a template exercise with target sets left blank does not error', async ({ page, stamp }) => {
   const exerciseName = `E2E No Target ${stamp}`
   const templateName = `E2E Blank Sets ${stamp}`
 

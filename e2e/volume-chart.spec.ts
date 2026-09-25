@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
@@ -17,8 +17,7 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // through since it's complete. Both exercises have to be on the template —
 // item 21 scoped the in-workout exercise picker to the active template, so
 // an untracked exercise can no longer be logged against one at all.
-test('volume chart: under-completed exercise carries forward its last complete volume', async ({ page }) => {
-  const stamp = Date.now()
+test('volume chart: under-completed exercise carries forward its last complete volume', async ({ page, stamp }) => {
   const trackedName = `E2E Squat ${stamp}`
   const otherName = `E2E Curl ${stamp}`
   const templateName = `E2E Leg Day ${stamp}`

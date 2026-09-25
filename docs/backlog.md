@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-57, 54
+54
 
 ## Features
 
@@ -43,26 +43,6 @@ implemented and were dropped rather than logged. What's below is what verifiably
   buttons rather than switching to drag handles — they're the more accessible choice on mobile
   without a keyboard-equivalent drag affordance, so the review's specific recommendation there
   isn't being adopted. `[Effort: 3, Value: 3, ROI: 1]`
-
-## Testing / tooling
-
-- [ ] **Item 57 — e2e specs never clean up or seed their own data; refactor to stop
-  accumulating permanent rows on the shared test account.** Root-causing item 56 (see
-  `docs/backlog-archive.md`) found the test account sitting on 1437 `exercises` rows and 1060+
-  `workouts` rows — years of stamped (`E2E … <timestamp>`) test data that almost no spec ever
-  deletes, since the suite's collision-avoidance strategy (unique names per run) never included
-  teardown. That's already large enough to silently truncate unbounded `.select()` queries at
-  Supabase/PostgREST's default 1000-row page size, which is what actually caused item 56's
-  "random" failures — reproduced directly: `template-archive-confirm.spec.ts` alone went
-  fail/pass/fail across three back-to-back isolated runs once `exercises` crossed that
-  threshold, no other spec involved. `npm run wipe:account -- test-automation@example.com`
-  (item 5) resets the account today, but nothing stops it from silently re-bloating past 1000
-  again over months of normal use. Fix properly: give specs an `afterEach` (or a shared fixture)
-  that deletes what that test created via the admin client (`getAdminClient()`,
-  `scripts/lib/mint-test-session.mjs`), keyed off each test's own stamp rather than a blanket
-  wipe; and where a spec needs pre-existing state (e.g. `pre-fill.spec.ts`'s "last workout of the
-  same template"), seed it directly via the admin client instead of driving the UI just to set up
-  fixture data. `[Effort: 5, Value: 5, ROI: 1]`
 
 ## Human setup / device verification
 

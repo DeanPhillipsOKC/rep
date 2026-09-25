@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
@@ -10,8 +10,7 @@ import { dismissCelebrationIfShown } from './fixtures/celebration'
 // device (see docs/backlog.md's [human] checklist). This spec runs while the
 // tab is foregrounded, so WorkoutLogger.vue's handleAddSet takes the in-app
 // path rather than sending a push.
-test('rest timer screen: shows after a set, skip dismisses it', async ({ page }) => {
-  const stamp = Date.now()
+test('rest timer screen: shows after a set, skip dismisses it', async ({ page, stamp }) => {
   const exerciseName = `E2E Rest Screen ${stamp}`
 
   await signInAsTestUser(page)
@@ -48,8 +47,7 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page })
   await expect(page.locator('li.row-wrap', { hasText: exerciseName })).toContainText('10 × 45lb')
 })
 
-test('rest timer screen: auto-dismisses when the countdown finishes', async ({ page }) => {
-  const stamp = Date.now()
+test('rest timer screen: auto-dismisses when the countdown finishes', async ({ page, stamp }) => {
   const exerciseName = `E2E Rest Auto ${stamp}`
 
   await signInAsTestUser(page)
@@ -74,8 +72,7 @@ test('rest timer screen: auto-dismisses when the countdown finishes', async ({ p
 })
 
 // Covers docs/backlog.md item 52's ±15s manual adjustment.
-test('rest timer screen: -15s and +15s adjust the countdown', async ({ page }) => {
-  const stamp = Date.now()
+test('rest timer screen: -15s and +15s adjust the countdown', async ({ page, stamp }) => {
   const exerciseName = `E2E Rest Adjust ${stamp}`
 
   await signInAsTestUser(page)
@@ -122,8 +119,10 @@ test('rest timer screen: -15s and +15s adjust the countdown', async ({ page }) =
 // Covers docs/backlog.md item 52's non-destructive return: "Back to workout"
 // keeps the rest period running behind the scenes instead of canceling it
 // the way "Skip Rest" does.
-test('rest timer screen: back to workout minimizes without canceling, resume restores it', async ({ page }) => {
-  const stamp = Date.now()
+test('rest timer screen: back to workout minimizes without canceling, resume restores it', async ({
+  page,
+  stamp,
+}) => {
   const exerciseName = `E2E Rest Minimize ${stamp}`
 
   await signInAsTestUser(page)

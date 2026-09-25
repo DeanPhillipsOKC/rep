@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 
@@ -7,8 +7,7 @@ import { goTo } from './fixtures/nav'
 // exercise the user has — otherwise an ad-hoc addition (picked from the
 // dropdown rather than a suggested chip) leaks into that template's
 // reporting (the "last time" card, the post-workout volume chart).
-test('exercise dropdown is scoped to the active template', async ({ page }) => {
-  const stamp = Date.now()
+test('exercise dropdown is scoped to the active template', async ({ page, stamp }) => {
   const inTemplateName = `E2E Row ${stamp}`
   const notInTemplateName = `E2E Lunge ${stamp}`
   const templateName = `E2E Pull Day ${stamp}`
