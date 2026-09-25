@@ -30,84 +30,187 @@ async function handlePasskeySignIn() {
 
 <template>
   <div class="screen">
-    <div class="brand">
-      <img src="/icon-192.png" alt="" class="brand-logo" />
-      <h1>RepBunny</h1>
-      <p class="tagline">Small wins. Stronger every set.</p>
+    <div class="glow glow-pink" aria-hidden="true"></div>
+
+    <div class="content">
+      <div class="icon-ring">
+        <div class="icon-circle">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none" aria-hidden="true">
+            <path
+              d="M12 3a7 7 0 00-7 7v2c0 3 1 5 2 6.5"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+            <path d="M12 3a7 7 0 017 7v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <path
+              d="M8 10a4 4 0 018 0v2c0 3.5-1 6-3 8"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+            <path
+              d="M10.5 10a1.5 1.5 0 013 0v2.5c0 2.5-0.6 4.3-1.8 5.8"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+            <path d="M5.5 10a6.5 6.5 0 011-3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </div>
+      </div>
+
+      <h1 class="heading">Welcome back</h1>
+      <p class="subtitle">Sign in to keep hopping.</p>
+
+      <button
+        v-if="auth.supportsPasskeys()"
+        type="button"
+        class="passkey-btn"
+        @click="handlePasskeySignIn"
+      >
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+          <path
+            d="M12 3a7 7 0 00-7 7v2c0 3 1 5 2 6.5"
+            stroke="var(--accent-text)"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <path d="M12 3a7 7 0 017 7v2" stroke="var(--accent-text)" stroke-width="1.8" stroke-linecap="round" />
+          <path
+            d="M8 10a4 4 0 018 0v2c0 3.5-1 6-3 8"
+            stroke="var(--accent-text)"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+        </svg>
+        Sign in with passkey
+      </button>
+
+      <div class="divider" v-if="auth.supportsPasskeys()"><span>OR</span></div>
+
+      <form class="email-form" @submit.prevent="handleMagicLink">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          v-model="email"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="you@example.com"
+        />
+        <button type="submit" class="magic-link-btn" :disabled="status === 'sending'">
+          Email me a magic link
+        </button>
+      </form>
+
+      <p v-if="status === 'sent'" class="hint">Check your email for a sign-in link.</p>
+      <p v-if="status === 'error'" class="error">{{ errorMessage }}</p>
+
+      <p v-if="auth.supportsPasskeys()" class="footnote">
+        Passkeys use your device's built-in security — no password to remember.
+      </p>
     </div>
-
-    <button
-      v-if="auth.supportsPasskeys()"
-      type="button"
-      class="primary"
-      @click="handlePasskeySignIn"
-    >
-      Sign in with passkey
-    </button>
-
-    <div class="divider" v-if="auth.supportsPasskeys()"><span>or</span></div>
-
-    <form class="card" @submit.prevent="handleMagicLink">
-      <label for="email">Email</label>
-      <input id="email" v-model="email" type="email" required autocomplete="email" />
-      <button type="submit" :disabled="status === 'sending'">Email me a sign-in link</button>
-    </form>
-
-    <p v-if="status === 'sent'" class="hint">Check your email for a sign-in link.</p>
-    <p v-if="status === 'error'" class="error">{{ errorMessage }}</p>
   </div>
 </template>
 
 <style scoped>
 .screen {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 48px 16px;
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(120% 70% at 50% 0%, #3a2745 0%, var(--bg) 58%);
 }
 
-.brand {
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 96px;
+  width: 260px;
+  height: 260px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(242, 135, 156, 0.3) 0%, rgba(242, 135, 156, 0) 70%);
+}
+
+.content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 24px;
-}
-
-.brand-logo {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  margin-bottom: 12px;
-}
-
-.screen h1 {
-  text-align: center;
-  margin: 0;
-}
-
-.tagline {
-  margin: 4px 0 0;
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.primary {
+  flex: 1;
   width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 88px 32px 48px;
+}
+
+.icon-ring {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-circle {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.heading {
+  font-size: 1.6rem;
+  margin: 18px 0 0;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+.passkey-btn {
+  width: 100%;
+  margin-top: 30px;
+  padding: 17px;
+  border-radius: 999px;
   background: var(--accent);
-  border-color: var(--accent);
+  border: none;
   color: var(--accent-text);
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  box-shadow: 0 16px 30px -12px rgba(242, 135, 156, 0.5);
+}
+
+.passkey-btn:active {
+  background: var(--accent-pressed);
 }
 
 .divider {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 20px 0;
+  gap: 12px;
+  width: 100%;
+  margin-top: 26px;
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .divider::before,
@@ -118,11 +221,18 @@ async function handlePasskeySignIn() {
   background: var(--border);
 }
 
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+.email-form {
+  width: 100%;
+  margin-top: 22px;
+}
+
+.magic-link-btn {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: var(--text);
 }
 
 .hint {
@@ -134,5 +244,13 @@ async function handlePasskeySignIn() {
   margin-top: 16px;
   text-align: center;
   color: var(--danger);
+}
+
+.footnote {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 22px 0 0;
+  line-height: 1.5;
 }
 </style>
