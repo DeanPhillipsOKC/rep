@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    Drives the /next-item Claude Code skill in a loop until docs/backlog.md is empty of
+    Drives the next-item skill with Claude or Codex until docs/backlog.md is empty of
     eligible items or the run hits a wall.
 
 .DESCRIPTION
-    Each iteration runs `claude -p "/next-item"` headless. The skill picks the highest-ROI
+    Each iteration runs the selected agent headless. The skill picks the highest-ROI
     open backlog item, implements it, gates on `npm run build` + `npm run test:e2e`, and on
     green commits and pushes straight to main (see docs/backlog-runner.md and
-    .claude/skills/next-item/SKILL.md). This script just keeps calling it, logs everything,
+    corresponding next-item skill). This script just keeps calling it, logs everything,
     and stops on BACKLOG_EMPTY, a stall (no commit for two runs in a row), or MaxIterations.
 
     This repo pushes straight to main by design (docs/architecture.md's commit & push
@@ -17,13 +17,17 @@
     Maximum number of backlog items to attempt in this run. Default 50.
 
 .PARAMETER UsageLimitWaitMinutes
-    Minutes to sleep before retrying the same iteration after a Claude usage-limit message.
+    Minutes to sleep before retrying the same iteration after a usage-limit message.
     Default 30.
+
+.PARAMETER Agent
+    Claude (default) or Codex.
 #>
 
 param(
     [int]$MaxIterations = 50,
-    [int]$UsageLimitWaitMinutes = 30
+    [int]$UsageLimitWaitMinutes = 30,
+    [ValidateSet('Claude', 'Codex')][string]$Agent = 'Claude'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,14 +35,21 @@ $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
-$claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
-if (-not $claudeCmd) {
-    Write-Error "Run-Backlog.ps1: 'claude' is not on PATH. Install the Claude Code CLI and try again."
+$agentCommand = $Agent.ToLowerInvariant()
+if (-not (Get-Command $agentCommand -ErrorAction SilentlyContinue)) {
+    Write-Error "Run-Backlog.ps1: '$agentCommand' is not on PATH."
     exit 1
 }
 
-$currentBranch = (git rev-parse --abbrev-ref HEAD).Trim()
+$gitSafeRoot = $RepoRoot.Replace('\', '/')
+$gitArgs = @('-c', "safe.directory=$gitSafeRoot")
+$currentBranch = (& git @gitArgs rev-parse --abbrev-ref HEAD).Trim()
 Write-Host "Run-Backlog.ps1: running on branch '$currentBranch' (this repo pushes straight to main by design; no branch gate)."
+
+if ((& git @gitArgs status --porcelain)) {
+    Write-Error 'Run-Backlog.ps1: working tree is not clean.'
+    exit 1
+}
 
 $logDir = Join-Path $RepoRoot 'logs'
 if (-not (Test-Path $logDir)) {
@@ -49,18 +60,12 @@ $logFile = Join-Path $logDir 'backlog-runner.log'
 $gitignorePath = Join-Path $RepoRoot '.gitignore'
 $gitignoreContent = if (Test-Path $gitignorePath) { Get-Content $gitignorePath -Raw } else { '' }
 if ($gitignoreContent -notmatch '(?m)^logs/?\s*$') {
-    Add-Content -Path $gitignorePath -Value "`nlogs/" -Encoding utf8
-    Write-Host "Run-Backlog.ps1: added 'logs/' to .gitignore."
-    # Commit this immediately (only .gitignore, nothing else) so the tree is clean before the
-    # loop starts — next-item's safety precondition refuses to run on a dirty tree, and this
-    # script's own edit would otherwise be the thing that dirties it.
-    git add .gitignore
-    git commit -m "Add logs/ to .gitignore (Run-Backlog.ps1)" | Out-Null
-    git push | Out-Null
+    Write-Error "Run-Backlog.ps1: add 'logs/' to .gitignore before running."
+    exit 1
 }
 
 function Get-HeadCommit {
-    (git rev-parse HEAD).Trim()
+    (& git @gitArgs rev-parse HEAD).Trim()
 }
 
 $lastCommit = Get-HeadCommit
@@ -78,7 +83,12 @@ while ($iteration -lt $MaxIterations) {
     $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
     $tmpFile = Join-Path $env:TEMP "next-item-$PID-$iteration-$attemptsThisIteration.txt"
-    & claude -p "/next-item" *> $tmpFile
+    if ($Agent -eq 'Codex') {
+        & codex exec --approve-for-me 'Use $next-item to work exactly one eligible backlog item.' *> $tmpFile
+    } else {
+        & claude -p '/next-item' *> $tmpFile
+    }
+    $agentExitCode = $LASTEXITCODE
     $output = Get-Content -Path $tmpFile -Raw -ErrorAction SilentlyContinue
     Remove-Item -Path $tmpFile -Force -ErrorAction SilentlyContinue
     if (-not $output) { $output = '' }
@@ -87,13 +97,13 @@ while ($iteration -lt $MaxIterations) {
     Add-Content -Path $logFile -Value $output -Encoding utf8
     Add-Content -Path $logFile -Value '' -Encoding utf8
 
-    if ($output -match 'BACKLOG_EMPTY') {
+    if ($agentExitCode -eq 0 -and $output -match '(?m)^BACKLOG_EMPTY\s*$') {
         $stopReason = 'backlog empty'
         $iteration--
         break
     }
 
-    # Best-effort match for Claude usage-limit messaging; adjust if the CLI's wording changes.
+    # Best-effort match for usage-limit messaging; adjust if a CLI's wording changes.
     if ($output -match '(?i)usage limit|rate limit.*try again|resets? at') {
         Write-Host "Run-Backlog.ps1: usage limit detected on iteration $iteration, waiting $UsageLimitWaitMinutes minute(s) before retrying the same iteration."
         Add-Content -Path $logFile -Value "[$timestamp] usage limit detected, waiting $UsageLimitWaitMinutes minute(s)" -Encoding utf8
@@ -103,6 +113,12 @@ while ($iteration -lt $MaxIterations) {
     }
 
     $attemptsThisIteration = 0
+
+    if ($agentExitCode -ne 0) {
+        $stopReason = "$Agent exited with code $agentExitCode"
+        $exitCode = 1
+        break
+    }
 
     $newCommit = Get-HeadCommit
     if ($newCommit -eq $lastCommit) {
@@ -115,7 +131,7 @@ while ($iteration -lt $MaxIterations) {
         }
     } else {
         $consecutiveNoCommit = 0
-        $subject = (git log -1 --format='%s' $newCommit).Trim()
+        $subject = (& git @gitArgs log -1 --format='%s' $newCommit).Trim()
         if ($subject -match '^Block item') {
             $blocked++
             Write-Host "Run-Backlog.ps1: iteration $iteration blocked an item: $subject"
