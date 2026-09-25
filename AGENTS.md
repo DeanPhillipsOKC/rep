@@ -1,4 +1,4 @@
-# REP (Workout Tracker PWA)
+# RepBunny (Workout Tracker PWA)
 
 Private two-user workout tracker (Vue 3 + TS + Supabase + Cloudflare Pages).
 

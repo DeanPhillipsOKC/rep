@@ -416,7 +416,7 @@ function dismissVolumeChart() {
             <div class="mascot mascot-lg">
               <img src="/icon-512.png" alt="" />
             </div>
-            <p class="welcome-title">Welcome to REP</p>
+            <p class="welcome-title">Welcome to RepBunny</p>
             <p class="welcome-copy">
               This is where your workouts live. Add your first exercise to start logging sets and watching your
               progress build.

@@ -32,7 +32,7 @@ async function handlePasskeySignIn() {
   <div class="screen">
     <div class="brand">
       <img src="/icon-192.png" alt="" class="brand-logo" />
-      <h1>REP</h1>
+      <h1>RepBunny</h1>
       <p class="tagline">Small wins. Stronger every set.</p>
     </div>
 

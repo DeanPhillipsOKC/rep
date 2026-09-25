@@ -28,8 +28,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['apple-touch-icon.png', 'favicon.ico', 'favicon-16x16.png', 'favicon-32x32.png'],
       manifest: {
-        name: 'REP',
-        short_name: 'REP',
+        name: 'RepBunny',
+        short_name: 'RepBunny',
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#17111C',

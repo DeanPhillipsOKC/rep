@@ -1,4 +1,4 @@
-# REP (Workout Tracker PWA)
+# RepBunny (Workout Tracker PWA)
 
 Private, installable workout tracker for two users. Vue 3 + TS + Supabase + Cloudflare Pages.
 

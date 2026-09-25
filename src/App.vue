@@ -20,7 +20,7 @@ const appVersion = __APP_VERSION__
       <header class="app-header">
         <div class="brand">
           <img src="/icon-192.png" alt="" class="brand-logo" />
-          <h1>REP</h1>
+          <h1>RepBunny</h1>
         </div>
         <button
           type="button"

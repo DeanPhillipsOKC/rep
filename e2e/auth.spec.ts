@@ -9,7 +9,7 @@ test('shows the login form when signed out', async ({ page }) => {
 
 test('page title carries the build version', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveTitle(/^REP v\d+\+[0-9a-f]{7,}/)
+  await expect(page).toHaveTitle(/^RepBunny v\d+\+[0-9a-f]{7,}/)
 })
 
 test('build version is visible on-page, not just in the title', async ({ page }) => {

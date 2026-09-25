@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
         <div class="drawer-header">
           <div class="brand">
             <img src="/icon-192.png" alt="" class="brand-logo" />
-            <span>REP</span>
+            <span>RepBunny</span>
           </div>
           <button
             ref="closeButtonRef"
