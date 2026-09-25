@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
@@ -54,59 +54,12 @@ onMounted(() => {
   if (exercises.exercises.length === 0) exercises.fetchExercises()
   if (templates.templates.length === 0) templates.fetchTemplates()
   workout.fetchProgressStats()
-  window.addEventListener('resize', updateCoachmark)
   document.addEventListener('visibilitychange', handleRestVisibilityChange)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateCoachmark)
   document.removeEventListener('visibilitychange', handleRestVisibilityChange)
 })
-
-// Backlog item 27: the coachmark arrow points at App.vue's real menu button,
-// a sibling component's DOM node rather than something WorkoutLogger owns —
-// measuring both rects at render time (instead of hand-picked coordinates
-// copied from the design mockup's fixed 390px phone frame) keeps the arrow
-// aimed correctly at whatever viewport width the device actually has.
-const heroCardRef = ref<HTMLElement | null>(null)
-const coachmarkPath = ref('')
-const coachmarkLabelStyle = ref<{ top: string; right: string }>({ top: '0px', right: '0px' })
-
-async function updateCoachmark() {
-  await nextTick()
-  const card = heroCardRef.value
-  const menuButton = document.querySelector('.menu-button')
-  if (!card || !menuButton) return
-
-  const cardRect = card.getBoundingClientRect()
-  const buttonRect = menuButton.getBoundingClientRect()
-
-  const startX = cardRect.right - 24
-  const startY = cardRect.top + 28
-  const endX = buttonRect.left + buttonRect.width / 2
-  const endY = buttonRect.bottom + 6
-  const controlX = Math.max(startX, endX) + 40
-  const controlY = (startY + endY) / 2
-
-  coachmarkPath.value = `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`
-  coachmarkLabelStyle.value = {
-    top: `${buttonRect.bottom + 6}px`,
-    right: `${window.innerWidth - buttonRect.right}px`,
-  }
-}
-
-// Zero-exercise state is guaranteed on mount (exercises.exercises starts
-// empty before fetchExercises resolves) and again if the fetch confirms it —
-// re-measure whenever the welcome card is the thing actually on screen.
-// Gated on !exercises.loading (backlog item 33) so this doesn't fire for a
-// user who already has exercises while their first fetch is still in flight.
-watch(
-  () => !exercises.loading && exercises.activeExercises.length === 0 && !workout.activeWorkoutId,
-  (showing) => {
-    if (showing) updateCoachmark()
-  },
-  { immediate: true },
-)
 
 // Backlog item 3: sets from the previous workout against this template,
 // grouped by exercise in the order they were logged, so the "last time"
@@ -432,7 +385,7 @@ function dismissVolumeChart() {
         </div>
 
         <div v-if="exercises.activeExercises.length === 0" class="welcome-wrap">
-          <div ref="heroCardRef" class="card welcome-card">
+          <div class="card welcome-card">
             <div class="mascot mascot-lg">
               <img src="/icon-512.png" alt="" />
             </div>
@@ -445,24 +398,6 @@ function dismissVolumeChart() {
               Add your first exercise
             </button>
           </div>
-
-          <svg class="coachmark-svg" aria-hidden="true">
-            <defs>
-              <marker id="coachmark-arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-                <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)" />
-              </marker>
-            </defs>
-            <path
-              :d="coachmarkPath"
-              stroke="var(--accent)"
-              stroke-width="2"
-              stroke-dasharray="5 6"
-              fill="none"
-              stroke-linecap="round"
-              marker-end="url(#coachmark-arrowhead)"
-            />
-          </svg>
-          <div class="coachmark-label" :style="coachmarkLabelStyle">More lives in the menu</div>
         </div>
 
         <template v-else>
@@ -901,30 +836,6 @@ function dismissVolumeChart() {
   color: var(--accent-text);
   font-weight: 600;
   font-size: 0.95rem;
-}
-
-.coachmark-svg {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.coachmark-label {
-  position: fixed;
-  max-width: 128px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 7px 10px;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: var(--text-dim);
-  text-align: right;
-  z-index: 5;
-  pointer-events: none;
 }
 
 .template-hint {

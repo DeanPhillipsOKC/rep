@@ -20,7 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-1. Item 48 — Fix stale first-run coachmark pointing at the sign-out button [ROI 4]
+_(none — see Human setup / device verification below for open [human] items)_
 
 ## Features
 
@@ -28,7 +28,7 @@ Design source for prior visual-refresh items: private canvas mockup at
 https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced in
 `docs/backlog-archive.md` match its canvas). Brand identity (RepBunny) is cute, functional, cool.
 
-- [ ] **Bug: first-run coachmark points at the sign-out button, dotted line missing** (item 48, reported 2026-09-25): `WorkoutLogger.vue`'s zero-exercise welcome-card coachmark (item 27) still does `document.querySelector('.menu-button')` in `updateCoachmark()` (line ~78) to find its arrow's target — but item 41 (bottom tab bar) removed the hamburger `.menu-button` entirely, so the query now returns `null`, `updateCoachmark` bails early, `coachmarkPath` stays `''` (no dotted line renders), and the "More lives in the menu" label sits at its unset default position (`top: 0px, right: 0px`), which happens to land on the header's sign-out icon button. Likely the right fix is to remove the coachmark outright rather than repoint it — its whole premise ("more lives in a hidden menu") no longer holds now that every destination is always visible in the bottom tab bar, nothing is tucked away anymore. [Effort: 2, Value: 8, ROI: 4]
+_(none currently)_
 
 ## Human setup / device verification
 
