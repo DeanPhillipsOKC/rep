@@ -32,8 +32,8 @@ export default defineConfig({
         short_name: 'REP',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#1C151D',
-        background_color: '#1C151D',
+        theme_color: '#17111C',
+        background_color: '#17111C',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

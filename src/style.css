@@ -1,29 +1,31 @@
 /* Global design tokens + base element styling.
    Dark theme matches theme_color/background_color in vite.config.ts —
    this is a phone app used mid-workout, not a marketing page.
-   Palette is REP's "Harvest Hare" brand kit (rep-theme-tokens.json). Rose is the
-   dominant accent; secondary/highlight are reserved for streaks and completed-set
-   states, not yet consumed by any component. --success is used by the Log home
-   screen's "recent PR" stat tile (WorkoutLogger.vue). Text on any of these fills
-   must be --accent-text (Midnight Plum) — white fails contrast on all of them,
-   per the kit's usage notes. */
+   Palette is RepBunny's brand system (docs/backlog-archive.md item 40, design
+   source: canvas "Style" artboard). Bunny Pink is the dominant accent;
+   Lavender/Carrot Gold are sparing secondary accents, not yet consumed by any
+   component. --success (Sprout) is used by the Log home screen's "recent PR"
+   stat tile (WorkoutLogger.vue). Text on any of these fills must be
+   --accent-text (Night) — white fails contrast on all of them. */
 
 :root {
   color-scheme: dark;
-  --bg: #1c151d;
-  --surface: #2a202b;
-  --surface-2: #382a36;
-  --border: #513b4b;
-  --text: #fff7ed;
-  --text-dim: #ccbac8;
-  --accent: #e58aa0;
-  --accent-pressed: #c75f79;
-  --accent-text: #1c151d;
-  --secondary: #d8894e;
-  --highlight: #d7a84f;
-  --success: #8fa46e;
-  --danger: #e16d68;
+  --bg: #17111c;
+  --surface: #211829;
+  --surface-2: #241a2c;
+  --border: #3a2b40;
+  --text: #f5edf2;
+  --text-dim: #b9a8c2;
+  --accent: #f2879c;
+  --accent-pressed: #ed6b85;
+  --accent-text: #241a2c;
+  --secondary: #b79cf0;
+  --highlight: #f2c069;
+  --success: #a9cb8d;
+  --danger: #e0687a;
   --radius: 12px;
+  --font-display: 'Baloo 2', sans-serif;
+  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 * {
@@ -38,7 +40,7 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px; /* iOS zooms in on inputs below this */
   line-height: 1.45;
   -webkit-tap-highlight-color: transparent;
@@ -56,7 +58,9 @@ h3 {
 }
 
 h1 {
+  font-family: var(--font-display);
   font-size: 1.3rem;
+  font-weight: 700;
 }
 
 h2 {

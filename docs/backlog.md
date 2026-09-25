@@ -20,15 +20,14 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-1. Item 40 — Brand system refresh: palette, type, and bunny mark tokens [ROI 2.6]
-2. Item 39 — Rebrand REP to RepBunny (name + mark) [ROI 1.7]
-3. Item 42 — First-launch onboarding screen [ROI 1.7]
-4. Item 43 — Redesigned sign-in screen (passkey-first) [ROI 1.7]
-5. Item 44 — Home screen visual refresh [ROI 1.7]
-6. Item 41 — Bottom tab bar navigation (replaces hamburger drawer) [ROI 1.6]
-7. Item 45 — History screen visual refresh [ROI 1.5]
-8. Item 46 — Templates screen visual refresh [ROI 1.5]
-9. Item 47 — Exercises screen visual refresh [ROI 1.5]
+1. Item 39 — Rebrand REP to RepBunny (name + mark) [ROI 1.7]
+2. Item 42 — First-launch onboarding screen [ROI 1.7]
+3. Item 43 — Redesigned sign-in screen (passkey-first) [ROI 1.7]
+4. Item 44 — Home screen visual refresh [ROI 1.7]
+5. Item 41 — Bottom tab bar navigation (replaces hamburger drawer) [ROI 1.6]
+6. Item 45 — History screen visual refresh [ROI 1.5]
+7. Item 46 — Templates screen visual refresh [ROI 1.5]
+8. Item 47 — Exercises screen visual refresh [ROI 1.5]
 
 ## Features
 
@@ -36,7 +35,6 @@ Design source for items 39–47: private canvas mockup at
 https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced below match its
 canvas). Renaming REP → RepBunny throughout — brand identity is cute, functional, cool.
 
-- [ ] **Brand system refresh: palette, type, and bunny mark tokens** (item 40): update `src/style.css`'s `:root` tokens to the RepBunny palette (Bunny Pink accent, Sprout green for PR states, Lavender/Carrot Gold as sparing secondary accents, refined night/warren background tones) and load Baloo 2 (display) + Manrope (body/UI) from Google Fonts in place of the current type stack. Foundational — every other item below builds on these tokens. See the "Style" artboard for exact hex values and specimens. [Effort: 5, Value: 13, ROI: 2.6]
 - [ ] **Rebrand REP to RepBunny (name + mark)** (item 39): rename the app throughout — PWA manifest `name`/`short_name`, `document.title`/`<title>`, the in-app header wordmark, and the doc titles (`README.md`/`AGENTS.md`/`CLAUDE.md`/`docs/architecture.md`) touched by the original REP rebrand. Swap the PWA icon set (`public/icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, favicons, notification badge) for a new bunny mark — user has supplied bunny illustration source art to work from (already used on the Onboarding artboard). See the "Style" artboard for the wordmark/lockup treatment. [Effort: 3, Value: 5, ROI: 1.7]
 - [ ] **First-launch onboarding screen** (item 42): add a welcome screen shown once before sign-in (mascot, "RepBunny" wordmark, tagline, single "Let's hop in" CTA into the sign-in screen) — the app currently opens straight into the login form with no first impression. Needs a local "has seen onboarding" flag (e.g. localStorage) so it doesn't reappear every launch. See the "Onboarding" artboard. Depends on items 39 and 40. [Effort: 3, Value: 5, ROI: 1.7]
 - [ ] **Redesigned sign-in screen (passkey-first)** (item 43): rework `LoginForm.vue` to lead with "Sign in with passkey" as the primary CTA — matching the actual auth model (no signup, two allowlisted users, passkey-first per `docs/architecture.md#authentication`) — and demote the email/magic-link path to a secondary fallback below a divider, instead of today's flat form. Purely a front-end restructure; calls the same `registerPasskey`/`signInWithPasskey`/magic-link paths already in place. See the "Auth" artboard. Depends on item 40. [Effort: 3, Value: 5, ROI: 1.7]
