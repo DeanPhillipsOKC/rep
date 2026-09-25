@@ -23,12 +23,11 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Primary calls to action get lost against secondary/ghost buttons (ROI 1.67)
-2. Show compact logging rows matching the exercise's configured set count (ROI 1.60)
-3. Recover an interrupted workout after reload (ROI 1.60)
-4. Make failed set saves safe to retry (ROI 1.60)
-5. Export personal training data (ROI 1.00)
-6. Show exercise-by-exercise history (ROI 1.00)
+1. Show compact logging rows matching the exercise's configured set count (ROI 1.60)
+2. Recover an interrupted workout after reload (ROI 1.60)
+3. Make failed set saves safe to retry (ROI 1.60)
+4. Export personal training data (ROI 1.00)
+5. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -57,23 +56,6 @@ implemented and were dropped rather than logged.
   count, and preserve editing/deleting logged sets. Cover the mobile layout,
   sequential saves, and rest behavior in Playwright.
   [Effort: 5, Value: 8, ROI: 1.60]
-
-- [ ] Primary calls to action get lost against secondary/ghost buttons — user-reported
-  2026-09-25 (example: the "Log another workout" button shown on the post-workout volume
-  chart in `WorkoutLogger.vue` reads as muted/secondary and is easy to miss). Root cause:
-  `WorkoutLogger.vue` applies `.ghost` (transparent background, `--border` outline,
-  `--text-dim` text — see `src/style.css`'s `.ghost` rule) to at least two primary CTAs
-  instead of the accent (Bunny Pink / "dusty rose", `--accent` in `src/style.css`) fill
-  they should have: `chart-dismiss` "Log another workout" (`WorkoutLogger.vue:468`) and
-  "Finish workout" (`WorkoutLogger.vue:749`, currently `class="ghost finish"`). Fix: swap
-  both to the accent fill (`background: var(--accent); border-color: var(--accent); color:
-  var(--accent-text)` — matches `button[type='submit']` in `style.css` and the several
-  per-component accent buttons already in `RecordCelebration.vue`, `RestTimer.vue`, etc.).
-  While in there, sweep other components for primary actions currently styled `.ghost` or
-  plain `button` that should read as the main next step, not just these two. Worth
-  introducing a shared `.btn-accent`/primary class in `style.css` at this point rather than
-  redefining the accent fill per component again, since it's already duplicated 6+ times.
-  [Effort: 3, Value: 5, ROI: 1.67]
 
 - [ ] Recover an interrupted workout after reload — the current active workout ID, template,
   elapsed timer, and sets live only in the Pinia store, so a refresh or installed-PWA relaunch

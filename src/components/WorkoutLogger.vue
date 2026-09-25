@@ -465,7 +465,7 @@ function dismissVolumeChart() {
     <div v-if="showingVolumeChart" class="card">
       <h3>Volume over time</h3>
       <VolumeChart :points="workout.volumeHistory" />
-      <button type="button" class="ghost finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
+      <button type="button" class="btn-accent finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
     </div>
 
     <template v-else-if="!workout.activeWorkoutId">
@@ -746,7 +746,7 @@ function dismissVolumeChart() {
           <button type="button" class="ghost small" @click="confirmingEmptyFinish = false">Cancel</button>
         </div>
       </div>
-      <button v-else type="button" class="ghost finish" @click="handleFinishClick">Finish workout</button>
+      <button v-else type="button" class="btn-accent finish" @click="handleFinishClick">Finish workout</button>
     </div>
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
