@@ -46,6 +46,15 @@ iteration without counting it against `MaxIterations` or the stall check.
 At the end it prints how many iterations ran, how many items completed, how many were blocked, and
 why it stopped.
 
+## Getting a release-notes-style summary
+
+The `run-backlog` skill (`.claude/skills/run-backlog/SKILL.md` for Claude,
+`.agents/skills/run-backlog/SKILL.md` for Codex) wraps this script: it runs the loop above, then
+reads the `docs/backlog-archive.md` and `docs/backlog.md` diffs the run produced and prints a
+shipped/blocked summary in the response, instead of leaving you to read `logs/backlog-runner.log`
+by hand. Invoke it (`/run-backlog` interactively, or headless the same way as `next-item`) instead
+of calling `Run-Backlog.ps1` directly if you want that summary.
+
 ## Reading the log
 
 Every run's full output is appended to `logs/backlog-runner.log` (gitignored), with an iteration
