@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-53, 52, 57, 54
+52, 57, 54
 
 ## Features
 
@@ -36,14 +36,6 @@ Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, a
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
-
-- [ ] **Item 53 — Volume/projection chart doesn't explain "Projected."** `VolumeChart.vue`
-  shows an Actual/Projected legend and line, but the carry-forward logic in
-  `src/lib/volume.ts` (an incomplete template exercise's contribution gets replaced by its last
-  known volume) is never explained in the UI, and the chart has no axis or unit (lb/kg) label.
-  Note the review's other volume-chart claims didn't hold up — `fetchTemplateVolumeHistory`
-  already scopes to the same template and isn't capped at two points, so this is just a
-  copy/labeling fix, not a data-model one. `[Effort: 2, Value: 3, ROI: 1.5]`
 
 - [ ] **Item 52 — Rest timer has no manual adjustment or non-destructive return.** `RestTimer.vue`
   is already `endsAt`-timestamp-driven with a push-notification fallback for backgrounding (the

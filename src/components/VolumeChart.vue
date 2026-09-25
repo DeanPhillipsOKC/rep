@@ -30,6 +30,11 @@ function pathFor(key: 'actual' | 'projected'): string {
 const actualPath = computed(() => pathFor('actual'))
 const projectedPath = computed(() => pathFor('projected'))
 
+// All points share one scale (see maxVolume above), so one unit label is
+// enough — take it from the most recent point rather than the first, since
+// that's the one most likely to reflect how the user logs today.
+const unit = computed(() => props.points[props.points.length - 1]?.weightUnit ?? 'lb')
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
@@ -41,12 +46,29 @@ function formatDate(iso: string): string {
       <span class="legend-item"><span class="swatch actual" /> Actual</span>
       <span class="legend-item"><span class="swatch projected" /> Projected</span>
     </div>
+    <p v-if="points.length > 0" class="explainer">
+      Projected volume ({{ unit }}) carries forward your last complete total for any exercise you
+      skipped or fell short of its target sets on that day, so a lighter day doesn't read as a
+      bigger drop than it was.
+    </p>
 
-    <svg v-if="points.length > 0" :viewBox="`0 0 ${width} ${height}`" class="chart-svg" preserveAspectRatio="none">
-      <path :d="projectedPath" class="line projected" />
-      <path :d="actualPath" class="line actual" />
-      <circle v-for="(p, i) in points" :key="i" :cx="x(i)" :cy="y(p.actual)" r="3" class="dot actual" />
-    </svg>
+    <div v-if="points.length > 0" class="chart-area">
+      <div class="axis-labels" aria-hidden="true">
+        <span>{{ Math.round(maxVolume) }} {{ unit }}</span>
+        <span>0</span>
+      </div>
+      <svg
+        :viewBox="`0 0 ${width} ${height}`"
+        class="chart-svg"
+        preserveAspectRatio="none"
+        role="img"
+        :aria-label="`Volume over time, in ${unit}`"
+      >
+        <path :d="projectedPath" class="line projected" />
+        <path :d="actualPath" class="line actual" />
+        <circle v-for="(p, i) in points" :key="i" :cx="x(i)" :cy="y(p.actual)" r="3" class="dot actual" />
+      </svg>
+    </div>
     <p v-else class="empty">Not enough history yet.</p>
 
     <div v-if="points.length > 0" class="range">
@@ -98,10 +120,33 @@ function formatDate(iso: string): string {
   background: var(--text-dim);
 }
 
+.explainer {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.chart-area {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.axis-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  padding: 2px 0;
+}
+
 .chart-svg {
   width: 100%;
   height: 160px;
   display: block;
+  flex: 1;
 }
 
 .line {

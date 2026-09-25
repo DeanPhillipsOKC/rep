@@ -73,6 +73,13 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(points.nth(0)).toContainText('2000 actual')
   await expect(points.nth(0)).not.toContainText('projected')
 
+  // Item 53: the chart explains what "Projected" means and labels the axis
+  // with a unit — both sets in this spec are logged in the default 'lb'
+  // unit (WorkoutLogger.vue's weightUnit ref).
+  await expect(page.getByText(/Projected volume \(lb\) carries forward/)).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Volume over time, in lb' })).toBeVisible()
+  await expect(page.getByText('2000 lb', { exact: true })).toBeVisible()
+
   await page.getByRole('button', { name: 'Log another workout' }).click()
 
   // Workout 2: only one set of the tracked exercise (under target_sets: 2),

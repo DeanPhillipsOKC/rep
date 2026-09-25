@@ -1,12 +1,25 @@
 // Backlog item 6: post-workout volume chart. Pure computation, kept separate
 // from the store so the projection rule (docs/backlog.md#6) is testable/
 // readable on its own.
-import type { WorkoutWithSets } from './types'
+import type { WeightUnit, WorkoutWithSets } from './types'
 
 export interface VolumeChartPoint {
   performedAt: string
   actual: number
   projected: number
+  weightUnit: WeightUnit
+}
+
+// A workout's sets should all share one unit in practice, but nothing
+// enforces that — take whichever unit appears most often so a stray mixed
+// entry can't flip the whole point's label. Defaults to 'lb' for a
+// zero-set workout (item 9 usually deletes those before they'd ever reach
+// here, but computeVolumeHistory shouldn't assume that).
+function modeWeightUnit(sets: { weight_unit: WeightUnit }[]): WeightUnit {
+  if (sets.length === 0) return 'lb'
+  const counts = new Map<WeightUnit, number>()
+  for (const s of sets) counts.set(s.weight_unit, (counts.get(s.weight_unit) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0]
 }
 
 export interface TemplateExerciseTarget {
@@ -53,6 +66,6 @@ export function computeVolumeHistory(
       }
     }
 
-    return { performedAt: w.performed_at, actual, projected }
+    return { performedAt: w.performed_at, actual, projected, weightUnit: modeWeightUnit(w.sets) }
   })
 }
