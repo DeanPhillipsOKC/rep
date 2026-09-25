@@ -47,3 +47,34 @@ export function findRecentPr(recentSets: RecentSet[], historicalSets: Historical
   }
   return null
 }
+
+export interface HistoryWorkoutForPr {
+  id: string
+  performed_at: string
+  sets: { exercise_id: string; reps: number; weight: number }[]
+}
+
+// Backlog item 45: History's timeline PR marker. Same "strictly greater than
+// the prior best" rule as checkForRecord/findRecentPr above, replayed
+// chronologically across the whole history (oldest first, since a set can
+// only be a record relative to what came before it) to mark every workout
+// that contained one, not just the most recent.
+export function findPrWorkoutIds(workouts: HistoryWorkoutForPr[]): Set<string> {
+  const chronological = [...workouts].sort(
+    (a, b) => new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime()
+  )
+
+  const bestSoFar = new Map<string, number>()
+  const prWorkoutIds = new Set<string>()
+  for (const w of chronological) {
+    for (const s of w.sets) {
+      const volume = s.reps * s.weight
+      const best = bestSoFar.get(s.exercise_id) ?? 0
+      if (volume > best) {
+        bestSoFar.set(s.exercise_id, volume)
+        prWorkoutIds.add(w.id)
+      }
+    }
+  }
+  return prWorkoutIds
+}
