@@ -23,9 +23,8 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Make failed set saves safe to retry (ROI 1.60)
-2. Export personal training data (ROI 1.00)
-3. Show exercise-by-exercise history (ROI 1.00)
+1. Export personal training data (ROI 1.00)
+2. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -38,21 +37,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Make failed set saves safe to retry — `WorkoutLogger.vue` currently surfaces a raw error
-  while the user is mid-workout. Keep the attempted exercise/reps/weight/unit/RPE visible, show a
-  short actionable message and Retry control, and never mark a set complete or start rest until
-  its save is confirmed. A network timeout can happen after the insert reached Supabase, so a
-  retry must use a stable client-generated set ID (or equivalent idempotency key) and reconcile
-  with the server before treating a duplicate-key response as success; blindly inserting again
-  would double-count a lift. If reconciliation finds the original set already saved, show that
-  saved row and let the user use normal set editing for corrections; otherwise retry the current
-  field values. Keep the action disabled while one attempt is in flight. Cover a definite server
-  rejection, a lost/uncertain response followed by retry, and exactly one persisted set in
-  Playwright. This is online error recovery, not an offline write queue; revisit durable offline
-  logging after real gym-device feedback. Fit the retry affordance to the compact set-row UI
-  (item 1, shipped 2026-09-25, `docs/backlog-archive.md`) now that it's the logger's entry form.
-  [Effort: 5, Value: 8, ROI: 1.60]
 
 - [ ] Export personal training data — add a discoverable download action for the signed-in user
   that produces versioned JSON containing their exercises (including archived names/notes),

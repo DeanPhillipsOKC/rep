@@ -228,11 +228,12 @@ interface DraftRow {
   rpe: number | null
   rpeOpen: boolean
   saving: boolean
+  attempted: boolean
   error: string
 }
 
 function makeDraftRow(): DraftRow {
-  return { key: crypto.randomUUID(), reps: null, weight: null, rpe: null, rpeOpen: false, saving: false, error: '' }
+  return { key: crypto.randomUUID(), reps: null, weight: null, rpe: null, rpeOpen: false, saving: false, attempted: false, error: '' }
 }
 
 // Shared across rows rather than per-row — a full-width unit selector on
@@ -324,6 +325,7 @@ function addDraftRow(id: string) {
 }
 
 function removeDraftRow(id: string, row: DraftRow) {
+  if (row.saving || row.error) return
   const rows = draftRowsByExercise.value[id]
   if (!rows) return
   const index = rows.indexOf(row)
@@ -450,10 +452,14 @@ async function completeRow(id: string, row: DraftRow) {
   if (row.reps === null || row.weight === null || row.saving) return
   row.saving = true
   row.error = ''
-  const { error } = await workout.addSet(id, row.reps, row.weight, rowWeightUnit.value, normalizeRpe(row.rpe))
+  const retry = row.attempted
+  row.attempted = true
+  const { error, reconciled } = await workout.addSet(
+    id, row.reps, row.weight, rowWeightUnit.value, normalizeRpe(row.rpe), row.key, retry
+  )
   row.saving = false
   if (error) {
-    row.error = error.message
+    row.error = 'Set not confirmed. Check your connection, then retry. Your entries are still here.'
     return
   }
 
@@ -472,7 +478,9 @@ async function completeRow(id: string, row: DraftRow) {
     rows.push(nextRow)
   }
 
-  startRestIfConfigured(id)
+  // A reconciled set was saved earlier, so a new full rest period would be
+  // misleading. The saved row is visible and can be corrected with Edit.
+  if (!reconciled) startRestIfConfigured(id)
 }
 
 // Backlog item 13: inline edit for a set still in the active workout, same
@@ -544,8 +552,11 @@ const showingVolumeChart = ref(false)
 // before that happens rather than letting a stray "Finish workout" tap
 // discard the session with no feedback.
 const confirmingEmptyFinish = ref(false)
+const hasUnconfirmedSet = computed(() => Object.values(draftRowsByExercise.value)
+  .some((rows) => rows.some((row) => row.saving || !!row.error)))
 
 function handleFinishClick() {
+  if (hasUnconfirmedSet.value) return
   if (workout.activeSets.length === 0 && !confirmingEmptyFinish.value) {
     confirmingEmptyFinish.value = true
     return
@@ -554,6 +565,7 @@ function handleFinishClick() {
 }
 
 async function handleFinish() {
+  if (hasUnconfirmedSet.value) return
   const finishedTemplateId = workout.activeTemplateId
   const hadSets = workout.activeSets.length > 0
 
@@ -802,6 +814,7 @@ function dismissVolumeChart() {
                     <input
                       :id="`row-reps-${entry.row.key}`"
                       v-model.number="entry.row.reps"
+                      :disabled="entry.row.saving"
                       type="number"
                       inputmode="numeric"
                       min="1"
@@ -813,6 +826,7 @@ function dismissVolumeChart() {
                     <input
                       :id="`row-weight-${entry.row.key}`"
                       v-model.number="entry.row.weight"
+                      :disabled="entry.row.saving"
                       type="number"
                       inputmode="decimal"
                       min="0"
@@ -820,7 +834,7 @@ function dismissVolumeChart() {
                       :placeholder="rowWeightUnit"
                       class="set-input"
                     />
-                    <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" @click="entry.row.rpeOpen = true">
+                    <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" :disabled="entry.row.saving" @click="entry.row.rpeOpen = true">
                       +RPE
                     </button>
                     <span v-else class="rpe-inline">
@@ -828,6 +842,7 @@ function dismissVolumeChart() {
                       <input
                         :id="`row-rpe-${entry.row.key}`"
                         v-model.number="entry.row.rpe"
+                        :disabled="entry.row.saving"
                         type="number"
                         inputmode="decimal"
                         min="0"
@@ -845,12 +860,13 @@ function dismissVolumeChart() {
                       :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
                       @click="completeRow(exerciseId, entry.row)"
                     >
-                      Add set
+                      {{ entry.row.saving ? 'Saving…' : entry.row.error ? 'Retry' : 'Add set' }}
                     </button>
                     <button
                       type="button"
                       class="remove-row-btn"
                       :aria-label="`Remove row ${entry.number}`"
+                      :disabled="entry.row.saving || !!entry.row.error"
                       @click="removeDraftRow(exerciseId, entry.row)"
                     >
                       ✕
@@ -953,7 +969,8 @@ function dismissVolumeChart() {
           <button type="button" class="ghost small" @click="confirmingEmptyFinish = false">Cancel</button>
         </div>
       </div>
-      <button v-else type="button" class="btn-accent finish" @click="handleFinishClick">Finish workout</button>
+      <button v-else type="button" class="btn-accent finish" :disabled="hasUnconfirmedSet" @click="handleFinishClick">Finish workout</button>
+      <p v-if="hasUnconfirmedSet" class="row-error">Retry the unconfirmed set before finishing.</p>
     </div>
     </template>
 

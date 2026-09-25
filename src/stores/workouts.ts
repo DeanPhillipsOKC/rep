@@ -341,13 +341,44 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     reps: number,
     weight: number,
     weightUnit: WeightUnit,
-    rpe: number | null
+    rpe: number | null,
+    setId: string = crypto.randomUUID(),
+    retry = false
   ) {
     // Captured before the await below — finishWorkout() can clear
     // activeWorkoutId.value/activeSets.value while this call is in flight,
     // and the insert must still target the workout it started with.
     const workoutId = activeWorkoutId.value
     if (!workoutId) return { error: new Error('No active workout') }
+
+    // A failed response does not prove the insert failed. On retry, read by
+    // the same client ID before writing again. If the read itself fails, keep
+    // the row uncertain rather than risking a second set.
+    async function findSavedSet() {
+      try {
+        const { data, error } = await supabase.from('sets').select('*')
+          .eq('id', setId).eq('workout_id', workoutId).maybeSingle()
+        return { data: data as SetEntry | null, error }
+      } catch (cause) {
+        return { data: null, error: cause instanceof Error ? cause : new Error(String(cause)) }
+      }
+    }
+
+    function acceptSavedSet(data: SetEntry) {
+      if (activeWorkoutId.value === workoutId && !activeSets.value.some((set) => set.id === data.id)) {
+        activeSets.value.push(data)
+      }
+      checkForRecord(data.exercise_id, data.id, data.reps, data.weight, data.weight_unit)
+    }
+
+    if (retry) {
+      const found = await findSavedSet()
+      if (found.error) return { data: null, error: found.error, reconciled: false }
+      if (found.data) {
+        acceptSavedSet(found.data)
+        return { data: found.data, error: null, reconciled: true }
+      }
+    }
 
     // set_index below is a placeholder only, to satisfy the not-null
     // column — two addSet calls fired close together can both read the
@@ -358,6 +389,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     const insert = supabase
       .from('sets')
       .insert({
+        id: setId,
         workout_id: workoutId,
         exercise_id: exerciseId,
         set_index: activeSets.value.length,
@@ -369,15 +401,34 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       .select()
       .single()
 
-    pendingWrites.add(insert)
-    const { data, error } = await insert
-    pendingWrites.delete(insert)
+    // Resolve the PostgREST thenable once; awaiting it twice would send a
+    // second POST if finishWorkout also waits for this in-flight write.
+    const write = Promise.resolve(insert)
+    pendingWrites.add(write)
+    let result: { data: SetEntry | null; error: Error | null }
+    try {
+      result = await write
+    } catch (cause) {
+      result = { data: null, error: cause instanceof Error ? cause : new Error(String(cause)) }
+    } finally {
+      pendingWrites.delete(write)
+    }
+    const { data, error } = result
 
     if (!error && data) {
-      if (activeWorkoutId.value === workoutId) activeSets.value.push(data)
-      checkForRecord(exerciseId, data.id, reps, weight, weightUnit)
+      acceptSavedSet(data)
     }
-    return { data, error }
+    if (error && retry && 'code' in error && error.code === '23505') {
+      // The first insert may have landed between the lookup and this insert.
+      // Only the matching persisted row is proof of success.
+      const found = await findSavedSet()
+      if (found.error) return { data: null, error: found.error, reconciled: false }
+      if (found.data) {
+        acceptSavedSet(found.data)
+        return { data: found.data, error: null, reconciled: true }
+      }
+    }
+    return { data, error, reconciled: false }
   }
 
   // Backlog item 9: a workout finished (or abandoned) with zero sets logged
