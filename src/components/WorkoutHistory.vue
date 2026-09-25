@@ -120,9 +120,15 @@ async function saveSetEdit(id: string) {
   }
 }
 
+// Backlog item 51: same inline confirm pattern as the whole-workout delete
+// above — a logged set has no undo, so deleting it shouldn't be a single
+// accidental tap.
+const confirmingDeleteSetId = ref<string | null>(null)
+
 async function handleDeleteSet(id: string) {
   errorMessage.value = ''
   if (editingSetId.value === id) editingSetId.value = null
+  confirmingDeleteSetId.value = null
   const { error } = await workout.deleteHistorySet(id)
   if (error) errorMessage.value = error.message
 }
@@ -245,7 +251,15 @@ async function saveNotes(id: string) {
                   </span>
                   <div class="row-actions">
                     <button type="button" class="ghost small" @click="startEditingSet(set)">Edit</button>
-                    <button type="button" class="ghost small" @click="handleDeleteSet(set.id)">Delete</button>
+                    <button type="button" class="ghost small" @click="confirmingDeleteSetId = set.id">Delete</button>
+                  </div>
+                </div>
+
+                <div v-if="confirmingDeleteSetId === set.id" class="confirm-delete">
+                  <span class="row-sub">Delete this set? This can't be undone.</span>
+                  <div class="confirm-actions">
+                    <button type="button" class="danger small" @click="handleDeleteSet(set.id)">Confirm delete</button>
+                    <button type="button" class="ghost small" @click="confirmingDeleteSetId = null">Cancel</button>
                   </div>
                 </div>
 

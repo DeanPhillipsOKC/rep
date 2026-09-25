@@ -75,6 +75,7 @@ test('edit notes and a set, and delete a set, on a past workout in History', asy
   const secondSetRow = card.locator('li.row-wrap').nth(1)
   await expect(secondSetRow).toContainText('8 × 135lb')
   await secondSetRow.getByRole('button', { name: 'Delete' }).click()
+  await secondSetRow.getByRole('button', { name: 'Confirm delete' }).click()
   await expect(card.locator('li.row-wrap')).toHaveCount(1)
   await expect(card).toBeVisible()
   await expect(firstSetRow).toContainText('12 × 50lb')

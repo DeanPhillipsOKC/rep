@@ -43,7 +43,9 @@ test('edit and delete a set in an active workout', async ({ page }) => {
   await row.getByRole('button', { name: 'Cancel' }).click()
   await expect(row).toContainText('8 × 50lb')
 
-  // Remove the set logged in error.
+  // Remove the set logged in error — backlog item 51 requires a confirm
+  // step before the delete actually happens.
   await row.getByRole('button', { name: 'Delete' }).click()
+  await row.getByRole('button', { name: 'Confirm delete' }).click()
   await expect(page.locator('li.row-wrap', { hasText: exerciseName })).toHaveCount(0)
 })

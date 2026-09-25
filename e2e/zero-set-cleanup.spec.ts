@@ -15,6 +15,11 @@ test('finishing a workout with no sets deletes the workout row', async ({ page }
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
+  // Backlog item 51: an empty finish now asks for confirmation before the
+  // workout row gets discarded.
+  await expect(page.getByText('Finish with no sets logged?')).toBeVisible()
+  await page.getByRole('button', { name: 'Discard workout' }).click()
+
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
 
   const admin = getAdminClient()

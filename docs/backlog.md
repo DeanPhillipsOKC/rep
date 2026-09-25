@@ -20,7 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-51, 50, 53, 52, 54
+56, 50, 53, 52, 54
 
 ## Features
 
@@ -33,15 +33,6 @@ Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, a
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
-
-- [ ] **Item 51 — No guardrail on empty-workout finish or single-set deletion.** `handleFinish`
-  in `WorkoutLogger.vue` lets `Finish workout` fire with zero sets logged — it silently deletes
-  the workout row with no confirmation or feedback telling the user that's what happened.
-  Deleting a single set (`handleDeleteSet` in both `WorkoutLogger.vue` and
-  `WorkoutHistory.vue`) is instant with no confirm and no undo. Whole-workout delete and
-  template-archive already have proper confirmation, so this only needs to extend the same
-  pattern down to the set level, plus a short confirm/toast on empty finish.
-  `[Effort: 3, Value: 5, ROI: 1.67]`
 
 - [ ] **Item 50 — Active workout has no visible "in progress" state.** `WorkoutLogger.vue`'s
   heading is hard-coded to "Log a workout" whether or not a workout is active, and `BottomNav`
@@ -76,6 +67,22 @@ implemented and were dropped rather than logged. What's below is what verifiably
   buttons rather than switching to drag handles — they're the more accessible choice on mobile
   without a keyboard-equivalent drag affordance, so the review's specific recommendation there
   isn't being adopted. `[Effort: 3, Value: 3, ROI: 1]`
+
+## Testing / tooling
+
+- [ ] **Item 56 — Recurring e2e flakes on back-to-back full-suite runs.** Full `npm run test:e2e`
+  runs are consistently reliable in isolation, but running the full 31-spec suite two or three
+  times in quick succession reliably produces 2-4 failures, and *which* specs fail varies run to
+  run (`pr-toast`, `pre-fill`, `template-scoped-exercises`, `archived-template-exercise`, and
+  `progress-strip` have each failed at least once this way, 2026-09-25) — every failure clears on
+  an isolated re-run, and the same specs pass clean on an untouched `git stash` of `main`, so this
+  isn't a real regression, just suite flakiness. Shape points at shared state on the one Supabase
+  test account specs all reuse (`playwright.config.ts`'s single-worker comment already flags the
+  magic-link-mint race as a known risk) — likely candidates: Supabase auth rate-limiting the
+  repeated `generateLink`/`verifyOtp` mint, or leftover data from a prior run's `E2E …timestamp`
+  rows/workouts colliding with count-based assertions (`progress-strip`'s failure was a stat-tile
+  off-by-one). Worth root-causing before e2e is ever wired up as a deploy gate, since a flaky gate
+  is worse than no gate. `[Effort: 3, Value: 5, ROI: 1.67]`
 
 ## Human setup / device verification
 

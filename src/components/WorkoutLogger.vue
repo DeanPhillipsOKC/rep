@@ -291,9 +291,15 @@ async function saveSetEdit(id: string) {
   }
 }
 
+// Backlog item 51: same inline confirm pattern as WorkoutHistory.vue's
+// whole-workout delete — a logged set has no undo, so deleting it shouldn't
+// be a single accidental tap.
+const confirmingDeleteSetId = ref<string | null>(null)
+
 async function handleDeleteSet(id: string) {
   errorMessage.value = ''
   if (editingSetId.value === id) editingSetId.value = null
+  confirmingDeleteSetId.value = null
   const { error } = await workout.deleteSet(id)
   if (error) errorMessage.value = error.message
 }
@@ -315,11 +321,26 @@ const selectedExerciseNotes = computed(() => {
 // finishWorkout, see item 9) has nothing to chart.
 const showingVolumeChart = ref(false)
 
+// Backlog item 51: finishWorkout() silently deletes the workout row when no
+// sets were logged (see finishWorkout in stores/workouts.ts) — confirm
+// before that happens rather than letting a stray "Finish workout" tap
+// discard the session with no feedback.
+const confirmingEmptyFinish = ref(false)
+
+function handleFinishClick() {
+  if (workout.activeSets.length === 0 && !confirmingEmptyFinish.value) {
+    confirmingEmptyFinish.value = true
+    return
+  }
+  handleFinish()
+}
+
 async function handleFinish() {
   const finishedTemplateId = workout.activeTemplateId
   const hadSets = workout.activeSets.length > 0
 
   await workout.finishWorkout()
+  confirmingEmptyFinish.value = false
   notes.value = ''
   templateId.value = ''
   exerciseId.value = ''
@@ -554,7 +575,15 @@ function dismissVolumeChart() {
             </span>
             <div class="row-actions">
               <button type="button" class="ghost small" @click="startEditingSet(set)">Edit</button>
-              <button type="button" class="ghost small" @click="handleDeleteSet(set.id)">Delete</button>
+              <button type="button" class="ghost small" @click="confirmingDeleteSetId = set.id">Delete</button>
+            </div>
+          </div>
+
+          <div v-if="confirmingDeleteSetId === set.id" class="confirm-delete">
+            <span class="row-sub">Delete this set? This can't be undone.</span>
+            <div class="confirm-actions">
+              <button type="button" class="danger small" @click="handleDeleteSet(set.id)">Confirm delete</button>
+              <button type="button" class="ghost small" @click="confirmingDeleteSetId = null">Cancel</button>
             </div>
           </div>
 
@@ -613,7 +642,14 @@ function dismissVolumeChart() {
         </li>
       </ol>
 
-      <button type="button" class="ghost finish" @click="handleFinish">Finish workout</button>
+      <div v-if="confirmingEmptyFinish" class="confirm-delete">
+        <span class="row-sub">Finish with no sets logged? This will discard the workout.</span>
+        <div class="confirm-actions">
+          <button type="button" class="danger small" @click="handleFinish">Discard workout</button>
+          <button type="button" class="ghost small" @click="confirmingEmptyFinish = false">Cancel</button>
+        </div>
+      </div>
+      <button v-else type="button" class="ghost finish" @click="handleFinishClick">Finish workout</button>
     </div>
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
@@ -938,10 +974,35 @@ function dismissVolumeChart() {
   gap: 8px;
 }
 
+.confirm-delete {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .ghost {
   background: transparent;
   border-color: var(--border);
   color: var(--text-dim);
+}
+
+.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.danger.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .ghost.small {
