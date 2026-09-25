@@ -51,6 +51,12 @@ $gitignoreContent = if (Test-Path $gitignorePath) { Get-Content $gitignorePath -
 if ($gitignoreContent -notmatch '(?m)^logs/?\s*$') {
     Add-Content -Path $gitignorePath -Value "`nlogs/" -Encoding utf8
     Write-Host "Run-Backlog.ps1: added 'logs/' to .gitignore."
+    # Commit this immediately (only .gitignore, nothing else) so the tree is clean before the
+    # loop starts — next-item's safety precondition refuses to run on a dirty tree, and this
+    # script's own edit would otherwise be the thing that dirties it.
+    git add .gitignore
+    git commit -m "Add logs/ to .gitignore (Run-Backlog.ps1)" | Out-Null
+    git push | Out-Null
 }
 
 function Get-HeadCommit {
