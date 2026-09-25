@@ -57,10 +57,42 @@ onMounted(() => {
   if (templates.templates.length === 0) templates.fetchTemplates()
   workout.fetchProgressStats()
   document.addEventListener('visibilitychange', handleRestVisibilityChange)
+  elapsedTimerHandle = window.setInterval(() => {
+    elapsedNow.value = Date.now()
+  }, 1000)
 })
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', handleRestVisibilityChange)
+  if (elapsedTimerHandle !== null) window.clearInterval(elapsedTimerHandle)
+})
+
+// Backlog item 50: dynamic header while a workout is active — template name
+// (or "Freeform workout") plus a running elapsed-time clock, replacing the
+// heading that used to read "Log a workout" throughout. `elapsedNow` ticks
+// once a second purely to keep `elapsedLabel` reactive; the real source of
+// truth is `activeWorkoutStartedAt` (stores/workouts.ts), set when the
+// workout row is created.
+const elapsedNow = ref(Date.now())
+let elapsedTimerHandle: number | null = null
+
+const activeTemplateName = computed(() => {
+  if (!workout.activeTemplateId) return null
+  return templates.templates.find((t) => t.id === workout.activeTemplateId)?.name ?? null
+})
+
+const headerTitle = computed(() => {
+  if (!workout.activeWorkoutId) return 'Log a workout'
+  return activeTemplateName.value ?? 'Freeform workout'
+})
+
+const elapsedLabel = computed(() => {
+  if (!workout.activeWorkoutId || !workout.activeWorkoutStartedAt) return null
+  const totalSeconds = Math.max(0, Math.floor((elapsedNow.value - workout.activeWorkoutStartedAt) / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
+  const seconds = String(totalSeconds % 60).padStart(2, '0')
+  return hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`
 })
 
 // Backlog item 3: sets from the previous workout against this template,
@@ -365,7 +397,10 @@ function dismissVolumeChart() {
 
 <template>
   <div>
-    <h2>Log a workout</h2>
+    <div class="log-header">
+      <h2>{{ headerTitle }}</h2>
+      <span v-if="elapsedLabel" class="elapsed-time" aria-label="Time since workout started">{{ elapsedLabel }}</span>
+    </div>
 
     <div v-if="showingVolumeChart" class="card">
       <h3>Volume over time</h3>
@@ -498,6 +533,8 @@ function dismissVolumeChart() {
             :key="te.id"
             type="button"
             class="ghost chip"
+            :class="{ 'chip-selected': exerciseId === te.exercise_id }"
+            :aria-pressed="exerciseId === te.exercise_id"
             @click="pickSuggested(te.exercise_id)"
           >
             {{ te.exercises?.name }}
@@ -675,6 +712,22 @@ function dismissVolumeChart() {
 </template>
 
 <style scoped>
+.log-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.elapsed-time {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 .progress-strip {
   display: flex;
   gap: 12px;
@@ -1036,6 +1089,17 @@ function dismissVolumeChart() {
   padding: 0 14px;
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+/* Backlog item 50: the suggested chips and the exercise <select> below set
+   the same exerciseId, so a chip highlights the same way the template picker
+   does once its exercise is selected -- via either the chip or the dropdown -
+   making the relationship visible instead of leaving them looking unrelated. */
+.chip.chip-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
 }
 
 .template-chips {

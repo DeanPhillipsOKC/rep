@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-50, 53, 52, 57, 54
+53, 52, 57, 54
 
 ## Features
 
@@ -36,19 +36,6 @@ Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, a
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
-
-- [ ] **Item 50 — Active workout has no visible "in progress" state.** `WorkoutLogger.vue`'s
-  heading is hard-coded to "Log a workout" whether or not a workout is active, and `BottomNav`
-  keeps Home selected throughout (same route). Add a dynamic header (template name + elapsed
-  time) while a workout is active. Note this is bigger than just UI: `activeWorkoutId` lives
-  only in an in-memory Pinia ref with no persistence, and the `workouts` table has no
-  "finished" flag, so there's currently no way to tell an abandoned session from a finished one
-  at the DB level — true resume-after-refresh needs a schema change (`finished_at` or similar),
-  which is a human-executed migration per `docs/architecture.md`'s DDL constraint. Scope the
-  in-session header/timer work now; treat cross-refresh resume as a follow-on once that
-  migration lands. Also worth folding in while touching this screen: the quick-pick exercise
-  chips and the exercise `<select>` do the exact same thing (set `exerciseId`) with no visual
-  relationship, which the review correctly flagged as confusing. `[Effort: 5, Value: 8, ROI: 1.6]`
 
 - [ ] **Item 53 — Volume/projection chart doesn't explain "Projected."** `VolumeChart.vue`
   shows an Actual/Projected legend and line, but the carry-forward logic in

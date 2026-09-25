@@ -14,6 +14,11 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
   const activeWorkoutId = ref<string | null>(null)
   const activeTemplateId = ref<string | null>(null)
+  // Backlog item 50: client-side-only start time for the in-session elapsed
+  // timer. Not persisted — a refresh loses it, same as activeWorkoutId
+  // itself, until the `finished_at`/session-persistence migration this
+  // item explicitly scopes out lands (see docs/backlog.md item 50).
+  const activeWorkoutStartedAt = ref<number | null>(null)
   const activeSets = ref<SetEntry[]>([])
   const previousWorkout = ref<WorkoutWithSets | null>(null)
 
@@ -183,6 +188,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     if (!error && data) {
       activeWorkoutId.value = data.id
       activeTemplateId.value = templateId
+      activeWorkoutStartedAt.value = Date.now()
       activeSets.value = []
     }
     return { data, error }
@@ -321,6 +327,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     }
     activeWorkoutId.value = null
     activeTemplateId.value = null
+    activeWorkoutStartedAt.value = null
     activeSets.value = []
     previousWorkout.value = null
     newRecord.value = null
@@ -414,6 +421,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     errorMessage,
     activeWorkoutId,
     activeTemplateId,
+    activeWorkoutStartedAt,
     activeSets,
     previousWorkout,
     volumeHistory,
