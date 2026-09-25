@@ -46,6 +46,35 @@ iteration without counting it against `MaxIterations` or the stall check.
 At the end it prints how many iterations ran, how many items completed, how many were blocked, and
 why it stopped.
 
+## Email notifications (optional)
+
+`scripts\Run-Backlog.ps1` can email a description of each shipped or blocked item as it happens,
+plus a summary when the run finishes, via Gmail SMTP. It's opt-in: if the env vars below aren't
+set, notifications are silently skipped and the run behaves exactly as before.
+
+Set these in `.env.local` (never in Cloudflare Pages — this only runs locally):
+
+```
+GMAIL_SENDER_ADDRESS=you@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+NOTIFY_EMAIL_RECIPIENTS=you@gmail.com,partner@example.com
+```
+
+`NOTIFY_EMAIL_RECIPIENTS` is comma-separated — add as many addresses as you want to notify.
+`GMAIL_APP_PASSWORD` is **not** your normal Gmail password (Google blocks plain-password SMTP
+login); generate a dedicated one:
+
+1. Turn on 2-Step Verification on the sending Google account, if it isn't already
+   (myaccount.google.com/security).
+2. Go to myaccount.google.com/apppasswords, create one named something like "RepBunny backlog
+   runner", and copy the 16-character password it generates.
+3. Paste that into `GMAIL_APP_PASSWORD`. It only works for SMTP login, not for signing into the
+   account normally, and can be revoked independently at any time from the same page.
+
+Shipped-item emails reuse the `docs/backlog-archive.md` entry the run just wrote, the same source
+the `run-backlog` skill's summary draws from. Blocked-item emails reuse the `Status: blocked:
+<reason>` tag added to `docs/backlog.md`.
+
 ## Getting a release-notes-style summary
 
 The `run-backlog` skill (`.claude/skills/run-backlog/SKILL.md` for Claude,

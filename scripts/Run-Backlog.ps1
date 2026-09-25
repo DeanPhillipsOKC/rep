@@ -22,6 +22,12 @@
 
 .PARAMETER Agent
     Claude (default) or Codex.
+
+.NOTES
+    Optional email notifications: set GMAIL_SENDER_ADDRESS, GMAIL_APP_PASSWORD, and
+    NOTIFY_EMAIL_RECIPIENTS in .env.local (see docs/backlog-runner.md) to get an email each time
+    an item ships or gets blocked, plus one when the run finishes. Unset means notifications are
+    silently skipped — this is opt-in and never blocks a run.
 #>
 
 param(
@@ -34,6 +40,45 @@ $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
+
+$envLocalPath = Join-Path $RepoRoot '.env.local'
+if (Test-Path $envLocalPath) {
+    Get-Content $envLocalPath | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$') {
+            $name, $value = $matches[1], $matches[2]
+            if (-not (Test-Path "Env:$name")) {
+                Set-Item -Path "Env:$name" -Value $value
+            }
+        }
+    }
+}
+
+function Send-EmailNotification {
+    param([string]$Subject, [string]$Body)
+
+    if (-not $env:GMAIL_SENDER_ADDRESS -or -not $env:GMAIL_APP_PASSWORD -or -not $env:NOTIFY_EMAIL_RECIPIENTS) {
+        return
+    }
+    $recipients = $env:NOTIFY_EMAIL_RECIPIENTS -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    if (-not $recipients) {
+        return
+    }
+
+    try {
+        $smtp = New-Object System.Net.Mail.SmtpClient('smtp.gmail.com', 587)
+        $smtp.EnableSsl = $true
+        $smtp.Credentials = New-Object System.Net.NetworkCredential($env:GMAIL_SENDER_ADDRESS, $env:GMAIL_APP_PASSWORD)
+        $mail = New-Object System.Net.Mail.MailMessage
+        $mail.From = $env:GMAIL_SENDER_ADDRESS
+        foreach ($recipient in $recipients) { $mail.To.Add($recipient) }
+        $mail.Subject = $Subject
+        $mail.Body = $Body
+        $smtp.Send($mail)
+        $mail.Dispose()
+    } catch {
+        Write-Host "Run-Backlog.ps1: email notification failed: $_"
+    }
+}
 
 $agentCommand = $Agent.ToLowerInvariant()
 if (-not (Get-Command $agentCommand -ErrorAction SilentlyContinue)) {
@@ -135,9 +180,18 @@ while ($iteration -lt $MaxIterations) {
         if ($subject -match '^Block item') {
             $blocked++
             Write-Host "Run-Backlog.ps1: iteration $iteration blocked an item: $subject"
+            $backlogDiff = (& git @gitArgs diff "$lastCommit" "$newCommit" -- docs/backlog.md) -join "`n"
+            $reasonLine = ($backlogDiff -split "`n" | Where-Object { $_ -match '^\+.*Status: blocked:' } | Select-Object -First 1)
+            $reasonText = if ($reasonLine) { ($reasonLine -replace '^\+', '').Trim() } else { 'see logs/backlog-runner.log for detail.' }
+            Send-EmailNotification -Subject "Backlog item blocked: $subject" -Body "$subject`n`n$reasonText"
         } else {
             $completed++
             Write-Host "Run-Backlog.ps1: iteration $iteration completed: $subject"
+            $archiveDiff = (& git @gitArgs diff "$lastCommit" "$newCommit" -- docs/backlog-archive.md) -join "`n"
+            $addedLines = ($archiveDiff -split "`n" | Where-Object { $_ -match '^\+[^+]' }) -join "`n"
+            $description = ($addedLines -replace '^\+\s?', '').Trim()
+            if (-not $description) { $description = $subject }
+            Send-EmailNotification -Subject "Shipped: $subject" -Body $description
         }
         $lastCommit = $newCommit
     }
@@ -150,5 +204,12 @@ Write-Host "Items completed: $completed"
 Write-Host "Items blocked: $blocked"
 Write-Host "Stopped because: $stopReason"
 Write-Host "Log: $logFile"
+
+Send-EmailNotification -Subject "Backlog run finished ($completed shipped, $blocked blocked)" -Body @"
+Iterations run: $iteration
+Items completed: $completed
+Items blocked: $blocked
+Stopped because: $stopReason
+"@
 
 exit $exitCode
