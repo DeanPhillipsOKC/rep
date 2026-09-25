@@ -46,23 +46,27 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(page.locator('.exercise-row-wrap', { hasText: otherName })).toBeVisible()
 
   // Workout 1: complete both sets of the tracked exercise. Volume = 2000.
-  // Each add is followed by a wait for its row to land before the next fill
-  // — a successful add clears reps/weight back to null (no prior workout to
-  // pre-fill from, see WorkoutLogger.vue's applyPrefill), so filling ahead
-  // of that landing risks the next fill being wiped out from under it.
+  // target_sets: 2 means both rows show up together (backlog item 1), so
+  // each fill/log is scoped to the first still-open row rather than an
+  // unscoped Reps/Weight lookup, which would otherwise match both rows at
+  // once and fail with a strict-mode violation.
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })
-  await page.getByLabel('Reps').fill('10')
-  await page.getByLabel('Weight').fill('100')
-  await page.getByRole('button', { name: 'Add set' }).click()
+  await expect(page.locator('.set-row-draft')).toHaveCount(2)
+  let openRow = page.locator('.set-row-draft').first()
+  await openRow.getByLabel('Reps').fill('10')
+  await openRow.getByLabel('Weight').fill('100')
+  await openRow.getByRole('button', { name: 'Add set' }).click()
   // First-ever set for this brand-new exercise is also an all-time best.
   await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: trackedName })).toHaveCount(1)
-  await page.getByLabel('Reps').fill('10')
-  await page.getByLabel('Weight').fill('100')
-  await page.getByRole('button', { name: 'Add set' }).click()
+  await expect(page.locator('.set-row-draft')).toHaveCount(1)
+  openRow = page.locator('.set-row-draft').first()
+  await openRow.getByLabel('Reps').fill('10')
+  await openRow.getByLabel('Weight').fill('100')
+  await openRow.getByRole('button', { name: 'Add set' }).click()
   await expect(page.locator('.row', { hasText: trackedName })).toHaveCount(2)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
@@ -88,9 +92,10 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })
-  await page.getByLabel('Reps').fill('10')
-  await page.getByLabel('Weight').fill('50')
-  await page.getByRole('button', { name: 'Add set' }).click()
+  await expect(page.locator('.set-row-draft')).toHaveCount(2)
+  await page.locator('.set-row-draft').first().getByLabel('Reps').fill('10')
+  await page.locator('.set-row-draft').first().getByLabel('Weight').fill('50')
+  await page.locator('.set-row-draft').first().getByRole('button', { name: 'Add set' }).click()
   await expect(page.locator('.row', { hasText: trackedName })).toHaveCount(1)
   await page.getByLabel('Exercise').selectOption({ label: otherName })
   await page.getByLabel('Reps').fill('10')

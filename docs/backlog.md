@@ -23,11 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Show compact logging rows matching the exercise's configured set count (ROI 1.60)
-2. Recover an interrupted workout after reload (ROI 1.60)
-3. Make failed set saves safe to retry (ROI 1.60)
-4. Export personal training data (ROI 1.00)
-5. Show exercise-by-exercise history (ROI 1.00)
+1. Recover an interrupted workout after reload (ROI 1.60)
+2. Make failed set saves safe to retry (ROI 1.60)
+3. Export personal training data (ROI 1.00)
+4. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -40,22 +39,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Show compact logging rows matching the exercise's configured set count — user-requested
-  2026-09-25. Replace the large one-set-at-a-time form in `WorkoutLogger.vue` with numbered
-  rows visible together on a phone, each with quick-entry reps and weight fields. For a
-  template workout, use that exercise's `target_sets` (two configured sets means two rows;
-  three means three). If no count is configured, start with one row and allow more to be added.
-  Include optional RPE in each row if it stays readable and easy to tap at mobile width;
-  otherwise keep RPE accessible through a compact per-row expansion. Keep the weight unit
-  easy to set without repeating a full-width selector in every row. Pre-fill from the
-  previous workout where available, while keeping each row independently editable.
-  Completing a row saves that set and starts the existing rest flow for that exercise;
-  later rows stay visible and ready to edit during rest. Empty planned rows must not be
-  saved. Allow adding or removing rows when the actual workout differs from the configured
-  count, and preserve editing/deleting logged sets. Cover the mobile layout,
-  sequential saves, and rest behavior in Playwright.
-  [Effort: 5, Value: 8, ROI: 1.60]
 
 - [ ] Recover an interrupted workout after reload — the current active workout ID, template,
   elapsed timer, and sets live only in the Pinia store, so a refresh or installed-PWA relaunch
@@ -83,8 +66,8 @@ implemented and were dropped rather than logged.
   field values. Keep the action disabled while one attempt is in flight. Cover a definite server
   rejection, a lost/uncertain response followed by retry, and exactly one persisted set in
   Playwright. This is online error recovery, not an offline write queue; revisit durable offline
-  logging after real gym-device feedback. Depends on the compact set-row item so the retry
-  affordance fits its final row UI.
+  logging after real gym-device feedback. Fit the retry affordance to the compact set-row UI
+  (item 1, shipped 2026-09-25, `docs/backlog-archive.md`) now that it's the logger's entry form.
   [Effort: 5, Value: 8, ROI: 1.60]
 
 - [ ] Export personal training data — add a discoverable download action for the signed-in user
@@ -105,7 +88,8 @@ implemented and were dropped rather than logged.
   converted correctly. Handle an exercise with no history and an archived exercise already in
   past workouts. Keep the first version a readable list; a chart or extra metrics can follow only
   if they answer a question the list cannot. Cover navigation, ordering, and mixed units in
-  Playwright. Depends on the compact set-row item so the logger entry point fits that layout.
+  Playwright. Fit the logger entry point to the compact set-row UI (item 1, shipped 2026-09-25,
+  `docs/backlog-archive.md`) now that it's the logger's entry form.
   [Effort: 5, Value: 5, ROI: 1.00]
 
 ## Human setup / device verification

@@ -25,10 +25,6 @@ const weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'S
 const notes = ref('')
 const templateId = ref('')
 const exerciseId = ref('')
-const reps = ref<number | null>(null)
-const weight = ref<number | null>(null)
-const weightUnit = ref<WeightUnit>('lb')
-const rpe = ref<number | null>(null)
 const errorMessage = ref('')
 
 // Backlog item 38: full-screen celebration takeover when a set beats the
@@ -150,6 +146,11 @@ const availableExercises = computed(() => {
 
 async function handleStart() {
   errorMessage.value = ''
+  // A brand-new workout session starts with no drafts of its own — without
+  // this, a leftover unsaved row from a just-finished workout (e.g. the
+  // auto-replenished blank row after the last set of a no-target exercise)
+  // would resurface the moment the same exercise is picked again.
+  draftRowsByExercise.value = {}
   if (templateId.value) {
     await workout.fetchPreviousWorkout(templateId.value)
   }
@@ -167,60 +168,118 @@ function pickSuggested(id: string) {
   exerciseId.value = id
 }
 
-// Pre-fill reps/weight from the previous workout's set at the same
-// position (set N this session <- set N last time), not just the last set
-// logged, since fatigue means later sets aren't representative of earlier
-// ones. Re-runs on every addSet too, not just on exercise selection, so
-// picking the same exercise again for set 2 refreshes the pre-fill.
-//
-// Backlog item 11: tracks the loggedCount it last filled for, so the
-// activeSets watcher below (which fires on ANY exercise's add, not just the
-// selected one) can tell "this exercise's count changed" from "some other
-// exercise's addSet response landed in the background." Without that check,
-// a superset partner's slow-arriving response can re-run this mid-keystroke
-// and silently wipe reps/weight back to null/prefill under the user's
-// fingers, turning their next "Add set" tap into a no-op (see the guard in
-// handleAddSet).
-let lastFilledCount: number | null = null
+// Backlog item 1: numbered rows matching the exercise's configured set
+// count, instead of one field that gets overwritten set after set. Each
+// exercise keeps its own row list, keyed by exercise id, so switching away
+// and back preserves whatever's still unsaved in it — and because each
+// exercise's rows only ever get touched by its own selection/completion
+// code below (not by a broad "any set was added" watcher), a superset
+// partner's slow-arriving response can no longer stomp on this exercise's
+// draft the way the old single-field pre-fill could (see
+// docs/backlog-archive.md for that history).
+interface DraftRow {
+  key: string
+  reps: number | null
+  weight: number | null
+  rpe: number | null
+  rpeOpen: boolean
+  saving: boolean
+  error: string
+}
 
-function applyPrefill(id: string) {
-  const previousSets = previousSetsByExercise.value[id]
-  const loggedCount = workout.activeSets.filter((s) => s.exercise_id === id).length
-  lastFilledCount = loggedCount
-  const matchingSet = previousSets?.[loggedCount]
+function makeDraftRow(): DraftRow {
+  return { key: crypto.randomUUID(), reps: null, weight: null, rpe: null, rpeOpen: false, saving: false, error: '' }
+}
+
+// Shared across rows rather than per-row — a full-width unit selector on
+// every row would eat most of the vertical space a compact grid is for.
+const rowWeightUnit = ref<WeightUnit>('lb')
+
+const draftRowsByExercise = ref<Record<string, DraftRow[]>>({})
+
+function configuredTargetFor(id: string): number | null {
+  if (!workout.activeTemplateId) return null
+  return activeTemplateExercises.value.find((te) => te.exercise_id === id)?.target_sets ?? null
+}
+
+function loggedCountFor(id: string): number {
+  return workout.activeSets.filter((s) => s.exercise_id === id).length
+}
+
+// Position-indexed, same rule as the old applyPrefill: set N this session
+// pre-fills from set N last time (not just "the last set logged"), since a
+// superset's interleaved order would otherwise pre-fill from the wrong
+// exercise's most recent set.
+function applyPrefillToRow(row: DraftRow, id: string, position: number) {
+  const matchingSet = previousSetsByExercise.value[id]?.[position]
   if (!matchingSet) {
-    reps.value = null
-    weight.value = null
+    row.reps = null
+    row.weight = null
     return
   }
-  reps.value = matchingSet.reps
-  weight.value = matchingSet.weight
-  weightUnit.value = matchingSet.weight_unit
+  row.reps = matchingSet.reps
+  row.weight = matchingSet.weight
 }
+
+// Lazily builds this exercise's row list the first time it's selected in
+// the active workout: `target_sets` rows for a templated exercise (minus
+// however many are already logged), or a single row if no count is
+// configured. Later re-selections reuse whatever's already there instead of
+// recomputing, so an in-progress but unsaved row survives switching to
+// another exercise and back.
+function ensureDraftRows(id: string) {
+  if (draftRowsByExercise.value[id]) return
+  const target = configuredTargetFor(id)
+  const loggedCount = loggedCountFor(id)
+  const plannedCount = target !== null ? Math.max(target - loggedCount, 0) : loggedCount === 0 ? 1 : 0
+  const rows = Array.from({ length: plannedCount }, () => makeDraftRow())
+  rows.forEach((row, i) => applyPrefillToRow(row, id, loggedCount + i))
+  const seedUnit = previousSetsByExercise.value[id]?.[loggedCount]?.weight_unit
+  if (seedUnit) rowWeightUnit.value = seedUnit
+  draftRowsByExercise.value[id] = rows
+}
+
+const draftRows = computed(() => (exerciseId.value ? (draftRowsByExercise.value[exerciseId.value] ?? []) : []))
+
+// Backlog item 1: the numbered grid shows every row for the selected
+// exercise together — already-logged sets in a compact read-only form (edit
+// and delete stay on the full workout list below, so there's one place that
+// owns that state, not two) followed by the still-open draft rows.
+type CombinedRow =
+  | { type: 'logged'; number: number; set: SetEntry }
+  | { type: 'draft'; number: number; row: DraftRow }
+
+const combinedRows = computed<CombinedRow[]>(() => {
+  if (!exerciseId.value) return []
+  const id = exerciseId.value
+  const logged = workout.activeSets.filter((s) => s.exercise_id === id)
+  const rows: CombinedRow[] = logged.map((set, i) => ({ type: 'logged', number: i + 1, set }))
+  draftRows.value.forEach((row, i) => rows.push({ type: 'draft', number: logged.length + i + 1, row }))
+  return rows
+})
 
 watch(exerciseId, (id) => {
   if (!id) return
-  applyPrefill(id)
+  ensureDraftRows(id)
 })
 
-watch(
-  () => workout.activeSets.length,
-  () => {
-    if (!exerciseId.value) return
-    const loggedCount = workout.activeSets.filter((s) => s.exercise_id === exerciseId.value).length
-    if (loggedCount === lastFilledCount) return
-    applyPrefill(exerciseId.value)
-  },
-)
+// Backlog item 1: "allow more to be added" — a manual escape hatch for both
+// directions (a templated exercise the user wants to over/under-run this
+// time, or another round for a no-target exercise beyond its auto-replenish
+// below).
+function addDraftRow(id: string) {
+  const rows = draftRowsByExercise.value[id] ?? (draftRowsByExercise.value[id] = [])
+  const row = makeDraftRow()
+  applyPrefillToRow(row, id, loggedCountFor(id) + rows.length)
+  rows.push(row)
+}
 
-// Backlog item 11: without this, nothing stops a second "Add set" tap from
-// firing while the first is still in flight, so two inserts can race over
-// the network and commit in the opposite order from how they were tapped —
-// set_index (assigned by DB commit order, supabase/schema.sql) then
-// disagrees with what the user actually logged first. Disabling the button
-// for the duration of the request makes overlapping submissions impossible
-// rather than just unlikely.
-const addingSet = ref(false)
+function removeDraftRow(id: string, row: DraftRow) {
+  const rows = draftRowsByExercise.value[id]
+  if (!rows) return
+  const index = rows.indexOf(row)
+  if (index !== -1) rows.splice(index, 1)
+}
 
 // Backlog item 28: the in-app rest screen (RestTimer.vue) shows the
 // countdown/progress bar/skip option while the tab stays foregrounded. Item
@@ -314,39 +373,57 @@ function normalizeRpe(value: number | null): number | null {
   return (value as unknown) === '' ? null : value
 }
 
-async function handleAddSet() {
-  errorMessage.value = ''
-  if (!exerciseId.value || reps.value === null || weight.value === null) return
-
-  addingSet.value = true
-  const { error } = await workout.addSet(
-    exerciseId.value,
-    reps.value,
-    weight.value,
-    weightUnit.value,
-    normalizeRpe(rpe.value),
-  )
-  addingSet.value = false
-  if (error) {
-    errorMessage.value = error.message
-  } else {
-    rpe.value = null
-    const restSeconds = exercises.exercises.find((e) => e.id === exerciseId.value)?.rest_seconds
-    if (restSeconds) {
-      restPushSent = false
-      restMinimized.value = false
-      activeRest.value = {
-        exerciseName: exerciseName(exerciseId.value),
-        endsAt: Date.now() + restSeconds * 1000,
-        totalSeconds: restSeconds,
-      }
-      // Covers the rare case where the set is logged while already
-      // backgrounded (e.g. a delayed background response) — nothing will
-      // ever see the in-app screen, so send the fallback immediately
-      // instead of waiting on a visibilitychange that already happened.
-      handleRestVisibilityChange()
-    }
+function startRestIfConfigured(id: string) {
+  const restSeconds = exercises.exercises.find((e) => e.id === id)?.rest_seconds
+  if (!restSeconds) return
+  restPushSent = false
+  restMinimized.value = false
+  activeRest.value = {
+    exerciseName: exerciseName(id),
+    endsAt: Date.now() + restSeconds * 1000,
+    totalSeconds: restSeconds,
   }
+  // Covers the rare case where the set is logged while already
+  // backgrounded (e.g. a delayed background response) — nothing will
+  // ever see the in-app screen, so send the fallback immediately instead
+  // of waiting on a visibilitychange that already happened.
+  handleRestVisibilityChange()
+}
+
+// Backlog item 1: completing one row saves just that set — the other rows
+// stay put, editable, and independently completable (including while rest
+// for this one is running). `row.saving` disables only this row's own
+// button for the duration of its request, same reasoning item 11 originally
+// used for the single "Add set" button: without it, two taps on the same
+// row could race over the network and land in the opposite order from how
+// they were tapped.
+async function completeRow(id: string, row: DraftRow) {
+  if (row.reps === null || row.weight === null || row.saving) return
+  row.saving = true
+  row.error = ''
+  const { error } = await workout.addSet(id, row.reps, row.weight, rowWeightUnit.value, normalizeRpe(row.rpe))
+  row.saving = false
+  if (error) {
+    row.error = error.message
+    return
+  }
+
+  const rows = draftRowsByExercise.value[id] ?? []
+  const index = rows.indexOf(row)
+  if (index !== -1) rows.splice(index, 1)
+
+  // No configured count means an open-ended exercise — keep exactly one
+  // open row available so logging stays a quick, repeated tap instead of
+  // requiring "+ Add row" after every single set. A configured target_sets
+  // stays fixed at that count instead; over/under-running it is what the
+  // manual add/remove controls are for.
+  if (configuredTargetFor(id) === null) {
+    const nextRow = makeDraftRow()
+    applyPrefillToRow(nextRow, id, loggedCountFor(id) + rows.length)
+    rows.push(nextRow)
+  }
+
+  startRestIfConfigured(id)
 }
 
 // Backlog item 13: inline edit for a set still in the active workout, same
@@ -436,9 +513,7 @@ async function handleFinish() {
   notes.value = ''
   templateId.value = ''
   exerciseId.value = ''
-  reps.value = null
-  weight.value = null
-  rpe.value = null
+  draftRowsByExercise.value = {}
   recordCelebration.value = null
 
   if (finishedTemplateId && hadSets) {
@@ -601,7 +676,7 @@ function dismissVolumeChart() {
           </button>
         </div>
 
-        <form class="card" @submit.prevent="handleAddSet">
+        <div class="card">
           <label for="set-exercise">Exercise</label>
           <select id="set-exercise" v-model="exerciseId" required>
             <option value="" disabled>Select an exercise</option>
@@ -613,50 +688,109 @@ function dismissVolumeChart() {
           <p v-if="selectedExerciseNotes" class="setup-notes">{{ selectedExerciseNotes }}</p>
 
           <template v-if="exerciseId">
-            <div class="grid-2">
-              <div>
-                <label for="set-reps">Reps</label>
-                <input id="set-reps" v-model.number="reps" type="number" inputmode="numeric" min="1" required />
-              </div>
-              <div>
-                <label for="set-weight">Weight</label>
-                <input
-                  id="set-weight"
-                  v-model.number="weight"
-                  type="number"
-                  inputmode="decimal"
-                  min="0"
-                  step="0.5"
-                  required
-                />
-              </div>
+            <div class="unit-toggle" role="group" aria-label="Units">
+              <button
+                type="button"
+                class="unit-btn"
+                :class="{ 'unit-selected': rowWeightUnit === 'lb' }"
+                :aria-pressed="rowWeightUnit === 'lb'"
+                @click="rowWeightUnit = 'lb'"
+              >
+                lb
+              </button>
+              <button
+                type="button"
+                class="unit-btn"
+                :class="{ 'unit-selected': rowWeightUnit === 'kg' }"
+                :aria-pressed="rowWeightUnit === 'kg'"
+                @click="rowWeightUnit = 'kg'"
+              >
+                kg
+              </button>
             </div>
 
-            <div class="grid-2">
-              <div>
-                <label for="set-unit">Unit</label>
-                <select id="set-unit" v-model="weightUnit">
-                  <option value="lb">lb</option>
-                  <option value="kg">kg</option>
-                </select>
-              </div>
-              <div>
-                <label for="set-rpe">RPE (optional)</label>
-                <input
-                  id="set-rpe"
-                  v-model.number="rpe"
-                  type="number"
-                  inputmode="decimal"
-                  min="0"
-                  max="10"
-                  step="0.5"
-                />
-              </div>
-            </div>
+            <ul class="set-rows">
+              <li
+                v-for="entry in combinedRows"
+                :key="entry.type === 'logged' ? entry.set.id : entry.row.key"
+                class="set-row"
+                :class="entry.type === 'logged' ? 'set-row-logged' : 'set-row-draft'"
+              >
+                <span class="set-row-number" aria-hidden="true">{{ entry.number }}</span>
 
-            <button type="submit" :disabled="addingSet">Add set</button>
+                <span v-if="entry.type === 'logged'" class="set-row-done">
+                  {{ entry.set.reps }} × {{ entry.set.weight }}{{ entry.set.weight_unit }}
+                  <template v-if="entry.set.rpe !== null"> · RPE {{ entry.set.rpe }}</template>
+                </span>
+
+                <template v-else>
+                  <div class="set-row-fields">
+                    <label class="sr-only" :for="`row-reps-${entry.row.key}`">Reps</label>
+                    <input
+                      :id="`row-reps-${entry.row.key}`"
+                      v-model.number="entry.row.reps"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      placeholder="Reps"
+                      class="set-input"
+                    />
+                    <span class="set-row-x" aria-hidden="true">×</span>
+                    <label class="sr-only" :for="`row-weight-${entry.row.key}`">Weight</label>
+                    <input
+                      :id="`row-weight-${entry.row.key}`"
+                      v-model.number="entry.row.weight"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="0.5"
+                      :placeholder="rowWeightUnit"
+                      class="set-input"
+                    />
+                    <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" @click="entry.row.rpeOpen = true">
+                      +RPE
+                    </button>
+                    <span v-else class="rpe-inline">
+                      <label class="sr-only" :for="`row-rpe-${entry.row.key}`">RPE (optional)</label>
+                      <input
+                        :id="`row-rpe-${entry.row.key}`"
+                        v-model.number="entry.row.rpe"
+                        type="number"
+                        inputmode="decimal"
+                        min="0"
+                        max="10"
+                        step="0.5"
+                        placeholder="RPE"
+                        class="set-input set-input-rpe"
+                      />
+                    </span>
+                  </div>
+                  <div class="set-row-actions">
+                    <button
+                      type="button"
+                      class="log-btn"
+                      :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
+                      @click="completeRow(exerciseId, entry.row)"
+                    >
+                      Add set
+                    </button>
+                    <button
+                      type="button"
+                      class="remove-row-btn"
+                      :aria-label="`Remove row ${entry.number}`"
+                      @click="removeDraftRow(exerciseId, entry.row)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p v-if="entry.row.error" class="row-error">{{ entry.row.error }}</p>
+                </template>
+              </li>
+            </ul>
+
+            <button type="button" class="add-row-btn" @click="addDraftRow(exerciseId)">+ Add row</button>
           </template>
-        </form>
+        </div>
       </template>
 
       <ol class="list">
@@ -1270,6 +1404,157 @@ function dismissVolumeChart() {
   padding: 8px 10px;
   margin: 8px 0 4px;
   white-space: pre-wrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Backlog item 1: compact numbered rows replacing the old one-set-at-a-time
+   form. Shared unit toggle sits once above the rows instead of repeating a
+   full-width lb/kg <select> on every one. */
+.unit-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.unit-btn {
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 0.85rem;
+  background: var(--surface-2);
+}
+
+.unit-btn.unit-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.set-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.set-row-number {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+}
+
+.set-row-done {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.set-row-fields {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.set-input {
+  width: 60px;
+  min-height: 40px;
+  padding: 0 8px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.set-input-rpe {
+  width: 52px;
+}
+
+.set-row-x {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.rpe-toggle {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-dim);
+}
+
+.rpe-inline {
+  flex-shrink: 0;
+}
+
+.set-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.log-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.remove-row-btn {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.add-row-btn {
+  width: 100%;
+  margin-top: 10px;
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-dim);
+}
+
+.row-error {
+  flex-basis: 100%;
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin: 0;
 }
 
 </style>
