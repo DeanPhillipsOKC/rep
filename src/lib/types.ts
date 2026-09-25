@@ -14,6 +14,10 @@ export interface WorkoutTemplate {
   user_id: string
   name: string
   is_archived: boolean
+  // Embedded count aggregate from the nested select in templates.ts
+  // (`workout_template_exercises(count)`), used for the card subtext on
+  // the Templates screen without a separate per-template fetch.
+  workout_template_exercises?: { count: number }[]
 }
 
 export interface WorkoutTemplateExercise {

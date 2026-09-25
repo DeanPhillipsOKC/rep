@@ -16,7 +16,10 @@ export const useTemplatesStore = defineStore('templates', () => {
   async function fetchTemplates() {
     loading.value = true
     errorMessage.value = ''
-    const { data, error } = await supabase.from('workout_templates').select('*').order('name')
+    const { data, error } = await supabase
+      .from('workout_templates')
+      .select('*, workout_template_exercises(count)')
+      .order('name')
     if (error) {
       errorMessage.value = error.message
     } else {

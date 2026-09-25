@@ -93,6 +93,29 @@ function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
 
+// Backlog item 46: each card gets an icon + accent tint so templates read
+// as distinct at a glance rather than a plain name list. There's no
+// per-template category to derive these from (docs/backlog-archive.md item
+// 30 dropped `exercises.category`), so both are assigned by hashing the
+// template's id against a fixed palette — deterministic and stable across
+// re-fetches/re-sorts, unlike an index into the current (sorted) list.
+const templatePalette = [
+  { varName: '--accent', icon: 'barbell' },
+  { varName: '--secondary', icon: 'legs' },
+  { varName: '--success', icon: 'flame' },
+  { varName: '--highlight', icon: 'target' },
+] as const
+
+function paletteFor(id: string) {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  return templatePalette[hash % templatePalette.length]
+}
+
+function exerciseCount(template: { workout_template_exercises?: { count: number }[] }): number {
+  return template.workout_template_exercises?.[0]?.count ?? 0
+}
+
 // Backlog item 25 follow-up: checks the live exercises store rather than
 // te.exercises.is_archived from the cached join — that join is a snapshot
 // from whenever this template's exercises were last fetched (only once per
@@ -144,9 +167,62 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
     <ul class="list">
       <li v-for="template in templates.activeTemplates" :key="template.id" class="row-wrap">
         <div v-if="confirmingArchiveId !== template.id" class="row" @click="toggleExpand(template.id)">
-          <span class="row-title">{{ template.name }}</span>
-          <button type="button" class="ghost small" @click.stop="confirmingArchiveId = template.id">
-            Archive
+          <span
+            class="template-icon"
+            :style="{
+              background: `color-mix(in srgb, var(${paletteFor(template.id).varName}) 16%, transparent)`,
+              color: `var(${paletteFor(template.id).varName})`,
+            }"
+          >
+            <svg v-if="paletteFor(template.id).icon === 'barbell'" viewBox="0 0 24 24" width="22" height="22" fill="none">
+              <rect x="2.5" y="9.5" width="3" height="5" rx="1" fill="currentColor" />
+              <rect x="18.5" y="9.5" width="3" height="5" rx="1" fill="currentColor" />
+              <rect x="5.5" y="8" width="2.4" height="8" rx="1" fill="currentColor" />
+              <rect x="16" y="8" width="2.4" height="8" rx="1" fill="currentColor" />
+              <rect x="8" y="11" width="8" height="2" rx="1" fill="currentColor" />
+            </svg>
+            <svg v-else-if="paletteFor(template.id).icon === 'legs'" viewBox="0 0 24 24" width="22" height="22" fill="none">
+              <path
+                d="M8 4v6l-2.5 8a2 2 0 001.9 2.6h9.2a2 2 0 001.9-2.6L16 10V4"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linejoin="round"
+              />
+              <path d="M8 4h8M6 15h12" stroke="currentColor" stroke-width="1.7" />
+            </svg>
+            <svg v-else-if="paletteFor(template.id).icon === 'flame'" viewBox="0 0 24 24" width="22" height="22" fill="none">
+              <path
+                d="M12 3c1 3-2.5 4-2.5 7a2.5 2.5 0 005 0c0-1.2-.6-1.8-1-2.5 2 .5 4 2.7 4 5.5a5.5 5.5 0 11-11 0c0-4 2.5-6 3-7.5.3-1 .5-1.8 1.5-2.5z"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" width="22" height="22" fill="none">
+              <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6" />
+              <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" />
+              <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+            </svg>
+          </span>
+          <span class="row-body">
+            <span class="row-title">{{ template.name }}</span>
+            <span class="row-sub">{{ exerciseCount(template) }} exercise{{ exerciseCount(template) === 1 ? '' : 's' }}</span>
+          </span>
+          <button
+            type="button"
+            class="archive-icon-btn"
+            aria-label="Archive template"
+            @click.stop="confirmingArchiveId = template.id"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
+              <rect x="4" y="5" width="16" height="4" rx="1.3" stroke="currentColor" stroke-width="1.7" />
+              <path
+                d="M5.5 9.5V17a1.6 1.6 0 001.6 1.6h9.8A1.6 1.6 0 0018.5 17V9.5"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+              <path d="M10 13h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+            </svg>
           </button>
         </div>
         <div v-else class="row confirm-archive">
@@ -291,6 +367,31 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
 .row-sub {
   font-size: 0.8rem;
   color: var(--text-dim);
+}
+
+.template-icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.archive-icon-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .archived-tag {
