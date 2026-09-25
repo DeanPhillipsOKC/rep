@@ -24,6 +24,7 @@ it makes (excluding blocked/needs-review/human items), so it can't drift out of 
 scores by hand, recompute this line to match:
 
 1. Primary CTAs lost against ghost buttons (ROI 1.67)
+2. Show a compact three-set logging grid (ROI 1.60)
 
 ## Features
 
@@ -36,6 +37,20 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
+
+- [ ] Show a compact three-set logging grid when an exercise is selected — user-requested
+  2026-09-25. Replace the large one-set-at-a-time form in `WorkoutLogger.vue` with three
+  numbered rows visible together on a phone, each with quick-entry reps and weight fields.
+  Include optional RPE in each row if it stays readable and easy to tap at mobile width;
+  otherwise keep RPE accessible through a compact per-row expansion. Keep the weight unit
+  easy to set without repeating a full-width selector in every row. Pre-fill from the
+  previous workout where available, while keeping each row independently editable.
+  Completing a row saves that set and starts the existing rest flow for that exercise;
+  later rows stay visible and ready to edit during rest. Empty planned rows must not be
+  saved. Allow adding or removing rows so workouts with fewer or more than three sets
+  remain possible, and preserve editing/deleting logged sets. Cover the mobile layout,
+  sequential saves, and rest behavior in Playwright.
+  [Effort: 5, Value: 8, ROI: 1.60]
 
 - [ ] Primary calls to action get lost against secondary/ghost buttons — user-reported
   2026-09-25 (example: the "Log another workout" button shown on the post-workout volume
