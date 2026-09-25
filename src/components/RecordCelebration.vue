@@ -96,7 +96,7 @@ onUnmounted(() => {
         <div class="celebration-numbers">{{ weight }} {{ weightUnit }} &times; {{ reps }}</div>
         <div class="celebration-delta">
           <template v-if="isFirstEver">First one logged for this exercise</template>
-          <template v-else>+{{ delta }} {{ weightUnit }} over your last best</template>
+          <template v-else>+{{ delta }} {{ weightUnit }}-reps of volume over your last best</template>
         </div>
       </div>
 

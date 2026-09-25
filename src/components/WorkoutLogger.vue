@@ -378,7 +378,7 @@ function dismissVolumeChart() {
           </div>
           <div v-if="workout.recentPr" class="stat-tile stat-tile-pr">
             <span class="pr-badge">NEW</span>
-            <span class="stat-value">PR!</span>
+            <span class="stat-value">Volume PR!</span>
             <span class="stat-label">{{ workout.recentPr.exerciseName }}</span>
             <span class="pr-detail">{{ workout.recentPr.reps }} × {{ workout.recentPr.weight }}{{ workout.recentPr.weightUnit }}</span>
           </div>

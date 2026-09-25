@@ -20,7 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-_(none — see Human setup / device verification below for open [human] items)_
+55, 51, 50, 53, 52, 54
 
 ## Features
 
@@ -28,7 +28,59 @@ Design source for prior visual-refresh items: private canvas mockup at
 https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced in
 `docs/backlog-archive.md` match its canvas). Brand identity (RepBunny) is cute, functional, cool.
 
-_(none currently)_
+Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, another AI agent,
+2026-09-25, build `v107+91aa3ab`) that was checked against the actual current source before
+anything was logged — several of its claims (workout-delete confirmation, template-archive
+labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
+implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
+
+- [ ] **Item 55 — Weekly paw-tracker dots have no accessible label.** The `paw-day` spans in
+  `WorkoutLogger.vue`'s "This week" tile carry no text alternative for which weekday each dot
+  is or whether it's completed — a screen reader gets nothing. Add an `aria-label` per dot (day
+  name + done/not-done). `[Effort: 1, Value: 2, ROI: 2]`
+
+- [ ] **Item 51 — No guardrail on empty-workout finish or single-set deletion.** `handleFinish`
+  in `WorkoutLogger.vue` lets `Finish workout` fire with zero sets logged — it silently deletes
+  the workout row with no confirmation or feedback telling the user that's what happened.
+  Deleting a single set (`handleDeleteSet` in both `WorkoutLogger.vue` and
+  `WorkoutHistory.vue`) is instant with no confirm and no undo. Whole-workout delete and
+  template-archive already have proper confirmation, so this only needs to extend the same
+  pattern down to the set level, plus a short confirm/toast on empty finish.
+  `[Effort: 3, Value: 5, ROI: 1.67]`
+
+- [ ] **Item 50 — Active workout has no visible "in progress" state.** `WorkoutLogger.vue`'s
+  heading is hard-coded to "Log a workout" whether or not a workout is active, and `BottomNav`
+  keeps Home selected throughout (same route). Add a dynamic header (template name + elapsed
+  time) while a workout is active. Note this is bigger than just UI: `activeWorkoutId` lives
+  only in an in-memory Pinia ref with no persistence, and the `workouts` table has no
+  "finished" flag, so there's currently no way to tell an abandoned session from a finished one
+  at the DB level — true resume-after-refresh needs a schema change (`finished_at` or similar),
+  which is a human-executed migration per `docs/architecture.md`'s DDL constraint. Scope the
+  in-session header/timer work now; treat cross-refresh resume as a follow-on once that
+  migration lands. Also worth folding in while touching this screen: the quick-pick exercise
+  chips and the exercise `<select>` do the exact same thing (set `exerciseId`) with no visual
+  relationship, which the review correctly flagged as confusing. `[Effort: 5, Value: 8, ROI: 1.6]`
+
+- [ ] **Item 53 — Volume/projection chart doesn't explain "Projected."** `VolumeChart.vue`
+  shows an Actual/Projected legend and line, but the carry-forward logic in
+  `src/lib/volume.ts` (an incomplete template exercise's contribution gets replaced by its last
+  known volume) is never explained in the UI, and the chart has no axis or unit (lb/kg) label.
+  Note the review's other volume-chart claims didn't hold up — `fetchTemplateVolumeHistory`
+  already scopes to the same template and isn't capped at two points, so this is just a
+  copy/labeling fix, not a data-model one. `[Effort: 2, Value: 3, ROI: 1.5]`
+
+- [ ] **Item 52 — Rest timer has no manual adjustment or non-destructive return.** `RestTimer.vue`
+  is already `endsAt`-timestamp-driven with a push-notification fallback for backgrounding (the
+  review's core technical worry here was already solved), but it has no ±15s adjust and `Skip
+  Rest` is the only way back to the workout — which cancels the timer rather than letting it
+  keep running in the background while you go check something. `[Effort: 3, Value: 4, ROI: 1.33]`
+
+- [ ] **Item 54 — Template creation form permanently occupies the top of the Templates tab.**
+  `TemplateManager.vue` renders the "Add template" form as a persistent card above the list.
+  Replace with a button/sheet that opens it on demand. Keep the existing up/down reorder
+  buttons rather than switching to drag handles — they're the more accessible choice on mobile
+  without a keyboard-equivalent drag affordance, so the review's specific recommendation there
+  isn't being adopted. `[Effort: 3, Value: 3, ROI: 1]`
 
 ## Human setup / device verification
 

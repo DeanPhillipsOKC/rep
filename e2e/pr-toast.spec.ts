@@ -51,7 +51,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
   await page.getByLabel('Weight').fill('110')
   await page.getByRole('button', { name: 'Add set' }).click()
   await expect(celebration).toBeVisible()
-  await expect(celebration).toContainText('+80 lb over your last best')
+  await expect(celebration).toContainText('+80 lb-reps of volume over your last best')
   await page.getByRole('button', { name: 'Nice!' }).click()
   await expect(celebration).not.toBeVisible()
 
