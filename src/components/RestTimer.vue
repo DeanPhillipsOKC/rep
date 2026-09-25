@@ -20,6 +20,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'dismiss'): void
+  (e: 'minimize'): void
+  (e: 'adjust', deltaSeconds: number): void
 }>()
 
 function secondsLeft(): number {
@@ -93,7 +95,12 @@ const progressPercent = computed(() => (remaining.value / props.totalSeconds) * 
       <div class="rest-progress-track">
         <div class="rest-progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
+      <div class="rest-adjust-row">
+        <button type="button" class="rest-adjust-btn" @click="emit('adjust', -15)">-15s</button>
+        <button type="button" class="rest-adjust-btn" @click="emit('adjust', 15)">+15s</button>
+      </div>
       <button type="button" class="rest-skip" @click="emit('dismiss')">Skip Rest</button>
+      <button type="button" class="rest-back" @click="emit('minimize')">Back to workout</button>
     </div>
   </div>
 </template>
@@ -226,10 +233,34 @@ const progressPercent = computed(() => (remaining.value / props.totalSeconds) * 
   transition: width 0.25s linear;
 }
 
+.rest-adjust-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.rest-adjust-btn {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 600;
+}
+
 .rest-skip {
   width: 100%;
   max-width: 300px;
   background: var(--surface);
+}
+
+.rest-back {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 4px;
 }
 
 @keyframes rest-breathe {

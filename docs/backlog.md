@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-52, 57, 54
+57, 54
 
 ## Features
 
@@ -36,12 +36,6 @@ Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, a
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
-
-- [ ] **Item 52 — Rest timer has no manual adjustment or non-destructive return.** `RestTimer.vue`
-  is already `endsAt`-timestamp-driven with a push-notification fallback for backgrounding (the
-  review's core technical worry here was already solved), but it has no ±15s adjust and `Skip
-  Rest` is the only way back to the workout — which cancels the timer rather than letting it
-  keep running in the background while you go check something. `[Effort: 3, Value: 4, ROI: 1.33]`
 
 - [ ] **Item 54 — Template creation form permanently occupies the top of the Templates tab.**
   `TemplateManager.vue` renders the "Add template" form as a persistent card above the list.

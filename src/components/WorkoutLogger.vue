@@ -65,6 +65,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', handleRestVisibilityChange)
   if (elapsedTimerHandle !== null) window.clearInterval(elapsedTimerHandle)
+  clearInterval(miniRestInterval)
 })
 
 // Backlog item 50: dynamic header while a workout is active — template name
@@ -246,6 +247,64 @@ function handleRestVisibilityChange() {
   push.sendRestReminder(activeRest.value.exerciseName, remaining)
 }
 
+// Backlog item 52: "Back to workout" lets the user return to logging while
+// rest keeps counting down in the background, instead of "Skip Rest" being
+// the only way off the full-screen overlay. RestTimer.vue only runs its own
+// completion check while mounted, so while minimized this component takes
+// over ticking activeRest.endsAt itself (same completion behavior: vibrate,
+// then clear) — otherwise a rest period completing while minimized would
+// never end.
+const restMinimized = ref(false)
+const restMiniRemaining = ref(0)
+let miniRestInterval: ReturnType<typeof setInterval> | undefined
+
+function tickMiniRest() {
+  if (!activeRest.value) return
+  const remaining = Math.max(0, Math.round((activeRest.value.endsAt - Date.now()) / 1000))
+  restMiniRemaining.value = remaining
+  if (remaining <= 0) finishRest()
+}
+
+watch(restMinimized, (minimized) => {
+  clearInterval(miniRestInterval)
+  if (minimized && activeRest.value) {
+    tickMiniRest()
+    miniRestInterval = setInterval(tickMiniRest, 250)
+  }
+})
+
+const restMiniLabel = computed(() => {
+  const m = Math.floor(restMiniRemaining.value / 60)
+  const s = restMiniRemaining.value % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+})
+
+function finishRest() {
+  navigator.vibrate?.(200)
+  activeRest.value = null
+  restMinimized.value = false
+}
+
+function skipRest() {
+  activeRest.value = null
+  restMinimized.value = false
+}
+
+// ±15s manual adjustment (item 52). Shrinking never rescales the progress
+// bar's denominator (a shortened rest just fills faster); growing extends
+// `totalSeconds` only when the new remaining time would otherwise exceed
+// it, so the bar never reports past 100%.
+function adjustRest(deltaSeconds: number) {
+  if (!activeRest.value) return
+  const currentRemaining = Math.round((activeRest.value.endsAt - Date.now()) / 1000)
+  const newRemaining = Math.max(0, currentRemaining + deltaSeconds)
+  activeRest.value = {
+    ...activeRest.value,
+    endsAt: Date.now() + newRemaining * 1000,
+    totalSeconds: Math.max(activeRest.value.totalSeconds, newRemaining),
+  }
+}
+
 // RPE is optional, so its input has no `required` guard forcing reps/weight
 // to a real value before submit — v-model.number leaves an emptied field as
 // '' rather than coercing it to null, and that '' sent straight through to
@@ -275,6 +334,7 @@ async function handleAddSet() {
     const restSeconds = exercises.exercises.find((e) => e.id === exerciseId.value)?.rest_seconds
     if (restSeconds) {
       restPushSent = false
+      restMinimized.value = false
       activeRest.value = {
         exerciseName: exerciseName(exerciseId.value),
         endsAt: Date.now() + restSeconds * 1000,
@@ -702,16 +762,74 @@ function dismissVolumeChart() {
     />
 
     <RestTimer
-      v-if="activeRest"
+      v-if="activeRest && !restMinimized"
       :exercise-name="activeRest.exerciseName"
       :ends-at="activeRest.endsAt"
       :total-seconds="activeRest.totalSeconds"
-      @dismiss="activeRest = null"
+      @dismiss="skipRest"
+      @minimize="restMinimized = true"
+      @adjust="adjustRest"
     />
+
+    <div v-if="activeRest && restMinimized" class="rest-mini-bar" role="status" aria-live="polite">
+      <span class="rest-mini-label">Resting {{ restMiniLabel }} - {{ activeRest.exerciseName }}</span>
+      <div class="rest-mini-actions">
+        <button type="button" class="rest-mini-resume" @click="restMinimized = false">Resume</button>
+        <button type="button" class="rest-mini-skip" @click="skipRest">Skip</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.rest-mini-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+.rest-mini-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rest-mini-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.rest-mini-resume {
+  background: var(--accent);
+  color: var(--bg);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.rest-mini-skip {
+  background: var(--surface);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
 .log-header {
   display: flex;
   align-items: baseline;
