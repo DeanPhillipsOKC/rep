@@ -23,9 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Remove JSON training data export (ROI 1.50)
-2. Quick weight/rep stepper controls on set rows (ROI 1.33)
-3. Show exercise-by-exercise history (ROI 1.00)
+1. Fix Add Set button overlapping the RPE field (ROI 2.00)
+2. Remove JSON training data export (ROI 1.50)
+3. Quick weight/rep stepper controls on set rows (ROI 1.33)
+4. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -38,6 +39,12 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
+
+- [ ] Fix Add Set button overlapping the RPE field — in the active workout logger, the Add Set
+  button slightly overlaps the RPE input while logging sets. Adjust the compact set-row spacing
+  so the controls have a clear gap at phone widths without making the row unnecessarily tall.
+  Verify the layout in Playwright at a narrow mobile viewport.
+  [Effort: 1, Value: 2, ROI: 2.00]
 
 - [ ] Remove JSON training data export — remove the "Your data" card and download action from
   Exercises, the export helper, and its export-specific Playwright spec. There is no in-app import
