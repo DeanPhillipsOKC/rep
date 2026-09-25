@@ -20,7 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-55, 51, 50, 53, 52, 54
+51, 50, 53, 52, 54
 
 ## Features
 
@@ -33,11 +33,6 @@ Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, a
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
-
-- [ ] **Item 55 — Weekly paw-tracker dots have no accessible label.** The `paw-day` spans in
-  `WorkoutLogger.vue`'s "This week" tile carry no text alternative for which weekday each dot
-  is or whether it's completed — a screen reader gets nothing. Add an `aria-label` per dot (day
-  name + done/not-done). `[Effort: 1, Value: 2, ROI: 2]`
 
 - [ ] **Item 51 — No guardrail on empty-workout finish or single-set deletion.** `handleFinish`
   in `WorkoutLogger.vue` lets `Finish workout` fire with zero sets logged — it silently deletes
