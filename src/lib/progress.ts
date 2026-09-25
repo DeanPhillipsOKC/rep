@@ -1,3 +1,5 @@
+import type { WeightUnit } from './types'
+
 // Backlog item 19: Log home screen's "recent PR" stat. Recomputed on load
 // from the most recent workout's sets rather than persisted (see
 // docs/backlog.md#19 for why) — pure computation, kept separate from the
@@ -7,6 +9,7 @@ export interface RecentSet {
   exerciseName: string
   reps: number
   weight: number
+  weightUnit: WeightUnit
 }
 
 export interface HistoricalSet {
@@ -15,12 +18,20 @@ export interface HistoricalSet {
   weight: number
 }
 
+export interface RecentPr {
+  exerciseName: string
+  reps: number
+  weight: number
+  weightUnit: WeightUnit
+}
+
 // Same "strictly greater than the prior best" rule as checkForRecord in
 // stores/workouts.ts (backlog item 4), just replayed against the most
 // recent workout's sets instead of reacting to a single insert. Returns the
-// name of the first exercise (in set order) that beat its prior all-time
-// best, or null if nothing in the workout was a record.
-export function findRecentPr(recentSets: RecentSet[], historicalSets: HistoricalSet[]): string | null {
+// first set (in set order) that beat its prior all-time best — item 44's
+// celebratory PR tile needs the reps/weight themselves, not just the
+// exercise name — or null if nothing in the workout was a record.
+export function findRecentPr(recentSets: RecentSet[], historicalSets: HistoricalSet[]): RecentPr | null {
   const bestHistorical = new Map<string, number>()
   for (const s of historicalSets) {
     const volume = s.reps * s.weight
@@ -30,7 +41,9 @@ export function findRecentPr(recentSets: RecentSet[], historicalSets: Historical
 
   for (const s of recentSets) {
     const volume = s.reps * s.weight
-    if (volume > (bestHistorical.get(s.exerciseId) ?? 0)) return s.exerciseName
+    if (volume > (bestHistorical.get(s.exerciseId) ?? 0)) {
+      return { exerciseName: s.exerciseName, reps: s.reps, weight: s.weight, weightUnit: s.weightUnit }
+    }
   }
   return null
 }

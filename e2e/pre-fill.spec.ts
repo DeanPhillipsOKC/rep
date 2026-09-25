@@ -35,7 +35,7 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
 
   // First workout against the template: log a set for each exercise, then finish.
   await goTo(page, 'Log')
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: exerciseName, exact: true }).click()
   await page.getByLabel('Reps').fill('8')
@@ -58,13 +58,13 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   // Second workout against the same template, but abandoned with no sets
   // logged (e.g. started by mistake). This must not shadow the real data
   // from the first workout on the next lookup.
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
   // Third workout against the same template: should show the last workout
   // that actually had sets (the first one), skipping the empty one.
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
   const lastTime = page.locator('.last-time')
@@ -121,7 +121,7 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
   // exercise's second set deliberately lighter (fatigue) so a "last set
   // logged" pre-fill would be obviously wrong for set 1 next time.
   await goTo(page, 'Log')
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
   const addRound = async (reps: string, weight: string, name: string) => {
@@ -143,7 +143,7 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
 
   // Second workout: set 1 for the first exercise should pre-fill from its
   // set 1 last time (10x135), not its set 2 (8x115).
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: exerciseName, exact: true }).click()
   await expect(page.getByLabel('Reps')).toHaveValue('10')

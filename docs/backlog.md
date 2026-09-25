@@ -20,19 +20,17 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-1. Item 44 — Home screen visual refresh [ROI 1.7]
-2. Item 41 — Bottom tab bar navigation (replaces hamburger drawer) [ROI 1.6]
-3. Item 45 — History screen visual refresh [ROI 1.5]
-4. Item 46 — Templates screen visual refresh [ROI 1.5]
-5. Item 47 — Exercises screen visual refresh [ROI 1.5]
+1. Item 41 — Bottom tab bar navigation (replaces hamburger drawer) [ROI 1.6]
+2. Item 45 — History screen visual refresh [ROI 1.5]
+3. Item 46 — Templates screen visual refresh [ROI 1.5]
+4. Item 47 — Exercises screen visual refresh [ROI 1.5]
 
 ## Features
 
-Design source for items 41, 44–47: private canvas mockup at
+Design source for items 41, 45–47: private canvas mockup at
 https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced below match its
 canvas). Brand identity (RepBunny) is cute, functional, cool.
 
-- [ ] **Home screen visual refresh** (item 44): restyle the Log/Home screen's existing progress strip (item 19, archived) and template picker — swap the plain "workouts this week" number for a paw-print week tracker, give the PR tile a more celebratory treatment, and turn the template `<select>` into quick-pick chips above the existing form. No new data, same underlying state, restyled. See the "Home" artboard. Depends on item 40. [Effort: 3, Value: 5, ROI: 1.7]
 - [ ] **Bottom tab bar navigation** (item 41): replace `AppMenu.vue`'s hamburger drawer (item 18, archived) with a persistent bottom tab bar (Home / History / Templates / Exercises) so primary destinations are always one tap away instead of hidden behind a menu; frees the header for a lighter secondary action. Requires reworking `e2e/fixtures/nav.ts`'s `goTo` helper and every spec that uses it. See the bottom nav on every phone artboard. Depends on item 40 (active-tab color tokens). [Effort: 5, Value: 8, ROI: 1.6]
 - [ ] **History screen visual refresh** (item 45): add a timeline rail (connecting line + dot per entry, a distinct marker on days with a PR) to the workout history list, and visually condense entries beyond the most recent couple so the list doesn't read as a wall of identical cards. See the "History" artboard. Depends on item 40. [Effort: 2, Value: 3, ROI: 1.5]
 - [ ] **Templates screen visual refresh** (item 46): give each template card an icon and accent tint (visually distinguishing templates from each other) and show its exercise count as subtext, in place of today's plain name + Archive row. See the "Templates" artboard. Depends on item 40. [Effort: 2, Value: 3, ROI: 1.5]

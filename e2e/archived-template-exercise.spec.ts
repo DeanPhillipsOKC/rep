@@ -45,7 +45,7 @@ test('archived exercise stops appearing in a template it is still attached to', 
   await expect(templateExerciseRow.getByText('Archived')).toBeVisible()
 
   await goTo(page, 'Log')
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
   // Wait for the suggested-chips section to actually mount before checking

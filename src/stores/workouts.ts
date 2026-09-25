@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
-import { findRecentPr } from '../lib/progress'
+import { findRecentPr, type RecentPr } from '../lib/progress'
 import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
 import type { SetEntry, WeightUnit, WorkoutWithSets } from '../lib/types'
 
@@ -104,26 +104,39 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // load rather than persisted — cheap, no migration, but only ever shows
   // "since your last workout" (see docs/backlog.md#19 for the tradeoff).
   const workoutsThisWeek = ref(0)
-  const recentPrExerciseName = ref<string | null>(null)
+  const recentPr = ref<RecentPr | null>(null)
+
+  // Backlog item 44: paw-print week tracker on the Home screen replaces the
+  // bare count with one dot per day Mon..Sun, filled for a day that has at
+  // least one workout. Index 0 = Monday, matching startOfWeek's Monday-based
+  // week below (getDay() is Sunday-based, hence the +6 % 7 offset).
+  const workoutDaysThisWeek = ref<boolean[]>([false, false, false, false, false, false, false])
 
   async function fetchProgressStats() {
     const startOfWeek = new Date()
     startOfWeek.setHours(0, 0, 0, 0)
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7))
 
-    const [{ count }, { data: recent }] = await Promise.all([
-      supabase.from('workouts').select('id', { count: 'exact', head: true }).gte('performed_at', startOfWeek.toISOString()),
+    const [{ data: weekWorkouts }, { data: recent }] = await Promise.all([
+      supabase.from('workouts').select('performed_at').gte('performed_at', startOfWeek.toISOString()),
       supabase
         .from('workouts')
-        .select('id, sets(exercise_id, reps, weight, exercises(name))')
+        .select('id, sets(exercise_id, reps, weight, weight_unit, exercises(name))')
         .order('performed_at', { ascending: false })
         .limit(1),
     ])
-    workoutsThisWeek.value = count ?? 0
+    workoutsThisWeek.value = weekWorkouts?.length ?? 0
+
+    const days = [false, false, false, false, false, false, false]
+    for (const w of weekWorkouts ?? []) {
+      const dayIndex = (new Date(w.performed_at).getDay() + 6) % 7
+      days[dayIndex] = true
+    }
+    workoutDaysThisWeek.value = days
 
     const recentWorkout = recent?.[0] as unknown as (WorkoutWithSets & { id: string }) | undefined
     if (!recentWorkout || recentWorkout.sets.length === 0) {
-      recentPrExerciseName.value = null
+      recentPr.value = null
       return
     }
 
@@ -134,12 +147,13 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       .in('exercise_id', exerciseIds)
       .neq('workout_id', recentWorkout.id)
 
-    recentPrExerciseName.value = findRecentPr(
+    recentPr.value = findRecentPr(
       recentWorkout.sets.map((s) => ({
         exerciseId: s.exercise_id,
         exerciseName: s.exercises?.name ?? 'Unknown',
         reps: s.reps,
         weight: s.weight,
+        weightUnit: s.weight_unit,
       })),
       (historicalSets ?? []).map((s) => ({ exerciseId: s.exercise_id, reps: s.reps, weight: s.weight }))
     )
@@ -398,7 +412,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     volumeHistoryError,
     newRecord,
     workoutsThisWeek,
-    recentPrExerciseName,
+    workoutDaysThisWeek,
+    recentPr,
     startWorkout,
     addSet,
     updateSet,

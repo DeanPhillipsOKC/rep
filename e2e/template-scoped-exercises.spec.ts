@@ -39,7 +39,7 @@ test('exercise dropdown is scoped to the active template', async ({ page }) => {
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
   // Templated: only the template's exercise is offered.
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await expect(exerciseSelect.getByRole('option', { name: inTemplateName })).toHaveCount(1)
   await expect(exerciseSelect.getByRole('option', { name: notInTemplateName })).toHaveCount(0)

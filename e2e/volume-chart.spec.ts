@@ -51,7 +51,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
   // pre-fill from, see WorkoutLogger.vue's applyPrefill), so filling ahead
   // of that landing risks the next fill being wiped out from under it.
   await goTo(page, 'Log')
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })
   await page.getByLabel('Reps').fill('10')
@@ -78,7 +78,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
   // Workout 2: only one set of the tracked exercise (under target_sets: 2),
   // volume 500 — plus one set of `otherName` (no target_sets, so it's
   // "complete" and its actual volume passes straight through, uncarried).
-  await page.getByLabel('Template (optional)').selectOption({ label: templateName })
+  await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })
   await page.getByLabel('Reps').fill('10')

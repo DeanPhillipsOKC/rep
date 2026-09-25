@@ -401,13 +401,34 @@ function dismissVolumeChart() {
     <template v-else-if="!workout.activeWorkoutId">
       <template v-if="!exercises.loading">
         <div v-if="exercises.activeExercises.length > 0" class="progress-strip">
-          <div class="stat-tile">
-            <span class="stat-value">{{ workout.workoutsThisWeek }}</span>
-            <span class="stat-label">{{ workout.workoutsThisWeek === 1 ? 'workout' : 'workouts' }} this week</span>
+          <div class="stat-tile stat-tile-week">
+            <span class="stat-eyebrow">This week</span>
+            <div class="stat-value-row">
+              <span class="stat-value">{{ workout.workoutsThisWeek }}</span>
+              <span class="stat-value-unit">{{ workout.workoutsThisWeek === 1 ? 'workout' : 'workouts' }}</span>
+            </div>
+            <div class="paw-tracker">
+              <span
+                v-for="(done, day) in workout.workoutDaysThisWeek"
+                :key="day"
+                class="paw-day"
+                :class="{ 'paw-day-done': done }"
+              >
+                <svg v-if="done" class="paw-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <ellipse cx="12" cy="16" rx="5.5" ry="4.2" />
+                  <ellipse cx="6" cy="9" rx="2.1" ry="2.6" />
+                  <ellipse cx="11" cy="6.5" rx="2.1" ry="2.6" />
+                  <ellipse cx="16.2" cy="7.5" rx="2" ry="2.5" />
+                  <ellipse cx="19" cy="11.5" rx="1.8" ry="2.3" />
+                </svg>
+              </span>
+            </div>
           </div>
-          <div v-if="workout.recentPrExerciseName" class="stat-tile stat-tile-pr">
-            <span class="stat-value">PR</span>
-            <span class="stat-label">{{ workout.recentPrExerciseName }}</span>
+          <div v-if="workout.recentPr" class="stat-tile stat-tile-pr">
+            <span class="pr-badge">NEW</span>
+            <span class="stat-value">PR!</span>
+            <span class="stat-label">{{ workout.recentPr.exerciseName }}</span>
+            <span class="pr-detail">{{ workout.recentPr.reps }} × {{ workout.recentPr.weight }}{{ workout.recentPr.weightUnit }}</span>
           </div>
         </div>
 
@@ -459,13 +480,30 @@ function dismissVolumeChart() {
           </div>
 
           <form class="card" @submit.prevent="handleStart">
-            <label for="workout-template">Template (optional)</label>
-            <select id="workout-template" v-model="templateId">
-              <option value="">No template — freeform</option>
-              <option v-for="template in templates.activeTemplates" :key="template.id" :value="template.id">
+            <label id="workout-template-label">Template (optional)</label>
+            <div class="template-chips" role="group" aria-labelledby="workout-template-label">
+              <button
+                type="button"
+                class="chip template-chip"
+                :class="{ 'chip-selected': templateId === '' }"
+                @click="templateId = ''"
+              >
+                Freeform
+              </button>
+              <button
+                v-for="template in templates.activeTemplates"
+                :key="template.id"
+                type="button"
+                class="chip template-chip"
+                :class="{ 'chip-selected': templateId === template.id }"
+                @click="templateId = template.id"
+              >
                 {{ template.name }}
-              </option>
-            </select>
+              </button>
+              <button type="button" class="chip template-chip template-chip-new" @click="emit('navigate', 'templates')">
+                + New
+              </button>
+            </div>
 
             <label for="workout-notes">Notes (optional)</label>
             <input id="workout-notes" v-model="notes" type="text" />
@@ -695,14 +733,88 @@ function dismissVolumeChart() {
   white-space: nowrap;
 }
 
-.stat-tile-pr {
-  background: var(--success);
-  border-color: var(--success);
+.stat-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
 }
 
-.stat-tile-pr .stat-value,
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-tile-week .stat-value {
+  font-family: var(--font-display);
+}
+
+.stat-value-unit {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.paw-tracker {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.paw-day {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.paw-day-done {
+  background: none;
+}
+
+.paw-icon {
+  width: 15px;
+  height: 15px;
+  fill: var(--accent);
+}
+
+.stat-tile-pr {
+  position: relative;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
+  padding-top: 16px;
+}
+
+.stat-tile-pr .stat-value {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--success);
+}
+
 .stat-tile-pr .stat-label {
-  color: var(--accent-text);
+  color: var(--text);
+  white-space: normal;
+}
+
+.pr-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--highlight) 22%, transparent);
+  color: var(--highlight);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.pr-detail {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--success) 55%, var(--text));
 }
 
 .card {
@@ -950,6 +1062,33 @@ function dismissVolumeChart() {
   padding: 0 14px;
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+.template-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 14px;
+}
+
+.template-chip {
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.template-chip.chip-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 800;
+}
+
+.template-chip-new {
+  border-style: dashed;
 }
 
 .finish {
