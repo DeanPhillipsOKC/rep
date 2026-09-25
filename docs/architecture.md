@@ -88,18 +88,22 @@ dev server automatically (`webServer`, reused if already running locally) and ru
 Chromium. `e2e/fixtures/auth.ts` wraps the test-session mint above into `signInAsTestUser(page)`
 so specs can start already signed in — confirmed working end-to-end (`e2e/auth.spec.ts`).
 
-**This is the required way to verify UI changes in this repo.** The Claude-in-Chrome
+**This is the required way to verify UI code changes in this repo.** The Claude-in-Chrome
 browser extension has been unreliable in this environment (extension not connected) —
 don't rely on it or treat a failed connection as a blocker. Instead, write or extend a
 Playwright spec under `e2e/` covering the change and run `npm run test:e2e`. Every new
 feature that touches the UI should land with (or exercise) an e2e spec rather than being
-declared done on typecheck/build passing alone.
+declared done on typecheck/build passing alone. Documentation-only changes do not need
+Playwright, a dev server, or a build.
 
 ### Commit & push policy
 
-**Standing rule:** once a change is verified — `npm run build` (typecheck) passes and the
-full `npm run test:e2e` regression suite is green, including any spec added/extended for
-the change — commit it and push to `main` automatically, without stopping to ask first.
+**Standing rule for code changes:** once `npm run build` (typecheck) passes and the full
+`npm run test:e2e` regression suite is green, including any spec added/extended for the
+change, commit it and push to `main` automatically, without stopping to ask first.
+For changes limited to documentation (`*.md` and other prose docs), review the diff and run
+`git diff --check`; skip both the build and e2e suite, then commit and push. If a change
+includes code as well as docs, use the code-change gates.
 This repo has no CI/PR gate (two-user prototype, direct-to-main history), and Cloudflare
 Pages auto-deploys `main` on push, so a verified commit is safe to ship immediately.
 
@@ -107,9 +111,9 @@ Still stop and ask before:
 
 - Force-pushing, rewriting history, or anything else destructive (see the general git
   safety rules — those are not overridden by this policy).
-- Pushing a change that couldn't be run through `npm run test:e2e` (no UI surface, dev
-  server/Playwright unavailable, etc.) — commit locally and flag why it wasn't pushed
-  instead of pushing unverified.
+- Pushing a code change that couldn't be run through `npm run test:e2e` (dev server or
+  Playwright unavailable, etc.) — commit locally and flag why it wasn't pushed instead of
+  pushing unverified. This exception does not apply to documentation-only changes.
 - A change the user asked to review before it ships.
 
 ## Data model
