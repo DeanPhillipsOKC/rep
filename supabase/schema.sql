@@ -29,7 +29,6 @@ create table exercises (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references profiles(id),
   name        text not null,
-  category    text,                          -- e.g. push / pull / legs / cardio
   is_archived boolean not null default false,
   setup_notes text,                          -- e.g. machine seat height, incline position
   rest_seconds int null check (rest_seconds > 0)  -- backlog item 15: per-exercise rest timer

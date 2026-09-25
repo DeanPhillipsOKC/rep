@@ -125,7 +125,6 @@ exercises
   id            uuid  PK
   user_id       uuid  FK -> profiles(id)
   name          text
-  category      text            -- e.g. push / pull / legs / cardio
   is_archived   boolean default false
   setup_notes   text null       -- machine seat height, incline position, etc.
   rest_seconds  int null        -- per-exercise rest timer duration; null = no alert

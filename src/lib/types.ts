@@ -4,7 +4,6 @@ export interface Exercise {
   id: string
   user_id: string
   name: string
-  category: string | null
   is_archived: boolean
   setup_notes: string | null
   rest_seconds: number | null

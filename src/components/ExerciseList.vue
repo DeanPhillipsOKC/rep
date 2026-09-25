@@ -6,7 +6,6 @@ import { usePushSubscriptionStore } from '../stores/pushSubscription'
 const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
 const name = ref('')
-const category = ref('')
 const setupNotes = ref('')
 const restSeconds = ref<number | null>(null)
 const errorMessage = ref('')
@@ -45,7 +44,6 @@ async function handleCreate() {
   const seconds = restSeconds.value && restSeconds.value > 0 ? restSeconds.value : null
   const { error } = await exercises.createExercise(
     name.value,
-    category.value || null,
     setupNotes.value.trim() || null,
     seconds,
   )
@@ -53,7 +51,6 @@ async function handleCreate() {
     errorMessage.value = error.message
   } else {
     name.value = ''
-    category.value = ''
     setupNotes.value = ''
     restSeconds.value = null
   }
@@ -141,15 +138,6 @@ async function saveRest(id: string) {
       <label for="exercise-name">Name</label>
       <input id="exercise-name" v-model="name" type="text" required />
 
-      <label for="exercise-category">Category</label>
-      <input id="exercise-category" v-model="category" type="text" list="categories" />
-      <datalist id="categories">
-        <option value="push" />
-        <option value="pull" />
-        <option value="legs" />
-        <option value="cardio" />
-      </datalist>
-
       <label for="exercise-notes">Setup notes</label>
       <textarea
         id="exercise-notes"
@@ -179,7 +167,6 @@ async function saveRest(id: string) {
         <div class="row">
           <div>
             <div class="row-title">{{ exercise.name }}</div>
-            <div v-if="exercise.category" class="row-sub">{{ exercise.category }}</div>
             <div v-if="exercise.setup_notes && editingNotesId !== exercise.id" class="row-notes">
               {{ exercise.setup_notes }}
             </div>

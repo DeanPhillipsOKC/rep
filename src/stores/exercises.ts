@@ -26,7 +26,6 @@ export const useExercisesStore = defineStore('exercises', () => {
 
   async function createExercise(
     name: string,
-    category: string | null,
     setupNotes: string | null = null,
     restSeconds: number | null = null,
   ) {
@@ -36,7 +35,7 @@ export const useExercisesStore = defineStore('exercises', () => {
 
     const { data, error } = await supabase
       .from('exercises')
-      .insert({ user_id: userId, name, category, setup_notes: setupNotes, rest_seconds: restSeconds })
+      .insert({ user_id: userId, name, setup_notes: setupNotes, rest_seconds: restSeconds })
       .select()
       .single()
 
