@@ -18,8 +18,18 @@ test('templates: create, log a workout against one, and see it in history', asyn
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Templates')
+
+  // Backlog item 54: the create form opens on demand behind an "Add
+  // template" trigger rather than sitting permanently above the list.
+  await expect(page.getByLabel('Name')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Add template' }).click()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByLabel('Name')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
+  await expect(page.getByLabel('Name')).toHaveCount(0)
   await page.getByText(templateName).click()
   await page.getByRole('combobox').selectOption({ label: exerciseName })
   await page.getByRole('button', { name: 'Add', exact: true }).click()

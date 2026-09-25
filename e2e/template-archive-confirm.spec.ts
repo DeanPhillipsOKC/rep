@@ -12,6 +12,7 @@ test('archiving a template requires an explicit confirm step', async ({ page, st
   await signInAsTestUser(page)
 
   await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await expect(page.getByText(templateName)).toBeVisible()

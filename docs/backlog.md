@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-54
+
 
 ## Features
 
@@ -31,18 +31,11 @@ Design source for prior visual-refresh items: private canvas mockup at
 https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced in
 `docs/backlog-archive.md` match its canvas). Brand identity (RepBunny) is cute, functional, cool.
 
-Items 49–55 below came out of an adversarial UI/UX review (screenshot-based, another AI agent,
+Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another AI agent,
 2026-09-25, build `v107+91aa3ab`) that was checked against the actual current source before
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
-implemented and were dropped rather than logged. What's below is what verifiably still needs doing.
-
-- [ ] **Item 54 — Template creation form permanently occupies the top of the Templates tab.**
-  `TemplateManager.vue` renders the "Add template" form as a persistent card above the list.
-  Replace with a button/sheet that opens it on demand. Keep the existing up/down reorder
-  buttons rather than switching to drag handles — they're the more accessible choice on mobile
-  without a keyboard-equivalent drag affordance, so the review's specific recommendation there
-  isn't being adopted. `[Effort: 3, Value: 3, ROI: 1]`
+implemented and were dropped rather than logged.
 
 ## Human setup / device verification
 

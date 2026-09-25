@@ -17,6 +17,7 @@ test('edit target set count on a template exercise', async ({ page, stamp }) => 
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()

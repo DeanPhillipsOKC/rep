@@ -23,6 +23,7 @@ test('active workout shows a dynamic header, and the exercise chip/select stay i
   }
 
   await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()

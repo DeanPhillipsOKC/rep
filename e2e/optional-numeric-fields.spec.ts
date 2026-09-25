@@ -59,6 +59,7 @@ test('adding a template exercise with target sets left blank does not error', as
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()

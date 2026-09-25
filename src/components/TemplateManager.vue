@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useTemplatesStore } from '../stores/templates'
 
@@ -9,6 +9,30 @@ const templates = useTemplatesStore()
 const name = ref('')
 const errorMessage = ref('')
 const expandedId = ref<string | null>(null)
+
+// Backlog item 54: the create form used to be a permanent card pinned above
+// the list, eating space on every visit even though adding a template is
+// rare compared to browsing/logging against existing ones. It now opens
+// on demand as a dialog, same "sheet with a backdrop" shape as
+// RecordCelebration.vue's overlay.
+const showAddForm = ref(false)
+
+function openAddForm() {
+  errorMessage.value = ''
+  name.value = ''
+  showAddForm.value = true
+}
+
+function closeAddForm() {
+  showAddForm.value = false
+}
+
+function handleAddFormKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && showAddForm.value) closeAddForm()
+}
+
+onMounted(() => document.addEventListener('keydown', handleAddFormKeydown))
+onUnmounted(() => document.removeEventListener('keydown', handleAddFormKeydown))
 
 const exerciseId = ref('')
 const targetSets = ref<number | null>(null)
@@ -40,6 +64,7 @@ async function handleCreate() {
     errorMessage.value = error.message
   } else {
     name.value = ''
+    showAddForm.value = false
   }
 }
 
@@ -155,13 +180,26 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
   <div>
     <h2>Templates</h2>
 
-    <form class="card" @submit.prevent="handleCreate">
-      <label for="template-name">Name</label>
-      <input id="template-name" v-model="name" type="text" placeholder="e.g. Push Day" required />
-      <button type="submit">Add template</button>
-    </form>
+    <button v-if="!showAddForm" type="button" class="add-template-trigger" @click="openAddForm">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      Add template
+    </button>
 
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    <div v-if="showAddForm" class="sheet-overlay" role="dialog" aria-modal="true" aria-label="Add template" @click.self="closeAddForm">
+      <form class="card sheet-card" @submit.prevent="handleCreate">
+        <label for="template-name">Name</label>
+        <input id="template-name" v-model="name" type="text" placeholder="e.g. Push Day" required autofocus />
+        <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+        <div class="sheet-actions">
+          <button type="submit">Add template</button>
+          <button type="button" class="ghost small" @click="closeAddForm">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <p v-if="!showAddForm && errorMessage" class="error">{{ errorMessage }}</p>
     <p v-if="templates.loading">Loading…</p>
 
     <ul class="list">
@@ -336,6 +374,54 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
 
 .error {
   color: var(--danger);
+}
+
+.add-template-trigger {
+  width: 100%;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.add-template-trigger:active {
+  background: var(--accent-pressed);
+  border-color: var(--accent-pressed);
+}
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 16px;
+}
+
+.sheet-card {
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 20px;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sheet-actions button[type='submit'] {
+  margin-top: 0;
+}
+
+.sheet-actions .ghost {
+  flex-shrink: 0;
 }
 
 .list {

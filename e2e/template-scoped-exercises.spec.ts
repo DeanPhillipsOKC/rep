@@ -22,6 +22,7 @@ test('exercise dropdown is scoped to the active template', async ({ page, stamp 
   }
 
   await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await page.getByText(templateName).click()
