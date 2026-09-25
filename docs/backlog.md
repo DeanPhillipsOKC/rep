@@ -24,9 +24,10 @@ it makes (excluding blocked/needs-review/human items), so it can't drift out of 
 scores by hand, recompute this line to match:
 
 1. Fix Add Set button overlapping the RPE field (ROI 2.00)
-2. Remove JSON training data export (ROI 1.50)
-3. Quick weight/rep stepper controls on set rows (ROI 1.33)
-4. Show exercise-by-exercise history (ROI 1.00)
+2. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
+3. Remove JSON training data export (ROI 1.50)
+4. Quick weight/rep stepper controls on set rows (ROI 1.33)
+5. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -44,6 +45,16 @@ implemented and were dropped rather than logged.
   button slightly overlaps the RPE input while logging sets. Adjust the compact set-row spacing
   so the controls have a clear gap at phone widths without making the row unnecessarily tall.
   Verify the layout in Playwright at a narrow mobile viewport.
+  [Effort: 1, Value: 2, ROI: 2.00]
+
+- [ ] Fix RPE quick-entry requiring two taps with a flickering label — in the active workout
+  logger's set row (`WorkoutLogger.vue`), RPE starts as a `+RPE` toggle button; tapping it swaps in
+  a separate input (placeholder `RPE`) that isn't focused yet, so a second tap is needed to actually
+  open the keyboard and type a value. The label visibly changes from `+RPE` to `RPE` on that first
+  tap, which reads as a flicker/inconsistency rather than an intentional state change. Auto-focus
+  the revealed input when the toggle is clicked so one tap both reveals and opens it for entry, and
+  make the toggle-to-placeholder transition read as one continuous control rather than two different
+  labels. Cover the one-tap-to-focus behavior in Playwright.
   [Effort: 1, Value: 2, ROI: 2.00]
 
 - [ ] Remove JSON training data export — remove the "Your data" card and download action from
