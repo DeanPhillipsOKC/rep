@@ -31,7 +31,7 @@ test('exercise dropdown is scoped to the active template', async ({ page }) => {
   await expect(page.locator('.exercise-row', { hasText: inTemplateName })).toBeVisible()
 
   // Freeform (no template): the dropdown offers every active exercise.
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
   const exerciseSelect = page.getByLabel('Exercise')
   await expect(exerciseSelect.getByRole('option', { name: inTemplateName })).toHaveCount(1)

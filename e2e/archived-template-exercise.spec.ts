@@ -44,7 +44,7 @@ test('archived exercise stops appearing in a template it is still attached to', 
   const templateExerciseRow = page.locator('.exercise-row', { hasText: exerciseName })
   await expect(templateExerciseRow.getByText('Archived')).toBeVisible()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 

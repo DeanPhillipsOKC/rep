@@ -50,7 +50,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
   // — a successful add clears reps/weight back to null (no prior workout to
   // pre-fill from, see WorkoutLogger.vue's applyPrefill), so filling ahead
   // of that landing risks the next fill being wiped out from under it.
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: trackedName })

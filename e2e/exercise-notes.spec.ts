@@ -31,7 +31,7 @@ test('exercise setup notes: add, edit, and see them while logging', async ({ pag
   await row.getByRole('button', { name: 'Save' }).click()
   await expect(row.locator('.row-notes')).toHaveText(updatedNotes)
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 

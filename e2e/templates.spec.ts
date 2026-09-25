@@ -26,7 +26,7 @@ test('templates: create, log a workout against one, and see it in history', asyn
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.locator('.exercise-row', { hasText: exerciseName })).toBeVisible()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 

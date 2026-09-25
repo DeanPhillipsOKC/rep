@@ -8,13 +8,13 @@ import WorkoutLogger from './components/WorkoutLogger.vue'
 // in-app navigation pushes a browser history entry — without that, there was
 // only ever the one entry from initial load, so a back-swipe/gesture had
 // nowhere to go but out of the app. Route `name`s double as the View type
-// AppMenu.vue's active-tab highlighting keys off.
-export type View = 'log' | 'exercises' | 'templates' | 'history'
+// BottomNav.vue's active-tab highlighting keys off.
+export type View = 'home' | 'exercises' | 'templates' | 'history'
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/', name: 'log', component: WorkoutLogger },
+    { path: '/', name: 'home', component: WorkoutLogger },
     { path: '/history', name: 'history', component: WorkoutHistory },
     { path: '/templates', name: 'templates', component: TemplateManager },
     { path: '/exercises', name: 'exercises', component: ExerciseList },

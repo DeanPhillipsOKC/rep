@@ -1,25 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import AppMenu from './components/AppMenu.vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
+import BottomNav from './components/BottomNav.vue'
 import { useAuthStore } from './stores/auth'
 import type { View } from './router'
 
 const auth = useAuthStore()
 const route = useRoute()
-const router = useRouter()
-const menuOpen = ref(false)
 const appVersion = __APP_VERSION__
 
 // route.name is typed `RouteRecordName | undefined` by vue-router; every
 // route this app declares (router.ts) names itself with a View, so the cast
 // is safe as long as that stays true.
-const currentView = computed(() => (route.name as View) ?? 'log')
-
-function navigateTo(view: View) {
-  router.push({ name: view })
-}
+const currentView = computed(() => (route.name as View) ?? 'home')
 </script>
 
 <template>
@@ -30,35 +24,22 @@ function navigateTo(view: View) {
           <img src="/icon-192.png" alt="" class="brand-logo" />
           <h1>RepBunny</h1>
         </div>
-        <button
-          type="button"
-          class="menu-button"
-          aria-label="Open menu"
-          aria-controls="app-menu-drawer"
-          :aria-expanded="menuOpen"
-          @click="menuOpen = true"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
+        <button type="button" class="icon-button" aria-label="Sign out" @click="auth.signOut()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
         </button>
       </header>
 
-      <p v-if="currentView === 'log'" class="tagline">Small wins. Stronger every set.</p>
+      <p v-if="currentView === 'home'" class="tagline">Small wins. Stronger every set.</p>
 
       <section class="content">
         <router-view />
       </section>
 
-      <AppMenu
-        :open="menuOpen"
-        :current-view="currentView"
-        @update:open="menuOpen = $event"
-        @navigate="navigateTo"
-        @sign-out="auth.signOut()"
-      />
+      <BottomNav />
     </AuthGate>
 
     <footer class="app-version">{{ appVersion }}</footer>
@@ -70,7 +51,9 @@ main {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  padding-bottom: 32px;
+  /* Clears the fixed BottomNav (BottomNav.vue) so it never covers the
+     footer or the last bit of scrollable content. */
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
 }
 
 .app-header {
@@ -96,7 +79,7 @@ main {
   margin: 0;
 }
 
-.menu-button {
+.icon-button {
   width: 44px;
   height: 44px;
   min-height: auto;

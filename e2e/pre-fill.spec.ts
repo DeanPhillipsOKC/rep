@@ -34,7 +34,7 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   }
 
   // First workout against the template: log a set for each exercise, then finish.
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: exerciseName, exact: true }).click()
@@ -120,7 +120,7 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
   // First workout: superset both exercises for two rounds, with the first
   // exercise's second set deliberately lighter (fatigue) so a "last set
   // logged" pre-fill would be obviously wrong for set 1 next time.
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 

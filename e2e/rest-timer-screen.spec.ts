@@ -24,7 +24,7 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page })
   await exerciseRow.getByLabel('Rest timer (seconds)').fill('30')
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('10')
@@ -62,7 +62,7 @@ test('rest timer screen: auto-dismisses when the countdown finishes', async ({ p
   await exerciseRow.getByLabel('Rest timer (seconds)').fill('1')
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('5')

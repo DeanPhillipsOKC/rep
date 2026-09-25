@@ -21,7 +21,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 
@@ -80,7 +80,7 @@ test('Record celebration: tapping the overlay also dismisses it', async ({ page 
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('5')

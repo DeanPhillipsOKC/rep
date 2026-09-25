@@ -21,7 +21,7 @@ test('edit notes and a set, and delete a set, on a past workout in History', asy
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()
 
-  await goTo(page, 'Log')
+  await goTo(page, 'Home')
   await page.getByLabel('Notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
