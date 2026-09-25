@@ -22,6 +22,7 @@ A private, installable workout tracker for two users (owner + one invited user).
 | Framework | Vue 3 + TypeScript (Composition API, `<script setup>`) | Matches existing skill set; Vue 3 for current tooling and better TS inference |
 | Build | Vite + `vite-plugin-pwa` | Generates manifest and service worker; sane defaults for offline shell |
 | State | Pinia | Minimal, TS-native |
+| Routing | Vue Router (`src/router.ts`) | Real paths per screen (`/`, `/history`, `/templates`, `/exercises`) push real browser history entries, so back/forward — and the swipe-back gesture that drives it on mobile — navigates in-app instead of exiting; a plain `view` ref (pre-2026-09-25) never touched history at all |
 | Backend | Supabase (Postgres + Auth + RLS) | Auth, database, and row-level authorization in one free tier |
 | Hosting | Cloudflare Pages | Free static hosting, custom domain optional, no cold starts |
 | Email (fallback only) | Supabase built-in, or Resend free tier if rate limits bite | Only used for account recovery |
@@ -224,6 +225,7 @@ See `supabase/schema.sql` and `supabase/policies.sql` for the runnable versions 
 - Provide the full iOS icon set including `apple-touch-icon`. iOS ignores parts of the web manifest and needs its own meta tags. (iPhone-only concern.)
 - Service worker caches the app shell for offline load. Workout logging in a gym with poor signal is the common case, so the shell must load without network.
 - The service worker is hand-written (`src/sw.ts`, built via `vite-plugin-pwa`'s `injectManifest` strategy, not the default `generateSW`) because rest timer alerts (below) need a custom `push`/`notificationclick` handler that `generateSW` has no hook for. `injectManifest` still auto-generates and injects the precache list (`self.__WB_MANIFEST`) — the app-shell caching behavior is unchanged, just declared in hand-written code instead of config.
+- Vue Router (above) gave the app real paths per screen, so the shell has to load offline at any of them, not just `/` — `sw.ts` registers a `workbox-routing` `NavigationRoute` that serves the precached `index.html` for every same-origin navigation request. `public/_redirects` (`/* /index.html 200`) does the equivalent for Cloudflare Pages when there's a network but the platform would otherwise 404 a path it doesn't know about (e.g. a hard reload on `/templates`).
 - **Offline writes:** queue mutations in IndexedDB and sync when connectivity returns. This is the single most valuable feature for real gym use. Build it early rather than retrofitting.
 - Android Chrome fires `beforeinstallprompt`; use it to show a native-feeling install button instead of an in-app hint.
 - iOS gives no install prompt at all. Add a one-time in-app hint explaining the Share → Add to Home Screen flow. (iPhone-only concern.)

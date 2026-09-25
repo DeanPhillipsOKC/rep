@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-
-type View = 'log' | 'exercises' | 'templates' | 'history'
+import type { View } from '../router'
 
 const props = defineProps<{
   open: boolean

@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppMenu from './components/AppMenu.vue'
 import AuthGate from './components/AuthGate.vue'
-import ExerciseList from './components/ExerciseList.vue'
-import TemplateManager from './components/TemplateManager.vue'
-import WorkoutHistory from './components/WorkoutHistory.vue'
-import WorkoutLogger from './components/WorkoutLogger.vue'
 import { useAuthStore } from './stores/auth'
+import type { View } from './router'
 
 const auth = useAuthStore()
-const view = ref<'log' | 'exercises' | 'templates' | 'history'>('log')
+const route = useRoute()
+const router = useRouter()
 const menuOpen = ref(false)
 const appVersion = __APP_VERSION__
+
+// route.name is typed `RouteRecordName | undefined` by vue-router; every
+// route this app declares (router.ts) names itself with a View, so the cast
+// is safe as long as that stays true.
+const currentView = computed(() => (route.name as View) ?? 'log')
+
+function navigateTo(view: View) {
+  router.push({ name: view })
+}
 </script>
 
 <template>
@@ -38,20 +46,17 @@ const appVersion = __APP_VERSION__
         </button>
       </header>
 
-      <p v-if="view === 'log'" class="tagline">Small wins. Stronger every set.</p>
+      <p v-if="currentView === 'log'" class="tagline">Small wins. Stronger every set.</p>
 
       <section class="content">
-        <WorkoutLogger v-if="view === 'log'" @navigate="view = $event" />
-        <ExerciseList v-else-if="view === 'exercises'" />
-        <TemplateManager v-else-if="view === 'templates'" />
-        <WorkoutHistory v-else-if="view === 'history'" />
+        <router-view />
       </section>
 
       <AppMenu
         :open="menuOpen"
-        :current-view="view"
+        :current-view="currentView"
         @update:open="menuOpen = $event"
-        @navigate="view = $event"
+        @navigate="navigateTo"
         @sign-out="auth.signOut()"
       />
     </AuthGate>

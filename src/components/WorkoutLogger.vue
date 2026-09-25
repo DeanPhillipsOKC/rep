@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
@@ -13,13 +14,11 @@ const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
 const templates = useTemplatesStore()
 const workout = useWorkoutsStore()
+const router = useRouter()
 
 // Backlog item 26: pre-start guidance points a brand-new account at the
-// Exercises/Templates tabs instead of App.vue owning that navigation —
-// same emit-and-let-the-parent-switch-`view` pattern AppMenu.vue uses.
-const emit = defineEmits<{
-  (e: 'navigate', view: 'exercises' | 'templates'): void
-}>()
+// Exercises/Templates tabs — routed directly rather than bubbled up through
+// an emit, now that App.vue no longer owns a `view` ref to switch (router.ts).
 
 const notes = ref('')
 const templateId = ref('')
@@ -442,7 +441,7 @@ function dismissVolumeChart() {
               This is where your workouts live. Add your first exercise to start logging sets and watching your
               progress build.
             </p>
-            <button type="button" class="welcome-cta" @click="emit('navigate', 'exercises')">
+            <button type="button" class="welcome-cta" @click="router.push({ name: 'exercises' })">
               Add your first exercise
             </button>
           </div>
@@ -473,7 +472,7 @@ function dismissVolumeChart() {
             </div>
             <p class="template-hint-copy">
               Nice, you're ready to log. Templates help you repeat a workout and track its progress over time.
-              <button type="button" class="link-button" @click="emit('navigate', 'templates')">
+              <button type="button" class="link-button" @click="router.push({ name: 'templates' })">
                 Create a template
               </button>
             </p>
@@ -500,7 +499,7 @@ function dismissVolumeChart() {
               >
                 {{ template.name }}
               </button>
-              <button type="button" class="chip template-chip template-chip-new" @click="emit('navigate', 'templates')">
+              <button type="button" class="chip template-chip template-chip-new" @click="router.push({ name: 'templates' })">
                 + New
               </button>
             </div>

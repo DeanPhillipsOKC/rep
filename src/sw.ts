@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 
 import { clientsClaim } from 'workbox-core'
-import { precacheAndRoute } from 'workbox-precaching'
+import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 // vite-plugin-pwa's injectManifest strategy replaces __WB_MANIFEST with the
 // build's precache list. Switched from the generateSW strategy (see
@@ -10,6 +11,15 @@ import { precacheAndRoute } from 'workbox-precaching'
 declare let self: ServiceWorkerGlobalScope
 
 precacheAndRoute(self.__WB_MANIFEST)
+
+// router.ts gave the app real paths (/history, /templates, /exercises)
+// instead of one URL with in-memory view state, so the app shell's "must
+// load without network" guarantee (docs/architecture.md#pwa-configuration)
+// now has to cover a navigation to any of those, not just "/" — only "/"
+// itself is in the precache manifest above. Route every same-origin
+// navigation request to the cached index.html, same as public/_redirects
+// does for Cloudflare Pages when there's a network but no server-side route.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
 
 // generateSW auto-adds this pair for `registerType: 'autoUpdate'`; injectManifest
 // doesn't, so it has to be done by hand here — without it, a newly installed SW
