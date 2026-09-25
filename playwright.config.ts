@@ -9,7 +9,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
-  reporter: 'list',
+  // 'dot' prints one character per test (a dot for a pass) instead of a full line per test,
+  // and still prints full error detail for any failure — this run's output gets read back into
+  // an LLM's context on every gate check (next-item / Run-Backlog.ps1), sometimes several times
+  // per item on a retry, so a 40-line listing of passes was pure token cost for no signal.
+  reporter: 'dot',
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
