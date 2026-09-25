@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-
+1. Primary CTAs lost against ghost buttons (ROI 1.67)
 
 ## Features
 
@@ -36,6 +36,23 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
+
+- [ ] Primary calls to action get lost against secondary/ghost buttons — user-reported
+  2026-09-25 (example: the "Log another workout" button shown on the post-workout volume
+  chart in `WorkoutLogger.vue` reads as muted/secondary and is easy to miss). Root cause:
+  `WorkoutLogger.vue` applies `.ghost` (transparent background, `--border` outline,
+  `--text-dim` text — see `src/style.css`'s `.ghost` rule) to at least two primary CTAs
+  instead of the accent (Bunny Pink / "dusty rose", `--accent` in `src/style.css`) fill
+  they should have: `chart-dismiss` "Log another workout" (`WorkoutLogger.vue:468`) and
+  "Finish workout" (`WorkoutLogger.vue:749`, currently `class="ghost finish"`). Fix: swap
+  both to the accent fill (`background: var(--accent); border-color: var(--accent); color:
+  var(--accent-text)` — matches `button[type='submit']` in `style.css` and the several
+  per-component accent buttons already in `RecordCelebration.vue`, `RestTimer.vue`, etc.).
+  While in there, sweep other components for primary actions currently styled `.ghost` or
+  plain `button` that should read as the main next step, not just these two. Worth
+  introducing a shared `.btn-accent`/primary class in `style.css` at this point rather than
+  redefining the accent fill per component again, since it's already duplicated 6+ times.
+  [Effort: 3, Value: 5, ROI: 1.67]
 
 ## Human setup / device verification
 
