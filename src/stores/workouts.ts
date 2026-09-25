@@ -315,6 +315,60 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     return { error }
   }
 
+  // Backlog item 32: fix a fat-fingered reps/weight/rpe entry, or remove a
+  // set entirely, on an already-finished workout from History — same DB
+  // write as updateSet/deleteSet above, but reading/writing `history`
+  // instead of `activeSets` since a finished workout's sets live there.
+  async function updateHistorySet(
+    id: string,
+    reps: number,
+    weight: number,
+    weightUnit: WeightUnit,
+    rpe: number | null
+  ) {
+    const { error } = await supabase
+      .from('sets')
+      .update({ reps, weight, weight_unit: weightUnit, rpe })
+      .eq('id', id)
+    if (!error) {
+      for (const entry of history.value) {
+        const set = entry.sets.find((s) => s.id === id)
+        if (set) {
+          set.reps = reps
+          set.weight = weight
+          set.weight_unit = weightUnit
+          set.rpe = rpe
+          break
+        }
+      }
+    }
+    return { error }
+  }
+
+  async function deleteHistorySet(id: string) {
+    const { error } = await supabase.from('sets').delete().eq('id', id)
+    if (!error) {
+      for (const entry of history.value) {
+        const index = entry.sets.findIndex((s) => s.id === id)
+        if (index !== -1) {
+          entry.sets.splice(index, 1)
+          break
+        }
+      }
+    }
+    return { error }
+  }
+
+  // Backlog item 32: fix a missing or wrong note on a finished workout.
+  async function updateWorkoutNotes(id: string, notes: string | null) {
+    const { error } = await supabase.from('workouts').update({ notes }).eq('id', id)
+    if (!error) {
+      const entry = history.value.find((w) => w.id === id)
+      if (entry) entry.notes = notes
+    }
+    return { error }
+  }
+
   async function fetchHistory() {
     loading.value = true
     errorMessage.value = ''
@@ -349,6 +403,9 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     addSet,
     updateSet,
     deleteSet,
+    updateHistorySet,
+    deleteHistorySet,
+    updateWorkoutNotes,
     finishWorkout,
     fetchHistory,
     deleteWorkout,

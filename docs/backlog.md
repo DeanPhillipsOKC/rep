@@ -22,14 +22,9 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
-
-### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
-
-Requested 2026-09-24, split out from item 31 (shipped, `docs/backlog-archive.md`) as a separate item since editing is materially more work than deleting. Once a workout is finished, `WorkoutHistory.vue` offers no way to fix a wrong rep/weight/RPE entry, add or remove a set, or edit the workout's notes — the only escape today is deleting the whole workout (item 31) and re-logging it. Fix direction: reuse as much of the active-workout edit/delete-a-set UI from item 13 as reasonably fits a finished workout's card, plus notes editing. Needs a decision on scope: allow adding a brand-new set to a past workout (re-triggers `set_index`/volume-chart implications for any template it's linked to), or restrict editing to sets that already exist. Worth reusing the same card-level "Delete" affordance's placement/confirm-step pattern item 31 shipped, so both live in a consistent spot on the History card.
 
 ### 24. Redesign exercise row actions into pencil/trash icons instead of four text buttons `[Effort: 5, Value: 3, ROI: 0.6]`
 
