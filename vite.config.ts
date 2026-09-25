@@ -46,7 +46,7 @@ export default defineConfig({
         // "offline writes" note in docs/architecture.md. Runtime data
         // caching for Supabase requests is handled by the app's own
         // IndexedDB queue, not the service worker.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}']
+        globPatterns: ['**/*.{js,css,html,svg,png,webp,ico}']
       }
     })
   ]
