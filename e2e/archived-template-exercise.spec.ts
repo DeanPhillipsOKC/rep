@@ -59,4 +59,10 @@ test('archived exercise stops appearing in a template it is still attached to', 
 
   await expect(page.locator('.suggested .chip', { hasText: exerciseName })).toHaveCount(0)
   await expect(page.getByLabel('Exercise').getByRole('option', { name: exerciseName })).toHaveCount(0)
+
+  // Started but never logged a set — Finish here would just discard it (see
+  // e2e/zero-set-cleanup.spec.ts), which also keeps this spec from leaving a
+  // permanent zero-set `workouts` row behind on every run (backlog item 56).
+  await page.getByRole('button', { name: 'Finish workout' }).click()
+  await page.getByRole('button', { name: 'Discard workout' }).click()
 })

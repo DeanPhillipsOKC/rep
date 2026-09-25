@@ -117,15 +117,23 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     startOfWeek.setHours(0, 0, 0, 0)
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7))
 
-    const [{ data: weekWorkouts }, { data: recent }] = await Promise.all([
-      supabase.from('workouts').select('performed_at').gte('performed_at', startOfWeek.toISOString()),
+    const [{ data: weekWorkouts, count: weekCount }, { data: recent }] = await Promise.all([
+      // count: 'exact' asks PostgREST for the true total via a header, not
+      // just the length of the returned page — the page itself is still
+      // capped at PostgREST's default max-rows (1000), which silently froze
+      // this tile once the (test) account crossed that many workouts in a
+      // week (docs/backlog-archive.md item 56).
+      supabase
+        .from('workouts')
+        .select('performed_at', { count: 'exact' })
+        .gte('performed_at', startOfWeek.toISOString()),
       supabase
         .from('workouts')
         .select('id, sets(exercise_id, reps, weight, weight_unit, exercises(name))')
         .order('performed_at', { ascending: false })
         .limit(1),
     ])
-    workoutsThisWeek.value = weekWorkouts?.length ?? 0
+    workoutsThisWeek.value = weekCount ?? 0
 
     const days = [false, false, false, false, false, false, false]
     for (const w of weekWorkouts ?? []) {

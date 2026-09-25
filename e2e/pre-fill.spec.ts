@@ -61,6 +61,8 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByRole('button', { name: 'Finish workout' }).click()
+  // Backlog item 51: finishing with no sets logged now confirms before discarding.
+  await page.getByRole('button', { name: 'Discard workout' }).click()
 
   // Third workout against the same template: should show the last workout
   // that actually had sets (the first one), skipping the empty one.

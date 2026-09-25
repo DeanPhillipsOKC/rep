@@ -20,7 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-56, 50, 53, 52, 54
+50, 53, 52, 57, 54
 
 ## Features
 
@@ -70,19 +70,23 @@ implemented and were dropped rather than logged. What's below is what verifiably
 
 ## Testing / tooling
 
-- [ ] **Item 56 — Recurring e2e flakes on back-to-back full-suite runs.** Full `npm run test:e2e`
-  runs are consistently reliable in isolation, but running the full 31-spec suite two or three
-  times in quick succession reliably produces 2-4 failures, and *which* specs fail varies run to
-  run (`pr-toast`, `pre-fill`, `template-scoped-exercises`, `archived-template-exercise`, and
-  `progress-strip` have each failed at least once this way, 2026-09-25) — every failure clears on
-  an isolated re-run, and the same specs pass clean on an untouched `git stash` of `main`, so this
-  isn't a real regression, just suite flakiness. Shape points at shared state on the one Supabase
-  test account specs all reuse (`playwright.config.ts`'s single-worker comment already flags the
-  magic-link-mint race as a known risk) — likely candidates: Supabase auth rate-limiting the
-  repeated `generateLink`/`verifyOtp` mint, or leftover data from a prior run's `E2E …timestamp`
-  rows/workouts colliding with count-based assertions (`progress-strip`'s failure was a stat-tile
-  off-by-one). Worth root-causing before e2e is ever wired up as a deploy gate, since a flaky gate
-  is worse than no gate. `[Effort: 3, Value: 5, ROI: 1.67]`
+- [ ] **Item 57 — e2e specs never clean up or seed their own data; refactor to stop
+  accumulating permanent rows on the shared test account.** Root-causing item 56 (see
+  `docs/backlog-archive.md`) found the test account sitting on 1437 `exercises` rows and 1060+
+  `workouts` rows — years of stamped (`E2E … <timestamp>`) test data that almost no spec ever
+  deletes, since the suite's collision-avoidance strategy (unique names per run) never included
+  teardown. That's already large enough to silently truncate unbounded `.select()` queries at
+  Supabase/PostgREST's default 1000-row page size, which is what actually caused item 56's
+  "random" failures — reproduced directly: `template-archive-confirm.spec.ts` alone went
+  fail/pass/fail across three back-to-back isolated runs once `exercises` crossed that
+  threshold, no other spec involved. `npm run wipe:account -- test-automation@example.com`
+  (item 5) resets the account today, but nothing stops it from silently re-bloating past 1000
+  again over months of normal use. Fix properly: give specs an `afterEach` (or a shared fixture)
+  that deletes what that test created via the admin client (`getAdminClient()`,
+  `scripts/lib/mint-test-session.mjs`), keyed off each test's own stamp rather than a blanket
+  wipe; and where a spec needs pre-existing state (e.g. `pre-fill.spec.ts`'s "last workout of the
+  same template"), seed it directly via the admin client instead of driving the UI just to set up
+  fixture data. `[Effort: 5, Value: 5, ROI: 1]`
 
 ## Human setup / device verification
 
@@ -97,6 +101,11 @@ implemented and were dropped rather than logged. What's below is what verifiably
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
 - [ ] **[human]** Drop the now-unused `category` column from the live `exercises` table (item 30, shipped 2026-09-24, `docs/backlog-archive.md`): run `alter table exercises drop column category;` in the Supabase SQL editor. Code no longer reads or writes it either way, so this is cleanup, not a blocker.
+- [ ] **[human]** Reset the bloated e2e test account (item 56, `docs/backlog-archive.md`): run
+  `npm run wipe:account -- test-automation@example.com` to clear the ~1437 `exercises`/~1060
+  `workouts`/~545 `workout_templates` rows accumulated from years of test runs with no cleanup —
+  the auto-mode classifier blocks Claude from running a bulk delete against live Supabase data
+  itself. This is a one-time unblock; item 57 above is the structural fix so it can't re-bloat.
 
 ---
 
