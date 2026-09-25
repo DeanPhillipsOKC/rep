@@ -20,6 +20,8 @@ const router = useRouter()
 // Exercises/Templates tabs — routed directly rather than bubbled up through
 // an emit, now that App.vue no longer owns a `view` ref to switch (router.ts).
 
+const weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 const notes = ref('')
 const templateId = ref('')
 const exerciseId = ref('')
@@ -365,6 +367,7 @@ function dismissVolumeChart() {
                 :key="day"
                 class="paw-day"
                 :class="{ 'paw-day-done': done }"
+                :aria-label="`${weekdayNames[day]}: ${done ? 'workout logged' : 'no workout logged'}`"
               >
                 <svg v-if="done" class="paw-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <ellipse cx="12" cy="16" rx="5.5" ry="4.2" />
