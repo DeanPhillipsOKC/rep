@@ -291,6 +291,17 @@ function ensureDraftRows(id: string) {
 
 const draftRows = computed(() => (exerciseId.value ? (draftRowsByExercise.value[exerciseId.value] ?? []) : []))
 
+function adjustReps(row: DraftRow, delta: number) {
+  const current = typeof row.reps === 'number' && Number.isFinite(row.reps) ? row.reps : 0
+  row.reps = Math.max(1, current + delta)
+}
+
+function adjustWeight(row: DraftRow, delta: number) {
+  const step = rowWeightUnit.value === 'kg' ? 5 : 10
+  const current = typeof row.weight === 'number' && Number.isFinite(row.weight) ? row.weight : 0
+  row.weight = Math.max(0, current + delta * step)
+}
+
 // Backlog item 1: the numbered grid shows every row for the selected
 // exercise together — already-logged sets in a compact read-only form (edit
 // and delete stay on the full workout list below, so there's one place that
@@ -810,30 +821,38 @@ function dismissVolumeChart() {
 
                 <template v-else>
                   <div class="set-row-fields">
-                    <label class="sr-only" :for="`row-reps-${entry.row.key}`">Reps</label>
-                    <input
-                      :id="`row-reps-${entry.row.key}`"
-                      v-model.number="entry.row.reps"
-                      :disabled="entry.row.saving"
-                      type="number"
-                      inputmode="numeric"
-                      min="1"
-                      placeholder="Reps"
-                      class="set-input"
-                    />
+                    <span class="set-stepper">
+                      <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} rep count`" :disabled="entry.row.saving || entry.row.reps === null || entry.row.reps <= 1" @click="adjustReps(entry.row, -1)">−</button>
+                      <label class="sr-only" :for="`row-reps-${entry.row.key}`">Reps</label>
+                      <input
+                        :id="`row-reps-${entry.row.key}`"
+                        v-model.number="entry.row.reps"
+                        :disabled="entry.row.saving"
+                        type="number"
+                        inputmode="numeric"
+                        min="1"
+                        placeholder="Reps"
+                        class="set-input"
+                      />
+                      <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} rep count`" :disabled="entry.row.saving" @click="adjustReps(entry.row, 1)">+</button>
+                    </span>
                     <span class="set-row-x" aria-hidden="true">×</span>
-                    <label class="sr-only" :for="`row-weight-${entry.row.key}`">Weight</label>
-                    <input
-                      :id="`row-weight-${entry.row.key}`"
-                      v-model.number="entry.row.weight"
-                      :disabled="entry.row.saving"
-                      type="number"
-                      inputmode="decimal"
-                      min="0"
-                      step="0.5"
-                      :placeholder="rowWeightUnit"
-                      class="set-input"
-                    />
+                    <span class="set-stepper">
+                      <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving || entry.row.weight === null || entry.row.weight <= 0" @click="adjustWeight(entry.row, -1)">−</button>
+                      <label class="sr-only" :for="`row-weight-${entry.row.key}`">Weight</label>
+                      <input
+                        :id="`row-weight-${entry.row.key}`"
+                        v-model.number="entry.row.weight"
+                        :disabled="entry.row.saving"
+                        type="number"
+                        inputmode="decimal"
+                        min="0"
+                        step="0.5"
+                        :placeholder="rowWeightUnit"
+                        class="set-input"
+                      />
+                      <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving" @click="adjustWeight(entry.row, 1)">+</button>
+                    </span>
                     <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" :disabled="entry.row.saving" @click="entry.row.rpeOpen = true">
                       +RPE
                     </button>
@@ -1572,15 +1591,32 @@ function dismissVolumeChart() {
 .set-row-fields {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  flex: 1;
+  flex: 1 1 250px;
   min-width: 0;
 }
 
-.set-input {
-  width: 60px;
+.set-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.stepper-btn {
+  width: 24px;
+  min-width: 24px;
   min-height: 40px;
-  padding: 0 8px;
+  padding: 0;
+  font-size: 1rem;
+  background: var(--surface);
+}
+
+.set-input {
+  width: 50px;
+  min-height: 40px;
+  padding: 0 3px;
   text-align: center;
   flex-shrink: 0;
 }
