@@ -23,10 +23,11 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
-2. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-3. Remove JSON training data export (ROI 1.50)
-4. Show exercise-by-exercise history (ROI 1.00)
+1. Carry over RPE from the previous set when pre-filling a new set (ROI 3.00)
+2. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
+3. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
+4. Remove JSON training data export (ROI 1.50)
+5. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -49,6 +50,17 @@ implemented and were dropped rather than logged.
   make the toggle-to-placeholder transition read as one continuous control rather than two different
   labels. Cover the one-tap-to-focus behavior in Playwright.
   [Effort: 1, Value: 2, ROI: 2.00]
+
+- [ ] Carry over RPE from the previous set when pre-filling a new set — the active workout
+  logger's `applyPrefillToRow` (`WorkoutLogger.vue`) already seeds a new draft row's reps and
+  weight from the position-matching set logged last time, but leaves `rpe` at `null` and
+  `rpeOpen` at `false`, so a value entered for set N previously has no effect on the same set
+  position this session even though reps/weight do carry over. Seed `row.rpe` from the matching
+  previous set the same way reps/weight already are, and open the RPE field (`rpeOpen = true`)
+  when the seeded value is non-null so it's visible without an extra tap. Leave it untouched
+  (closed, `null`) when the previous set had no RPE recorded. Cover both cases — carried-over
+  value shown open, and no-prior-RPE staying closed — in Playwright.
+  [Effort: 1, Value: 3, ROI: 3.00]
 
 - [ ] Remove JSON training data export — remove the "Your data" card and download action from
   Exercises, the export helper, and its export-specific Playwright spec. There is no in-app import
