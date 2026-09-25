@@ -8,6 +8,7 @@ How this works:
 - **[human]** tags mark tasks only the user can do (accounts, physical devices, product decisions). Flag if one is unchecked and blocking; don't attempt it yourself.
 - "Depends on" call out ordering between items below.
 - Every item carries an `[Effort: N, Value: N, ROI: X]` tag — see **Prioritization** below. When adding a new item, assign its scores yourself; the user doesn't want to be involved in that judgment call.
+- An item that can't be completed gets an additive `, Status: blocked: <one-line reason>` appended inside its tag instead of being deleted (e.g. `[Effort: 3, Value: 4, ROI: 1.33, Status: blocked: needs a schema change per architecture.md's DDL constraint]`). No `Status` field means open. `Status: needs-review` is also a recognized skip-me marker if a human wants to flag an item without fully blocking it. This convention exists for `.claude/skills/next-item/SKILL.md`, which selects and works the highest-ROI open item unattended (see `docs/backlog-runner.md`).
 
 ## Prioritization
 
@@ -18,7 +19,9 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 `ROI = Value / Effort`. Higher ROI = do it sooner. This is a rough forcing function for "what's next," not a precise formula — ties are fine, don't over-think a single point of Effort or Value. Re-score an item if its scope changes materially; otherwise leave existing scores alone even as new items are added around them.
 
-Priority order (highest ROI first), kept in sync with the tags below:
+Priority order (highest ROI first) is regenerated from the tags below by `next-item` on every edit
+it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
+scores by hand, recompute this line to match:
 
 50, 53, 52, 57, 54
 
