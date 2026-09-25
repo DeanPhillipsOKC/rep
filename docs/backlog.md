@@ -101,11 +101,6 @@ implemented and were dropped rather than logged. What's below is what verifiably
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
 - [ ] **[human]** Drop the now-unused `category` column from the live `exercises` table (item 30, shipped 2026-09-24, `docs/backlog-archive.md`): run `alter table exercises drop column category;` in the Supabase SQL editor. Code no longer reads or writes it either way, so this is cleanup, not a blocker.
-- [ ] **[human]** Reset the bloated e2e test account (item 56, `docs/backlog-archive.md`): run
-  `npm run wipe:account -- test-automation@example.com` to clear the ~1437 `exercises`/~1060
-  `workouts`/~545 `workout_templates` rows accumulated from years of test runs with no cleanup —
-  the auto-mode classifier blocks Claude from running a bulk delete against live Supabase data
-  itself. This is a one-time unblock; item 57 above is the structural fix so it can't re-bloat.
 
 ---
 

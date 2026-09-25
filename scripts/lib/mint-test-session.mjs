@@ -52,6 +52,30 @@ export function getAdminClient() {
   })
 }
 
+const isRateLimited = (message) => /rate limit/i.test(message ?? '')
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// generateLink/verifyOtp share GoTrue's OTP-issuing rate limit (docs/backlog-archive.md
+// item 56) — back-to-back full-suite runs can trip it even though each individual mint
+// is well-spaced within one run. A couple of short retries clears a transient blip
+// without eating much of Playwright's 30s per-test timeout; a limit that's still hot
+// after that needs an actual wait, which this deliberately doesn't do.
+const RETRY_DELAYS_MS = [2000, 6000]
+
+async function withRateLimitRetry(label, fn) {
+  for (let attempt = 0; ; attempt++) {
+    const { data, error } = await fn()
+    if (!error) return data
+    if (attempt >= RETRY_DELAYS_MS.length || !isRateLimited(error.message)) {
+      throw new Error(`${label} failed: ${error.message}`)
+    }
+    await sleep(RETRY_DELAYS_MS[attempt])
+  }
+}
+
 export async function mintTestSession() {
   loadEnvLocal()
 
@@ -73,11 +97,9 @@ export async function mintTestSession() {
 
   const admin = getAdminClient()
 
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email: testEmail,
-  })
-  if (linkError) throw new Error(`generateLink failed: ${linkError.message}`)
+  const linkData = await withRateLimitRetry('generateLink', () =>
+    admin.auth.admin.generateLink({ type: 'magiclink', email: testEmail })
+  )
 
   const hashedToken = linkData.properties?.hashed_token
   if (!hashedToken) throw new Error('generateLink response had no hashed_token.')
@@ -86,11 +108,9 @@ export async function mintTestSession() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const { data: verifyData, error: verifyError } = await anon.auth.verifyOtp({
-    token_hash: hashedToken,
-    type: 'email',
-  })
-  if (verifyError) throw new Error(`verifyOtp failed: ${verifyError.message}`)
+  const verifyData = await withRateLimitRetry('verifyOtp', () =>
+    anon.auth.verifyOtp({ token_hash: hashedToken, type: 'email' })
+  )
   if (!verifyData.session) throw new Error('verifyOtp did not return a session.')
 
   const projectRef = new URL(supabaseUrl).hostname.split('.')[0]
