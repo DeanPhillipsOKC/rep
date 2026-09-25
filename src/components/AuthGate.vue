@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useWorkoutsStore } from '../stores/workouts'
 import LoginForm from './LoginForm.vue'
 import OnboardingScreen from './OnboardingScreen.vue'
 import PasskeyPrompt from './PasskeyPrompt.vue'
@@ -18,9 +19,28 @@ const LOADING_CAPTIONS = [
 ]
 
 const auth = useAuthStore()
+const workout = useWorkoutsStore()
 const hasSeenOnboarding = ref(localStorage.getItem(ONBOARDING_SEEN_KEY) === '1')
 const captionIndex = ref(0)
 let captionTimer: ReturnType<typeof setInterval> | undefined
+
+// Recover-interrupted-workout item: this is the earliest point a signed-in
+// user id actually exists, so it's the natural boot hook for "is there an
+// active workout to offer resuming." Also fires the other way on sign-out
+// (explicit click or session expiry both flow through auth.isSignedIn) so a
+// second account signing in on the same device never inherits the first
+// account's in-progress session or resume prompt. Deliberately not
+// `immediate: true` — isSignedIn's initial value is always false before
+// auth.init() resolves, and firing resetActiveWorkoutState() on that first
+// tick would clear the persisted reference before the real, post-init
+// sign-in transition ever gets a chance to check it.
+watch(
+  () => auth.isSignedIn,
+  (signedIn) => {
+    if (signedIn) workout.checkForRecoverableWorkout()
+    else workout.resetActiveWorkoutState()
+  },
+)
 
 onMounted(() => {
   auth.init()

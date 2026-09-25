@@ -1,0 +1,175 @@
+import { test, expect } from './fixtures/cleanup'
+import { signInAsTestUser } from './fixtures/auth'
+import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
+
+// Covers docs/backlog.md's "Recover an interrupted workout after reload"
+// item: activeWorkoutId/activeSets used to live only in the Pinia store, so
+// a reload lost the live session even though its rows survived in Supabase.
+// These specs simulate that loss with page.reload() (a fresh mount, same as
+// a real refresh or installed-PWA relaunch) and drive the resulting
+// Resume/Discard prompt.
+
+test('resume workout: reload after logging a set offers to resume, and Resume restores the session', async ({
+  page,
+  stamp,
+}) => {
+  const exerciseName = `E2E Resume Squat ${stamp}`
+  const templateName = `E2E Resume Day ${stamp}`
+
+  await signInAsTestUser(page)
+
+  await goTo(page, 'Exercises')
+  await page.getByLabel('Name').fill(exerciseName)
+  await page.getByRole('button', { name: 'Add exercise' }).click()
+  await expect(page.getByText(exerciseName)).toBeVisible()
+
+  await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
+  await page.getByLabel('Name').fill(templateName)
+  await page.getByRole('button', { name: 'Add template' }).click()
+  await page.getByText(templateName).click()
+  await page.getByRole('combobox').selectOption({ label: exerciseName })
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.locator('.exercise-row', { hasText: exerciseName })).toBeVisible()
+
+  await goTo(page, 'Home')
+  await page.getByRole('button', { name: templateName, exact: true }).click()
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByRole('button', { name: exerciseName, exact: true }).click()
+  await page.getByLabel('Reps').fill('8')
+  await page.getByLabel('Weight').fill('185')
+  await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
+  await expect(page.locator('li.row-wrap', { hasText: '8 × 185lb' })).toBeVisible()
+
+  await page.reload()
+
+  // The normal "start a workout" form must not show while a recoverable
+  // workout is pending a decision.
+  await expect(page.getByRole('heading', { name: 'Resume your workout?' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start workout' })).toHaveCount(0)
+  const prompt = page.locator('.card', { hasText: 'Resume your workout?' })
+  await expect(prompt).toContainText(templateName)
+  await expect(prompt).toContainText('1 set logged')
+
+  await page.getByRole('button', { name: 'Resume workout' }).click()
+
+  // The recovered session is genuinely active, not just a cosmetic replay:
+  // the previously saved set is back, the header reflects the resumed
+  // template, and a second set can still be logged against it.
+  await expect(page.getByRole('heading', { name: templateName, exact: true })).toBeVisible()
+  await expect(page.locator('li.row-wrap', { hasText: '8 × 185lb' })).toBeVisible()
+
+  await page.getByRole('button', { name: exerciseName, exact: true }).click()
+  await page.getByLabel('Reps').fill('6')
+  await page.getByLabel('Weight').fill('205')
+  await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
+  await expect(page.locator('li.row-wrap', { hasText: '6 × 205lb' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Finish workout' }).click()
+})
+
+test('resume workout: reload before the first set is still offered, and stays resumable', async ({ page, stamp }) => {
+  const exerciseName = `E2E Resume Freeform ${stamp}`
+
+  await signInAsTestUser(page)
+
+  await goTo(page, 'Exercises')
+  await page.getByLabel('Name').fill(exerciseName)
+  await page.getByRole('button', { name: 'Add exercise' }).click()
+  await expect(page.getByText(exerciseName)).toBeVisible()
+
+  await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  await expect(page.getByRole('heading', { name: 'Freeform workout' })).toBeVisible()
+
+  await page.reload()
+
+  const prompt = page.locator('.card', { hasText: 'Resume your workout?' })
+  await expect(prompt).toBeVisible()
+  await expect(prompt).toContainText('Freeform workout')
+  await expect(prompt).not.toContainText('set logged')
+
+  await page.getByRole('button', { name: 'Resume workout' }).click()
+  await expect(page.getByRole('heading', { name: 'Freeform workout' })).toBeVisible()
+
+  // No sets existed before the reload, so logging the very first one must
+  // still work on the resumed session. A freeform workout has no suggested
+  // exercise chips (those only render for a templated one), so pick from
+  // the <select>.
+  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await page.getByLabel('Reps').fill('10')
+  await page.getByLabel('Weight').fill('95')
+  await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
+  await expect(page.locator('li.row-wrap', { hasText: '10 × 95lb' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Finish workout' }).click()
+})
+
+test('resume workout: Discard on a recovered workout requires confirmation and removes it, sets included', async ({
+  page,
+  stamp,
+}) => {
+  const exerciseName = `E2E Resume Discard ${stamp}`
+
+  await signInAsTestUser(page)
+
+  await goTo(page, 'Exercises')
+  await page.getByLabel('Name').fill(exerciseName)
+  await page.getByRole('button', { name: 'Add exercise' }).click()
+  await expect(page.getByText(exerciseName)).toBeVisible()
+
+  await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  // Freeform workout: no suggested chips, pick from the <select>.
+  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await page.getByLabel('Reps').fill('5')
+  await page.getByLabel('Weight').fill('135')
+  await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
+
+  await page.reload()
+
+  const prompt = page.locator('.card', { hasText: 'Resume your workout?' })
+  await expect(prompt).toBeVisible()
+
+  await page.getByRole('button', { name: 'Discard workout' }).click()
+  await expect(prompt).toContainText("Discard this workout and its logged sets? This can't be undone.")
+
+  // Cancel first: the workout must still be there afterward, not deleted
+  // the moment Discard was tapped once.
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(prompt).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Resume workout' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Discard workout' }).click()
+  await page.getByRole('button', { name: 'Discard workout' }).click()
+
+  // Back to the normal start-a-workout state — nothing left to recover.
+  await expect(prompt).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Log a workout' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Resume your workout?' })).toHaveCount(0)
+})
+
+test('resume workout: a stale local reference (deleted or foreign row) is silently dropped', async ({ page }) => {
+  await signInAsTestUser(page)
+
+  await page.evaluate(() => {
+    localStorage.setItem('repbunny-active-workout-id', '00000000-0000-0000-0000-000000000000')
+  })
+  await page.reload()
+
+  await expect(page.getByRole('heading', { name: 'Resume your workout?' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Log a workout' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
+
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('repbunny-active-workout-id')))
+    .toBeNull()
+})

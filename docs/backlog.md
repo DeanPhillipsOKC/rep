@@ -23,10 +23,9 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Recover an interrupted workout after reload (ROI 1.60)
-2. Make failed set saves safe to retry (ROI 1.60)
-3. Export personal training data (ROI 1.00)
-4. Show exercise-by-exercise history (ROI 1.00)
+1. Make failed set saves safe to retry (ROI 1.60)
+2. Export personal training data (ROI 1.00)
+3. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -39,21 +38,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Recover an interrupted workout after reload — the current active workout ID, template,
-  elapsed timer, and sets live only in the Pinia store, so a refresh or installed-PWA relaunch
-  loses the live session even though its rows remain in Supabase. Persist only an account-scoped
-  active workout reference locally after `startWorkout` succeeds. On app load, fetch that workout
-  and its sets through the signed-in user's normal Supabase client, then offer explicit Resume
-  and Discard actions. Restore the template, notes, start time (`performed_at`), and server-ordered
-  sets; do not trust a cached set list or create a second workout. Clear the local reference on
-  successful finish/discard/sign-out and when the referenced row no longer exists or belongs to
-  another account. Require confirmation before discarding a recovered workout, including one
-  with saved sets, and ensure saved sets are never silently deleted. Scope is same-device
-  recovery; cross-device resume and a new `finished_at` migration can be considered later.
-  Cover reload with saved sets, reload before the first set, finish/discard, and a stale reference
-  in Playwright. No schema change or human setup is needed for this first recovery step.
-  [Effort: 5, Value: 8, ROI: 1.60]
 
 - [ ] Make failed set saves safe to retry — `WorkoutLogger.vue` currently surfaces a raw error
   while the user is mid-workout. Keep the attempted exercise/reps/weight/unit/RPE visible, show a

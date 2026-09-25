@@ -5,6 +5,18 @@ import { findRecentPr, type RecentPr } from '../lib/progress'
 import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
 import type { SetEntry, WeightUnit, WorkoutWithSets } from '../lib/types'
 
+// Recover-interrupted-workout item: the only local trace of "which workout
+// row is the active one," so a reload/relaunch can look it back up through
+// the normal signed-in Supabase client instead of losing the session. Holds
+// just the id — never trusted on its own, always re-fetched and RLS-checked
+// before anything is restored from it (see checkForRecoverableWorkout).
+const ACTIVE_WORKOUT_STORAGE_KEY = 'repbunny-active-workout-id'
+
+function persistActiveWorkoutId(id: string | null) {
+  if (id) localStorage.setItem(ACTIVE_WORKOUT_STORAGE_KEY, id)
+  else localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY)
+}
+
 // Core logging flow per docs/architecture.md build order step 4:
 // create workout -> add sets to it -> view history.
 export const useWorkoutsStore = defineStore('workouts', () => {
@@ -21,6 +33,13 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const activeWorkoutStartedAt = ref<number | null>(null)
   const activeSets = ref<SetEntry[]>([])
   const previousWorkout = ref<WorkoutWithSets | null>(null)
+
+  // Recover-interrupted-workout item: populated by checkForRecoverableWorkout
+  // when a persisted active-workout reference resolves to a real, still-owned
+  // row on boot. Kept separate from activeWorkoutId so the logger can offer
+  // an explicit Resume/Discard choice instead of silently dropping the user
+  // back into an in-progress session.
+  const recoverableWorkout = ref<WorkoutWithSets | null>(null)
 
   // Backlog item 6: post-workout volume-over-time chart for the template
   // just finished. Populated by fetchTemplateVolumeHistory, cleared by
@@ -61,16 +80,24 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // rather than winning on recency and showing an empty card. Called before
   // startWorkout so the just-created row can't show up as its own "previous"
   // workout.
-  async function fetchPreviousWorkout(templateId: string) {
+  // excludeWorkoutId matters for resumeRecoverableWorkout below: the workout
+  // being resumed already exists in `workouts` by the time this runs, so
+  // without excluding it the "most recent workout for this template" query
+  // would just find itself and show the resumed session as its own "last
+  // time" card.
+  async function fetchPreviousWorkout(templateId: string, excludeWorkoutId: string | null = null) {
     await waitForPendingWrites()
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('workouts')
       .select('*, sets!inner(*, exercises(name)), workout_templates(name)')
       .eq('template_id', templateId)
       .order('performed_at', { ascending: false })
       .order('set_index', { foreignTable: 'sets', ascending: true })
       .limit(1)
+    if (excludeWorkoutId) query = query.neq('id', excludeWorkoutId)
+
+    const { data, error } = await query
 
     if (!error) {
       previousWorkout.value = (data?.[0] ?? null) as unknown as WorkoutWithSets | null
@@ -190,8 +217,83 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       activeTemplateId.value = templateId
       activeWorkoutStartedAt.value = Date.now()
       activeSets.value = []
+      persistActiveWorkoutId(data.id)
     }
     return { data, error }
+  }
+
+  // Recover-interrupted-workout item: reads the persisted active-workout
+  // reference (if any) and re-fetches it through the normal signed-in
+  // client — RLS is what actually enforces "or belongs to another account"
+  // from the item's requirements, so a row that isn't (or is no longer)
+  // this user's just comes back empty, same as one that was deleted.
+  // Guarded on activeWorkoutId so it's a no-op once a workout is already
+  // active in this session (e.g. re-running after sign-in with one already
+  // started).
+  async function checkForRecoverableWorkout() {
+    const id = localStorage.getItem(ACTIVE_WORKOUT_STORAGE_KEY)
+    if (!id || activeWorkoutId.value) return
+
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .eq('id', id)
+      .order('set_index', { foreignTable: 'sets', ascending: true })
+      .maybeSingle()
+
+    if (error || !data) {
+      persistActiveWorkoutId(null)
+      return
+    }
+    recoverableWorkout.value = data as unknown as WorkoutWithSets
+  }
+
+  // Restores the template, start time, and server-ordered sets exactly as
+  // fetched by checkForRecoverableWorkout — never trusts any other cached
+  // set list. Doesn't touch `notes`/template-exercise state; the caller
+  // (WorkoutLogger.vue) reads recoverableWorkout for those before calling
+  // this, same as it already does for a freshly started workout.
+  function resumeRecoverableWorkout() {
+    const recovered = recoverableWorkout.value
+    if (!recovered) return
+    activeWorkoutId.value = recovered.id
+    activeTemplateId.value = recovered.template_id
+    activeWorkoutStartedAt.value = new Date(recovered.performed_at).getTime()
+    activeSets.value = recovered.sets
+    recoverableWorkout.value = null
+    persistActiveWorkoutId(recovered.id)
+  }
+
+  // Only ever called after the user explicitly confirms discarding a
+  // recovered workout (WorkoutLogger.vue) — including one with saved sets,
+  // per the item's "never silently deleted" requirement. `sets.workout_id`
+  // cascades (supabase/schema.sql), same as deleteWorkout below.
+  async function discardRecoverableWorkout() {
+    const recovered = recoverableWorkout.value
+    if (!recovered) return { error: null }
+    const { error } = await supabase.from('workouts').delete().eq('id', recovered.id)
+    if (!error) {
+      recoverableWorkout.value = null
+      persistActiveWorkoutId(null)
+    }
+    return { error }
+  }
+
+  // Sign-out (AuthGate.vue): this device may next be signed into the other
+  // pilot account, so both the in-memory active-workout state and the
+  // persisted reference need to be gone — otherwise the next sign-in could
+  // offer to "resume" a workout that belongs to a different account entirely
+  // (checkForRecoverableWorkout's RLS-backed fetch would just fail for it,
+  // but there's no reason to even try).
+  function resetActiveWorkoutState() {
+    activeWorkoutId.value = null
+    activeTemplateId.value = null
+    activeWorkoutStartedAt.value = null
+    activeSets.value = []
+    previousWorkout.value = null
+    newRecord.value = null
+    recoverableWorkout.value = null
+    persistActiveWorkoutId(null)
   }
 
   // Backlog item 4: per-user, per-exercise all-time max of reps * weight,
@@ -331,6 +433,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeSets.value = []
     previousWorkout.value = null
     newRecord.value = null
+    persistActiveWorkoutId(null)
   }
 
   // Backlog item 31: remove a finished workout logged in error (duplicate,
@@ -424,6 +527,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeWorkoutStartedAt,
     activeSets,
     previousWorkout,
+    recoverableWorkout,
     volumeHistory,
     volumeHistoryError,
     newRecord,
@@ -431,6 +535,10 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     workoutDaysThisWeek,
     recentPr,
     startWorkout,
+    checkForRecoverableWorkout,
+    resumeRecoverableWorkout,
+    discardRecoverableWorkout,
+    resetActiveWorkoutState,
     addSet,
     updateSet,
     deleteSet,

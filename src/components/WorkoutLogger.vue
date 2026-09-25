@@ -144,6 +144,50 @@ const availableExercises = computed(() => {
   }))
 })
 
+// Recover-interrupted-workout item: recoverableWorkout comes straight off
+// the raw fetch in stores/workouts.ts (checkForRecoverableWorkout), so its
+// template name reads off the embedded `workout_templates` join rather than
+// the templates store — that store may not have loaded yet by the time this
+// prompt can appear (it's populated on boot, before WorkoutLogger's own
+// onMounted has necessarily run).
+const confirmingDiscardRecovered = ref(false)
+
+const recoverableTemplateName = computed(
+  () => workout.recoverableWorkout?.workout_templates?.name ?? 'Freeform workout',
+)
+
+const recoverableStartedLabel = computed(() => {
+  if (!workout.recoverableWorkout) return ''
+  return new Date(workout.recoverableWorkout.performed_at).toLocaleString(undefined, {
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+})
+
+async function handleResume() {
+  const recovered = workout.recoverableWorkout
+  if (!recovered) return
+  workout.resumeRecoverableWorkout()
+  notes.value = recovered.notes ?? ''
+  templateId.value = recovered.template_id ?? ''
+  if (recovered.template_id) {
+    await workout.fetchPreviousWorkout(recovered.template_id, recovered.id)
+    if (!templates.exercisesByTemplate[recovered.template_id]) {
+      await templates.fetchTemplateExercises(recovered.template_id)
+    }
+  }
+}
+
+async function handleDiscardRecovered() {
+  const { error } = await workout.discardRecoverableWorkout()
+  if (error) {
+    errorMessage.value = error.message
+    return
+  }
+  confirmingDiscardRecovered.value = false
+}
+
 async function handleStart() {
   errorMessage.value = ''
   // A brand-new workout session starts with no drafts of its own — without
@@ -226,12 +270,17 @@ function applyPrefillToRow(row: DraftRow, id: string, position: number) {
 // however many are already logged), or a single row if no count is
 // configured. Later re-selections reuse whatever's already there instead of
 // recomputing, so an in-progress but unsaved row survives switching to
-// another exercise and back.
+// another exercise and back. Always seeds exactly one row for a no-target
+// exercise regardless of loggedCount — in the normal continuous session this
+// only ever runs at loggedCount 0 (completeRow's own auto-replenish handles
+// every row after the first), but a resumed workout (recover-interrupted-
+// workout item) can reach this on first selection with sets already logged
+// last session, and still needs an open row to keep logging.
 function ensureDraftRows(id: string) {
   if (draftRowsByExercise.value[id]) return
   const target = configuredTargetFor(id)
   const loggedCount = loggedCountFor(id)
-  const plannedCount = target !== null ? Math.max(target - loggedCount, 0) : loggedCount === 0 ? 1 : 0
+  const plannedCount = target !== null ? Math.max(target - loggedCount, 0) : 1
   const rows = Array.from({ length: plannedCount }, () => makeDraftRow())
   rows.forEach((row, i) => applyPrefillToRow(row, id, loggedCount + i))
   const seedUnit = previousSetsByExercise.value[id]?.[loggedCount]?.weight_unit
@@ -537,6 +586,30 @@ function dismissVolumeChart() {
       <span v-if="elapsedLabel" class="elapsed-time" aria-label="Time since workout started">{{ elapsedLabel }}</span>
     </div>
 
+    <div v-if="workout.recoverableWorkout" class="card">
+      <h3>Resume your workout?</h3>
+      <p class="row-sub">
+        {{ recoverableTemplateName }} · started {{ recoverableStartedLabel }}
+        <template v-if="workout.recoverableWorkout.sets.length > 0">
+          · {{ workout.recoverableWorkout.sets.length }} set{{ workout.recoverableWorkout.sets.length === 1 ? '' : 's' }} logged
+        </template>
+      </p>
+      <div v-if="!confirmingDiscardRecovered" class="confirm-actions">
+        <button type="button" class="btn-accent" @click="handleResume">Resume workout</button>
+        <button type="button" class="ghost" @click="confirmingDiscardRecovered = true">Discard workout</button>
+      </div>
+      <div v-else class="confirm-delete">
+        <span class="row-sub">
+          Discard this workout{{ workout.recoverableWorkout.sets.length > 0 ? ' and its logged sets' : '' }}? This can't be undone.
+        </span>
+        <div class="confirm-actions">
+          <button type="button" class="danger small" @click="handleDiscardRecovered">Discard workout</button>
+          <button type="button" class="ghost small" @click="confirmingDiscardRecovered = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <template v-else>
     <div v-if="showingVolumeChart" class="card">
       <h3>Volume over time</h3>
       <VolumeChart :points="workout.volumeHistory" />
@@ -882,6 +955,7 @@ function dismissVolumeChart() {
       </div>
       <button v-else type="button" class="btn-accent finish" @click="handleFinishClick">Finish workout</button>
     </div>
+    </template>
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
