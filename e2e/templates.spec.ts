@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 2 (workout templates): create a template,
 // attach an exercise to it, start a workout against it, and confirm the
@@ -36,6 +37,7 @@ test('templates: create, log a workout against one, and see it in history', asyn
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('135')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: exerciseName })).toBeVisible()
 
   await page.getByRole('button', { name: 'Finish workout' }).click()

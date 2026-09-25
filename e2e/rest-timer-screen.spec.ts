@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 28: the in-app rest screen (RestTimer.vue)
 // shown after logging a set for an exercise with rest_seconds configured.
@@ -29,6 +30,10 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page })
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
+  // First-ever set for this brand-new exercise is also an all-time best —
+  // dismiss the record celebration (it renders on top of the rest screen)
+  // before interacting with what's underneath.
+  await dismissCelebrationIfShown(page)
 
   // Backlog item 29: the headline now rotates between a few phrases, so
   // assert on the element rather than a specific string.

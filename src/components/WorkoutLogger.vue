@@ -4,6 +4,7 @@ import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
+import RecordCelebration from './RecordCelebration.vue'
 import RestTimer from './RestTimer.vue'
 import VolumeChart from './VolumeChart.vue'
 import type { SetEntry, SetWithExercise, WeightUnit } from '../lib/types'
@@ -29,25 +30,24 @@ const weightUnit = ref<WeightUnit>('lb')
 const rpe = ref<number | null>(null)
 const errorMessage = ref('')
 
-// Backlog item 4: congratulatory toast when a set beats the all-time best
-// for that exercise. Auto-dismisses so it doesn't block the next set.
-const recordToast = ref('')
-let recordToastTimeout: ReturnType<typeof setTimeout> | undefined
-
-function showRecordToast(name: string) {
-  recordToast.value = `New record: ${name}`
-  clearTimeout(recordToastTimeout)
-  recordToastTimeout = setTimeout(() => {
-    recordToast.value = ''
-  }, 4000)
-}
+// Backlog item 38: full-screen celebration takeover when a set beats the
+// all-time best for that exercise, replacing the old auto-dismissing
+// bottom toast (docs/backlog-archive.md item 4) — requires an explicit
+// dismiss (RecordCelebration.vue) rather than fading on its own.
+const recordCelebration = ref<{
+  exerciseId: string
+  reps: number
+  weight: number
+  weightUnit: WeightUnit
+  previousBest: number
+} | null>(null)
 
 // addSet's record check runs in the background (see workouts.ts) so it
 // never delays the add; react to it landing whenever it does.
 watch(
   () => workout.newRecord,
   (record) => {
-    if (record) showRecordToast(exerciseName(record.exerciseId))
+    if (record) recordCelebration.value = record
   },
 )
 
@@ -372,8 +372,7 @@ async function handleFinish() {
   reps.value = null
   weight.value = null
   rpe.value = null
-  recordToast.value = ''
-  clearTimeout(recordToastTimeout)
+  recordCelebration.value = null
 
   if (finishedTemplateId && hadSets) {
     const templateExercises = templates.exercisesByTemplate[finishedTemplateId] ?? []
@@ -644,7 +643,15 @@ function dismissVolumeChart() {
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-    <div v-if="recordToast" class="record-toast">{{ recordToast }}</div>
+    <RecordCelebration
+      v-if="recordCelebration"
+      :exercise-name="exerciseName(recordCelebration.exerciseId)"
+      :reps="recordCelebration.reps"
+      :weight="recordCelebration.weight"
+      :weight-unit="recordCelebration.weightUnit"
+      :previous-best="recordCelebration.previousBest"
+      @dismiss="recordCelebration = null"
+    />
 
     <RestTimer
       v-if="activeRest"
@@ -967,17 +974,4 @@ function dismissVolumeChart() {
   white-space: pre-wrap;
 }
 
-.record-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: var(--accent-text);
-  padding: 12px 20px;
-  border-radius: var(--radius);
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  z-index: 10;
-}
 </style>

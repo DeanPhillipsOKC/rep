@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 19: Log home screen's progress strip. Reads
 // the "workouts this week" tile before/after so the test doesn't depend on
@@ -33,6 +34,7 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('135')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: exerciseName })).toHaveCount(1)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 31: remove a finished workout logged in error
 // from History. `sets.workout_id` has `on delete cascade`, so this also
@@ -25,6 +26,7 @@ test('delete a workout from History', async ({ page }) => {
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
   await goTo(page, 'History')

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Found 2026-09-24 while manually testing: v-model.number leaves an emptied
 // <input type="number"> as '' rather than coercing it to null, and RPE/target
@@ -27,6 +28,7 @@ test('adding a set with RPE left blank does not error', async ({ page }) => {
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
 
   const row = page.locator('li.row-wrap', { hasText: exerciseName })
   await expect(row).toBeVisible()

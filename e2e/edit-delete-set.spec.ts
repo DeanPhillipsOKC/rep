@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 13: fix or remove a set logged in error while
 // a workout is still in progress, without having to finish and re-log.
@@ -21,6 +22,7 @@ test('edit and delete a set in an active workout', async ({ page }) => {
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
 
   const row = page.locator('li.row-wrap', { hasText: exerciseName })
   await expect(row).toBeVisible()

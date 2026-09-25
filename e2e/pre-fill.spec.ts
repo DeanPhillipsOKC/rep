@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 3: starting a new workout against a template
 // that already has a logged instance shows a "Last time" card and pre-fills
@@ -40,11 +41,13 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   await page.getByLabel('Reps').fill('8')
   await page.getByLabel('Weight').fill('185')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: exerciseName })).toBeVisible()
   await page.getByRole('button', { name: otherExerciseName, exact: true }).click()
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('225')
   await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: otherExerciseName })).toBeVisible()
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
@@ -126,6 +129,7 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
     await page.getByLabel('Reps').fill(reps)
     await page.getByLabel('Weight').fill(weight)
     await page.getByRole('button', { name: 'Add set' }).click()
+    await dismissCelebrationIfShown(page)
   }
   await addRound('10', '135', exerciseName)
   await addRound('5', '225', otherExerciseName)

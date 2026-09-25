@@ -35,11 +35,19 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     if (pendingWrites.size > 0) await Promise.all(pendingWrites)
   }
 
-  // Backlog item 4: set by the (unawaited) record check kicked off from
-  // addSet below. A plain ref rather than addSet's return value so the
-  // record check can run in the background without slowing down the add —
-  // the UI reacts to this changing instead of waiting on it.
-  const newRecord = ref<{ exerciseId: string; volume: number } | null>(null)
+  // Backlog item 4 (screen: item 38): set by the (unawaited) record check
+  // kicked off from addSet below. A plain ref rather than addSet's return
+  // value so the record check can run in the background without slowing
+  // down the add — the UI reacts to this changing instead of waiting on it.
+  // Carries the full set (not just volume) so the celebration screen can
+  // show what was actually lifted and how it compares to the prior best.
+  const newRecord = ref<{
+    exerciseId: string
+    reps: number
+    weight: number
+    weightUnit: WeightUnit
+    previousBest: number
+  } | null>(null)
 
   // Backlog item 3: most recent past workout logged against this template
   // that actually has sets on it, so the logger can show what to beat.
@@ -184,11 +192,17 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     return best
   }
 
-  async function checkForRecord(exerciseId: string, setId: string, volume: number) {
+  async function checkForRecord(
+    exerciseId: string,
+    setId: string,
+    reps: number,
+    weight: number,
+    weightUnit: WeightUnit
+  ) {
     const previousBest = await getBestVolume(exerciseId, setId)
-    if (volume > previousBest) {
-      bestVolumeCache.set(exerciseId, volume)
-      newRecord.value = { exerciseId, volume }
+    if (reps * weight > previousBest) {
+      bestVolumeCache.set(exerciseId, reps * weight)
+      newRecord.value = { exerciseId, reps, weight, weightUnit, previousBest }
     }
   }
 
@@ -231,7 +245,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
     if (!error && data) {
       if (activeWorkoutId.value === workoutId) activeSets.value.push(data)
-      checkForRecord(exerciseId, data.id, reps * weight)
+      checkForRecord(exerciseId, data.id, reps, weight, weightUnit)
     }
     return { data, error }
   }

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { dismissCelebrationIfShown } from './fixtures/celebration'
 
 // Covers docs/backlog.md item 6: post-workout volume-over-time chart, shown
 // after finishing any workout logged against a template. Template has two
@@ -56,6 +57,8 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('100')
   await page.getByRole('button', { name: 'Add set' }).click()
+  // First-ever set for this brand-new exercise is also an all-time best.
+  await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: trackedName })).toHaveCount(1)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('100')
@@ -86,6 +89,8 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('20')
   await page.getByRole('button', { name: 'Add set' }).click()
+  // First-ever set for otherName is also an all-time best.
+  await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: otherName })).toHaveCount(1)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
