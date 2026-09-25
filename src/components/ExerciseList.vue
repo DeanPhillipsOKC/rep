@@ -102,8 +102,15 @@ async function confirmDelete(id: string) {
 
     <!-- Backlog item 17: once already enabled, this device doesn't need the
          full card taking up space above the exercise list on every visit —
-         just a one-line confirmation. -->
-    <p v-if="push.subscribed" class="row-sub push-enabled-note">Rest timer alerts are enabled on this device.</p>
+         just a one-line confirmation. Item 47: restyled as a pill/banner
+         (var(--success) tint) instead of plain caption text. -->
+    <p v-if="push.subscribed" class="push-enabled-note">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
+        <path d="M12 8v5M12 16h.01" stroke="var(--success)" stroke-width="2" stroke-linecap="round" />
+        <circle cx="12" cy="12" r="8.5" stroke="var(--success)" stroke-width="1.6" />
+      </svg>
+      Rest timer alerts are enabled on this device.
+    </p>
     <div v-else class="card push-card">
       <h3>Rest timer alerts</h3>
       <p class="row-sub">
@@ -154,11 +161,9 @@ async function confirmDelete(id: string) {
         <div v-if="confirmingDeleteId !== exercise.id" class="row">
           <div>
             <div class="row-title">{{ exercise.name }}</div>
-            <div v-if="exercise.setup_notes && editingId !== exercise.id" class="row-notes">
-              {{ exercise.setup_notes }}
-            </div>
-            <div v-if="exercise.rest_seconds && editingId !== exercise.id" class="row-sub">
-              Rest: {{ exercise.rest_seconds }}s
+            <div v-if="editingId !== exercise.id" class="row-tags">
+              <span v-if="exercise.setup_notes" class="tag-pill">{{ exercise.setup_notes }}</span>
+              <span v-if="exercise.rest_seconds" class="tag-pill tag-pill-accent">Rest: {{ exercise.rest_seconds }}s</span>
             </div>
           </div>
           <div class="row-actions">
@@ -243,7 +248,21 @@ async function confirmDelete(id: string) {
 }
 
 .push-enabled-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--success) 70%, var(--text));
+}
+
+.push-enabled-note svg {
+  flex-shrink: 0;
 }
 
 .error {
@@ -280,11 +299,27 @@ async function confirmDelete(id: string) {
   color: var(--text-dim);
 }
 
-.row-notes {
-  font-size: 0.8rem;
+.row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tag-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
   color: var(--text-dim);
-  margin-top: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
   white-space: pre-wrap;
+}
+
+.tag-pill-accent {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
 }
 
 .row-actions {

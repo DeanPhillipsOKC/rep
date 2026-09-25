@@ -20,15 +20,13 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-1. Item 47 — Exercises screen visual refresh [ROI 1.5]
+(none — backlog is otherwise clear of scored feature work)
 
 ## Features
 
-Design source for item 47: private canvas mockup at
-https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced below match its
-canvas). Brand identity (RepBunny) is cute, functional, cool.
-
-- [ ] **Exercises screen visual refresh** (item 47): restyle the "Rest timer alerts are enabled" notice as a pill/banner instead of plain text, and show start-position/rest-timer values as tag pills on each row instead of grey caption text. See the "Exercises" artboard. Depends on item 40. [Effort: 2, Value: 3, ROI: 1.5]
+Design source for prior visual-refresh items: private canvas mockup at
+https://claude.ai/artifact/365JapPyt535xKDe7roJaQ (artboard names referenced in
+`docs/backlog-archive.md` match its canvas). Brand identity (RepBunny) is cute, functional, cool.
 
 ## Human setup / device verification
 

@@ -23,13 +23,13 @@ test('exercise setup notes: add, edit, and see them while logging', async ({ pag
   await row.getByLabel('Setup notes').fill(initialNotes)
   await row.getByRole('button', { name: 'Save' }).click()
 
-  await expect(row.locator('.row-notes')).toHaveText(initialNotes)
+  await expect(row.locator('.tag-pill')).toHaveText(initialNotes)
 
   // Edit persists correctly, not just create.
   await row.getByRole('button', { name: 'Edit exercise' }).click()
   await row.getByLabel('Setup notes').fill(updatedNotes)
   await row.getByRole('button', { name: 'Save' }).click()
-  await expect(row.locator('.row-notes')).toHaveText(updatedNotes)
+  await expect(row.locator('.tag-pill')).toHaveText(updatedNotes)
 
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Start workout' }).click()
