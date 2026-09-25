@@ -81,23 +81,17 @@ const emit = defineEmits<{ continue: [] }>()
 }
 
 .mascot {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: #fff;
+  width: 220px;
+  height: 220px;
   flex-shrink: 0;
-  box-shadow:
-    0 22px 48px -16px rgba(0, 0, 0, 0.5),
-    0 0 0 6px rgba(255, 255, 255, 0.05);
 }
 
 .mascot img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 42%;
+  object-fit: contain;
   display: block;
+  filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.45));
 }
 
 .wordmark {
