@@ -965,6 +965,9 @@ function dismissVolumeChart() {
 }
 
 .setup-notes {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
   font-size: 0.8rem;
   color: var(--text-dim);
   background: var(--surface-2);

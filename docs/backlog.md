@@ -22,16 +22,11 @@ Priority order (highest ROI first), kept in sync with the tags below:
 
 | # | Item | Effort | Value | ROI |
 |---|------|--------|-------|-----|
-| 37 | Setup notes box is shorter (top to bottom) than the exercise picker above it | 1 | 1 | 1 |
 | 30 | Remove the unused `exercises.category` field | 2 | 2 | 1 |
 | 32 | Ability to edit a past workout from History | 5 | 3 | 0.6 |
 | 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
 
 ## Features
-
-### 37. Setup notes box is shorter (top to bottom) than the exercise picker above it `[Effort: 1, Value: 1, ROI: 1]`
-
-Reported 2026-09-24 while re-checking item 34's fix (spacing itself is now correct — this is a separate, smaller follow-on). `WorkoutLogger.vue`'s `.setup-notes` box (padding `8px 10px`, no `min-height`) sits visibly shorter top-to-bottom than the "Exercise" `<select>` above it, which gets `min-height: 48px` from `src/style.css`'s shared `input, select, textarea` rule. Fix direction: add `min-height: 48px` to `.setup-notes` (a `min-height` still lets the box grow taller for multi-line notes, so this doesn't clip longer text) and re-check vertical centering of the note text inside the taller box — may need `display: flex; align-items: center` alongside it.
 
 ### 32. Ability to edit a past workout from History `[Effort: 5, Value: 3, ROI: 0.6]`
 
