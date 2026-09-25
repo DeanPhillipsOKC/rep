@@ -23,8 +23,12 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Primary CTAs lost against ghost buttons (ROI 1.67)
-2. Show compact rows for the configured set count (ROI 1.60)
+1. Primary calls to action get lost against secondary/ghost buttons (ROI 1.67)
+2. Show compact logging rows matching the exercise's configured set count (ROI 1.60)
+3. Recover an interrupted workout after reload (ROI 1.60)
+4. Make failed set saves safe to retry (ROI 1.60)
+5. Export personal training data (ROI 1.00)
+6. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -71,7 +75,63 @@ implemented and were dropped rather than logged.
   redefining the accent fill per component again, since it's already duplicated 6+ times.
   [Effort: 3, Value: 5, ROI: 1.67]
 
+- [ ] Recover an interrupted workout after reload — the current active workout ID, template,
+  elapsed timer, and sets live only in the Pinia store, so a refresh or installed-PWA relaunch
+  loses the live session even though its rows remain in Supabase. Persist only an account-scoped
+  active workout reference locally after `startWorkout` succeeds. On app load, fetch that workout
+  and its sets through the signed-in user's normal Supabase client, then offer explicit Resume
+  and Discard actions. Restore the template, notes, start time (`performed_at`), and server-ordered
+  sets; do not trust a cached set list or create a second workout. Clear the local reference on
+  successful finish/discard/sign-out and when the referenced row no longer exists or belongs to
+  another account. Require confirmation before discarding a recovered workout, including one
+  with saved sets, and ensure saved sets are never silently deleted. Scope is same-device
+  recovery; cross-device resume and a new `finished_at` migration can be considered later.
+  Cover reload with saved sets, reload before the first set, finish/discard, and a stale reference
+  in Playwright. No schema change or human setup is needed for this first recovery step.
+  [Effort: 5, Value: 8, ROI: 1.60]
+
+- [ ] Make failed set saves safe to retry — `WorkoutLogger.vue` currently surfaces a raw error
+  while the user is mid-workout. Keep the attempted exercise/reps/weight/unit/RPE visible, show a
+  short actionable message and Retry control, and never mark a set complete or start rest until
+  its save is confirmed. A network timeout can happen after the insert reached Supabase, so a
+  retry must use a stable client-generated set ID (or equivalent idempotency key) and reconcile
+  with the server before treating a duplicate-key response as success; blindly inserting again
+  would double-count a lift. If reconciliation finds the original set already saved, show that
+  saved row and let the user use normal set editing for corrections; otherwise retry the current
+  field values. Keep the action disabled while one attempt is in flight. Cover a definite server
+  rejection, a lost/uncertain response followed by retry, and exactly one persisted set in
+  Playwright. This is online error recovery, not an offline write queue; revisit durable offline
+  logging after real gym-device feedback. Depends on the compact set-row item so the retry
+  affordance fits its final row UI.
+  [Effort: 5, Value: 8, ROI: 1.60]
+
+- [ ] Export personal training data — add a discoverable download action for the signed-in user
+  that produces versioned JSON containing their exercises (including archived names/notes),
+  templates and exercise order/targets, workouts and notes/timestamps, and sets with units/RPE.
+  Use the normal authenticated Supabase client and explicit pagination so a history over the
+  default 1,000-row API page limit is complete. Do not export auth tokens, push subscriptions, or
+  another account's rows. Give the file a dated name and show a useful error if any fetch fails
+  rather than downloading a partial backup. Add a Playwright download check with seeded records
+  and a separate verification of pagination/completeness. No import UI is in scope.
+  [Effort: 5, Value: 5, ROI: 1.00]
+
+- [ ] Show exercise-by-exercise history — from the Exercises tab and the active logger, open a
+  focused detail view for one exercise with the latest workouts and sets in set order, including
+  date, reps, weight/unit, and optional RPE. Make the prior session easy to find while logging;
+  do not require scanning the entire workout History. Add one clearly labeled progress summary
+  (for example, heaviest completed set), calculated separately for lb and kg unless values are
+  converted correctly. Handle an exercise with no history and an archived exercise already in
+  past workouts. Keep the first version a readable list; a chart or extra metrics can follow only
+  if they answer a question the list cannot. Cover navigation, ordering, and mixed units in
+  Playwright. Depends on the compact set-row item so the logger entry point fits that layout.
+  [Effort: 5, Value: 5, ROI: 1.00]
+
 ## Human setup / device verification
+
+- [ ] **[human]** After interrupted-workout recovery and safe set retry ship, exercise the
+  installed app during a real workout on Android and iPhone: reload/relaunch mid-session, briefly
+  lose connectivity during a set save, and confirm the visible and saved set counts agree after
+  reconnecting. Record any confusing states or duplicate/lost sets for a follow-up backlog item.
 
 - [ ] **[human]** Interactive "fresh account" test login (2026-09-24, from backlog item 26's discussion): create a second Supabase auth user for `dephillips1977+test@gmail.com` (Authentication → Users → Add user, Auto Confirm — Gmail's plus-addressing delivers to the same inbox, no new account needed on the phone; Supabase treats it as a fully separate auth identity). Sign into it once via magic link in an incognito window or a separate Chrome profile, then register a passkey there — after that it's one-tap sign-in, isolated from both real accounts by RLS, with nothing to purge to reset to a "brand-new user" view. This is distinct from `TEST_ACCOUNT_EMAIL` (`docs/architecture.md#testing--automation`), which is scripted/Playwright-only — this one's for poking at the real UI by hand.
 - [ ] **[human]** Backlog item 15 (per-exercise rest timer with push notification): confirmed working end-to-end on Android, unlocked, including sound (2026-09-24 — the one apparent "no sound" case was the phone's Bluetooth being connected to a car, not a code issue). Still open:
