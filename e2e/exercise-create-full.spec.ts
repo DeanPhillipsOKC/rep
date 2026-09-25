@@ -22,8 +22,9 @@ test('create exercise: name, notes, and rest timer in one step', async ({ page }
   await expect(row.locator('.row-notes')).toHaveText(notes)
   await expect(row.locator('.row-sub', { hasText: 'Rest: 60s' })).toBeVisible()
 
-  // Per-row editors show "Edit", not "Add", since the create form already
-  // set these values.
-  await expect(row.getByRole('button', { name: 'Edit notes' })).toBeVisible()
-  await expect(row.getByRole('button', { name: 'Edit rest timer' })).toBeVisible()
+  // The consolidated edit flyout opens pre-filled with what the create form
+  // already set, rather than needing a separate add-then-edit round trip.
+  await row.getByRole('button', { name: 'Edit exercise' }).click()
+  await expect(row.getByLabel('Setup notes')).toHaveValue(notes)
+  await expect(row.getByLabel('Rest timer (seconds)')).toHaveValue('60')
 })

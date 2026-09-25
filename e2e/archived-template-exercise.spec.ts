@@ -27,10 +27,12 @@ test('archived exercise stops appearing in a template it is still attached to', 
   await expect(page.locator('.exercise-row', { hasText: exerciseName })).toBeVisible()
 
   await goTo(page, 'Exercises')
-  await page
-    .locator('li', { hasText: exerciseName })
-    .getByRole('button', { name: 'Archive' })
-    .click()
+  // The confirm step swaps the exercise's name out of the row entirely (same
+  // shape as e2e/template-archive-confirm.spec.ts), so the "Confirm delete"
+  // click can't stay scoped to a `hasText: exerciseName` locator — query it
+  // directly instead, safe since only one row is ever mid-confirm at a time.
+  await page.locator('.row-wrap', { hasText: exerciseName }).getByRole('button', { name: 'Delete exercise' }).click()
+  await page.getByRole('button', { name: 'Confirm delete' }).click()
   await expect(page.getByText(exerciseName)).toHaveCount(0)
 
   // Back on Templates, in the same session: templates.exercisesByTemplate

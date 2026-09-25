@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
+import type { Exercise } from '../lib/types'
 
 const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
@@ -11,18 +12,23 @@ const restSeconds = ref<number | null>(null)
 const errorMessage = ref('')
 const enablingPush = ref(false)
 
-// Exercise id currently showing its setup-notes editor, and the draft text
-// for it — null means no row is being edited.
-const editingNotesId = ref<string | null>(null)
-const notesDraft = ref('')
-
-// Same pattern for renaming an exercise.
-const editingNameId = ref<string | null>(null)
+// Backlog item 24: one consolidated edit flyout per row (name, setup notes,
+// and rest timer together) behind a single pencil icon, replacing three
+// separate text-button editors that only grew wordier as fields were added
+// (item 22). Id of the row currently open — null means none.
+const editingId = ref<string | null>(null)
 const nameDraft = ref('')
-
-// Same pattern again for the per-exercise rest timer duration (backlog item 15).
-const editingRestId = ref<string | null>(null)
+const notesDraft = ref('')
 const restDraft = ref<number | null>(null)
+
+// Backlog item 24 decision (docs/backlog-archive.md, 2026-09-24): "Archive"
+// had no restore path anywhere in the UI, so it behaved exactly like a
+// permanent delete already — the DB still soft-deletes via `is_archived`
+// (needed so removing an exercise doesn't break the FK reference from
+// existing sets/workout_template_exercises rows), but the UI now calls it
+// what it is and requires an explicit confirm step, same inline-toggle
+// pattern as WorkoutHistory.vue's workout delete (item 31).
+const confirmingDeleteId = ref<string | null>(null)
 
 onMounted(() => {
   exercises.fetchExercises()
@@ -56,56 +62,37 @@ async function handleCreate() {
   }
 }
 
-function startEditingNotes(id: string, currentNotes: string | null) {
-  editingNotesId.value = id
-  notesDraft.value = currentNotes ?? ''
+function startEditing(exercise: Exercise) {
+  editingId.value = exercise.id
+  nameDraft.value = exercise.name
+  notesDraft.value = exercise.setup_notes ?? ''
+  restDraft.value = exercise.rest_seconds
 }
 
-async function saveNotes(id: string) {
+async function saveEdit(id: string) {
   errorMessage.value = ''
-  const { error } = await exercises.updateSetupNotes(id, notesDraft.value.trim() || null)
-  if (error) {
-    errorMessage.value = error.message
-  } else {
-    editingNotesId.value = null
-  }
-}
-
-function startEditingName(id: string, currentName: string) {
-  editingNameId.value = id
-  nameDraft.value = currentName
-}
-
-async function saveName(id: string) {
-  errorMessage.value = ''
-  const trimmed = nameDraft.value.trim()
-  if (!trimmed) {
+  const trimmedName = nameDraft.value.trim()
+  if (!trimmedName) {
     errorMessage.value = 'Name cannot be empty.'
     return
   }
-  const { error } = await exercises.updateExerciseName(id, trimmed)
-  if (error) {
-    errorMessage.value = error.message
-  } else {
-    editingNameId.value = null
-  }
-}
-
-function startEditingRest(id: string, currentRestSeconds: number | null) {
-  editingRestId.value = id
-  restDraft.value = currentRestSeconds
-}
-
-async function saveRest(id: string) {
-  errorMessage.value = ''
   // v-model.number leaves an emptied input as '' rather than null/NaN.
   const seconds = restDraft.value && restDraft.value > 0 ? restDraft.value : null
-  const { error } = await exercises.updateRestSeconds(id, seconds)
+  const { error } = await exercises.updateExercise(id, trimmedName, notesDraft.value.trim() || null, seconds)
   if (error) {
     errorMessage.value = error.message
   } else {
-    editingRestId.value = null
+    editingId.value = null
   }
+}
+
+async function confirmDelete(id: string) {
+  errorMessage.value = ''
+  const { error } = await exercises.archiveExercise(id)
+  if (error) {
+    errorMessage.value = error.message
+  }
+  confirmingDeleteId.value = null
 }
 </script>
 
@@ -164,81 +151,70 @@ async function saveRest(id: string) {
 
     <ul class="list">
       <li v-for="exercise in exercises.activeExercises" :key="exercise.id" class="row-wrap">
-        <div class="row">
+        <div v-if="confirmingDeleteId !== exercise.id" class="row">
           <div>
             <div class="row-title">{{ exercise.name }}</div>
-            <div v-if="exercise.setup_notes && editingNotesId !== exercise.id" class="row-notes">
+            <div v-if="exercise.setup_notes && editingId !== exercise.id" class="row-notes">
               {{ exercise.setup_notes }}
             </div>
-            <div v-if="exercise.rest_seconds && editingRestId !== exercise.id" class="row-sub">
+            <div v-if="exercise.rest_seconds && editingId !== exercise.id" class="row-sub">
               Rest: {{ exercise.rest_seconds }}s
             </div>
           </div>
           <div class="row-actions">
-            <button
-              v-if="editingNameId !== exercise.id"
-              type="button"
-              class="ghost small"
-              @click="startEditingName(exercise.id, exercise.name)"
-            >
-              Edit name
+            <button type="button" class="icon-button" aria-label="Edit exercise" @click="startEditing(exercise)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              </svg>
             </button>
             <button
               type="button"
-              class="ghost small"
-              @click="startEditingNotes(exercise.id, exercise.setup_notes)"
+              class="icon-button icon-button-danger"
+              aria-label="Delete exercise"
+              @click="confirmingDeleteId = exercise.id"
             >
-              {{ exercise.setup_notes ? 'Edit notes' : 'Add notes' }}
-            </button>
-            <button
-              type="button"
-              class="ghost small"
-              @click="startEditingRest(exercise.id, exercise.rest_seconds)"
-            >
-              {{ exercise.rest_seconds ? 'Edit rest timer' : 'Add rest timer' }}
-            </button>
-            <button type="button" class="ghost small" @click="exercises.archiveExercise(exercise.id)">
-              Archive
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
             </button>
           </div>
         </div>
-
-        <form v-if="editingNameId === exercise.id" class="notes-form" @submit.prevent="saveName(exercise.id)">
-          <label :for="`name-${exercise.id}`">Name</label>
-          <input :id="`name-${exercise.id}`" v-model="nameDraft" type="text" required />
-          <div class="notes-actions">
-            <button type="submit">Save</button>
-            <button type="button" class="ghost small" @click="editingNameId = null">Cancel</button>
+        <div v-else class="row confirm-delete">
+          <span class="row-sub">Delete this exercise? This can't be undone.</span>
+          <div class="confirm-actions">
+            <button type="button" class="danger small" @click="confirmDelete(exercise.id)">Confirm delete</button>
+            <button type="button" class="ghost small" @click="confirmingDeleteId = null">Cancel</button>
           </div>
-        </form>
+        </div>
 
-        <form v-if="editingNotesId === exercise.id" class="notes-form" @submit.prevent="saveNotes(exercise.id)">
-          <label :for="`notes-${exercise.id}`">Setup notes</label>
+        <form v-if="editingId === exercise.id" class="notes-form" @submit.prevent="saveEdit(exercise.id)">
+          <label :for="`edit-name-${exercise.id}`">Name</label>
+          <input :id="`edit-name-${exercise.id}`" v-model="nameDraft" type="text" required />
+
+          <label :for="`edit-notes-${exercise.id}`">Setup notes</label>
           <textarea
-            :id="`notes-${exercise.id}`"
+            :id="`edit-notes-${exercise.id}`"
             v-model="notesDraft"
             rows="2"
             placeholder="e.g. seat height 4, incline 30°"
           />
-          <div class="notes-actions">
-            <button type="submit">Save</button>
-            <button type="button" class="ghost small" @click="editingNotesId = null">Cancel</button>
-          </div>
-        </form>
 
-        <form v-if="editingRestId === exercise.id" class="notes-form" @submit.prevent="saveRest(exercise.id)">
-          <label :for="`rest-${exercise.id}`">Rest timer (seconds)</label>
+          <label :for="`edit-rest-${exercise.id}`">Rest timer (seconds)</label>
           <input
-            :id="`rest-${exercise.id}`"
+            :id="`edit-rest-${exercise.id}`"
             v-model.number="restDraft"
             type="number"
             inputmode="numeric"
             min="1"
             placeholder="e.g. 90"
           />
+
           <div class="notes-actions">
             <button type="submit">Save</button>
-            <button type="button" class="ghost small" @click="editingRestId = null">Cancel</button>
+            <button type="button" class="ghost small" @click="editingId = null">Cancel</button>
           </div>
         </form>
       </li>
@@ -314,8 +290,56 @@ async function saveRest(id: string) {
 .row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
+  flex-shrink: 0;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  min-height: auto;
+  padding: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  color: var(--text);
+}
+
+.icon-button-danger:hover,
+.icon-button-danger:focus-visible {
+  color: var(--danger);
+}
+
+.confirm-delete {
+  flex-wrap: nowrap;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.danger.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .notes-form {

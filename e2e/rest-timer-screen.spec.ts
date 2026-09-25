@@ -20,7 +20,7 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page })
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   const exerciseRow = page.locator('.row-wrap', { hasText: exerciseName })
-  await exerciseRow.getByRole('button', { name: 'Add rest timer' }).click()
+  await exerciseRow.getByRole('button', { name: 'Edit exercise' }).click()
   await exerciseRow.getByLabel('Rest timer (seconds)').fill('30')
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
@@ -58,7 +58,7 @@ test('rest timer screen: auto-dismisses when the countdown finishes', async ({ p
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   const exerciseRow = page.locator('.row-wrap', { hasText: exerciseName })
-  await exerciseRow.getByRole('button', { name: 'Add rest timer' }).click()
+  await exerciseRow.getByRole('button', { name: 'Edit exercise' }).click()
   await exerciseRow.getByLabel('Rest timer (seconds)').fill('1')
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 

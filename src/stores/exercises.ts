@@ -54,31 +54,27 @@ export const useExercisesStore = defineStore('exercises', () => {
     return { error }
   }
 
-  async function updateExerciseName(id: string, name: string) {
-    const { error } = await supabase.from('exercises').update({ name }).eq('id', id)
+  // Backlog item 24: name, setup notes, and rest timer are edited together
+  // through one consolidated flyout now, so they're saved in a single write
+  // instead of the three separate updateExerciseName/updateSetupNotes/
+  // updateRestSeconds calls this replaced.
+  async function updateExercise(
+    id: string,
+    name: string,
+    setupNotes: string | null,
+    restSeconds: number | null,
+  ) {
+    const { error } = await supabase
+      .from('exercises')
+      .update({ name, setup_notes: setupNotes, rest_seconds: restSeconds })
+      .eq('id', id)
     if (!error) {
       const exercise = exercises.value.find((e) => e.id === id)
-      if (exercise) exercise.name = name
-    }
-    return { error }
-  }
-
-  async function updateSetupNotes(id: string, setupNotes: string | null) {
-    const { error } = await supabase.from('exercises').update({ setup_notes: setupNotes }).eq('id', id)
-    if (!error) {
-      const exercise = exercises.value.find((e) => e.id === id)
-      if (exercise) exercise.setup_notes = setupNotes
-    }
-    return { error }
-  }
-
-  // Backlog item 15: per-exercise rest duration, same shape/pattern as
-  // setup_notes above. null clears it (no rest timer alert on this exercise).
-  async function updateRestSeconds(id: string, restSeconds: number | null) {
-    const { error } = await supabase.from('exercises').update({ rest_seconds: restSeconds }).eq('id', id)
-    if (!error) {
-      const exercise = exercises.value.find((e) => e.id === id)
-      if (exercise) exercise.rest_seconds = restSeconds
+      if (exercise) {
+        exercise.name = name
+        exercise.setup_notes = setupNotes
+        exercise.rest_seconds = restSeconds
+      }
     }
     return { error }
   }
@@ -91,8 +87,6 @@ export const useExercisesStore = defineStore('exercises', () => {
     fetchExercises,
     createExercise,
     archiveExercise,
-    updateExerciseName,
-    updateSetupNotes,
-    updateRestSeconds,
+    updateExercise,
   }
 })

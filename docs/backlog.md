@@ -20,17 +20,7 @@ Each item is scored on two axes, both on a Fibonacci scale (1, 2, 3, 5, 8, 13):
 
 Priority order (highest ROI first), kept in sync with the tags below:
 
-| # | Item | Effort | Value | ROI |
-|---|------|--------|-------|-----|
-| 24 | Redesign exercise row actions into pencil/trash icons instead of four text buttons | 5 | 3 | 0.6 |
-
-## Features
-
-### 24. Redesign exercise row actions into pencil/trash icons instead of four text buttons `[Effort: 5, Value: 3, ROI: 0.6]`
-
-Reported 2026-09-25. Each row in `ExerciseList.vue` currently exposes four separate ghost buttons ("Edit name", "Edit notes"/"Add notes", "Edit rest timer"/"Add rest timer", "Archive"), each opening its own inline form — wordy today, and it only grows with item 22. User's preferred direction (over an ellipsis-triggered dropdown, which was also considered): two icon affordances on the right of the row — a pencil that opens one consolidated edit flyout covering name, setup notes, and rest timer together, and a trash-can (or X) that requires an explicit confirm step before removing the exercise.
-
-Depends on the archive-vs-delete decision below (**[human]**) — what the trash icon actually does and what its confirmation copy says both hinge on that call; don't build this until it's settled. Touches `e2e/exercise-edit-name.spec.ts`, `e2e/exercise-notes.spec.ts`, `e2e/rest-timer.spec.ts`, and any other spec locating today's text-labeled buttons — icon buttons will need `aria-label`s for those to target instead.
+No active feature items right now — see `docs/backlog-archive.md` for what's shipped.
 
 ## Human setup / device verification
 
@@ -45,7 +35,6 @@ Depends on the archive-vs-delete decision below (**[human]**) — what the trash
 - [ ] **[human]** Custom domain vs. default `*.pages.dev` subdomain.
 - [ ] **[human]** *(optional, only if needed)* Resend account, if Supabase's built-in magic-link email hits rate limits.
 - [ ] **[human]** Drop the now-unused `category` column from the live `exercises` table (item 30, shipped 2026-09-24, `docs/backlog-archive.md`): run `alter table exercises drop column category;` in the Supabase SQL editor. Code no longer reads or writes it either way, so this is cleanup, not a blocker.
-- [ ] **[human]** *Blocks item 24:* "Archive" on an exercise (`ExerciseList.vue`'s "Archive" button, `exercises.is_archived`) has no restore path anywhere in the UI — no archived-exercises view, no "unarchive" action. From the user's perspective it already behaves exactly like a permanent delete; the "archive" label just implies a recoverability that doesn't exist. Needs a decision between: (a) build real restore (an archived-exercises list + unarchive action), or (b) keep today's soft-delete mechanism as-is at the DB level — it's what lets an exercise be removed without breaking the FK reference from existing `sets`/`workout_template_exercises` rows, since neither has an `ON DELETE` clause and a real hard delete would fail outright while any history references it — but relabel/reframe the UI as "Delete" with a confirmation step, dropping the "archive" pretense. (b) is the cheaper option and matches what the user described wanting ("if there's not a way to restore, we should just treat it as delete").
 
 ---
 

@@ -21,22 +21,21 @@ test('exercise rest timer: add, edit, and clear a duration', async ({ page }) =>
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   const row = page.locator('.row-wrap', { hasText: exerciseName })
-  await row.getByRole('button', { name: 'Add rest timer' }).click()
+  await row.getByRole('button', { name: 'Edit exercise' }).click()
   await row.getByLabel('Rest timer (seconds)').fill('90')
   await row.getByRole('button', { name: 'Save' }).click()
 
   await expect(row.locator('.row-sub', { hasText: 'Rest: 90s' })).toBeVisible()
 
   // Edit persists correctly, not just create.
-  await row.getByRole('button', { name: 'Edit rest timer' }).click()
+  await row.getByRole('button', { name: 'Edit exercise' }).click()
   await row.getByLabel('Rest timer (seconds)').fill('30')
   await row.getByRole('button', { name: 'Save' }).click()
   await expect(row.locator('.row-sub', { hasText: 'Rest: 30s' })).toBeVisible()
 
   // Clearing the field removes the timer (no alert configured).
-  await row.getByRole('button', { name: 'Edit rest timer' }).click()
+  await row.getByRole('button', { name: 'Edit exercise' }).click()
   await row.getByLabel('Rest timer (seconds)').fill('')
   await row.getByRole('button', { name: 'Save' }).click()
   await expect(row.locator('.row-sub', { hasText: 'Rest:' })).toHaveCount(0)
-  await expect(row.getByRole('button', { name: 'Add rest timer' })).toBeVisible()
 })

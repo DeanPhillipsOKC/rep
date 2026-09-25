@@ -18,7 +18,7 @@ test('edit exercise name: rename and see it reflected elsewhere', async ({ page 
   await expect(page.getByText(originalName)).toBeVisible()
 
   const row = page.locator('.row-wrap', { hasText: originalName })
-  await row.getByRole('button', { name: 'Edit name' }).click()
+  await row.getByRole('button', { name: 'Edit exercise' }).click()
   await row.getByLabel('Name').fill(renamedName)
   await row.getByRole('button', { name: 'Save' }).click()
 
