@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import type { Exercise } from '../lib/types'
+import { fetchTrainingData } from '../lib/exportData'
 
 const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
@@ -11,6 +12,26 @@ const setupNotes = ref('')
 const restSeconds = ref<number | null>(null)
 const errorMessage = ref('')
 const enablingPush = ref(false)
+const exporting = ref(false)
+const exportError = ref('')
+
+async function downloadTrainingData() {
+  exporting.value = true
+  exportError.value = ''
+  try {
+    const backup = await fetchTrainingData()
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `repbunny-training-data-${backup.exported_at.slice(0, 10)}.json`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch (error) {
+    exportError.value = error instanceof Error ? error.message : 'Could not export your data. Please try again.'
+  } finally {
+    exporting.value = false
+  }
+}
 
 // Backlog item 24: one consolidated edit flyout per row (name, setup notes,
 // and rest timer together) behind a single pencil icon, replacing three
@@ -99,6 +120,14 @@ async function confirmDelete(id: string) {
 <template>
   <div>
     <h2>Exercises</h2>
+    <section class="card export-card" aria-labelledby="export-heading">
+      <h3 id="export-heading">Your data</h3>
+      <p class="row-sub">Download your exercises, templates, workouts, and sets as JSON.</p>
+      <button type="button" :disabled="exporting" @click="downloadTrainingData">
+        {{ exporting ? 'Preparing download…' : 'Export training data' }}
+      </button>
+      <p v-if="exportError" role="alert" class="error">{{ exportError }}</p>
+    </section>
 
     <!-- Backlog item 17: once already enabled, this device doesn't need the
          full card taking up space above the exercise list on every visit —
@@ -240,6 +269,14 @@ async function confirmDelete(id: string) {
 }
 
 .push-card h3 {
+  margin-top: 0;
+}
+
+.export-card {
+  margin-bottom: 20px;
+}
+
+.export-card h3 {
   margin-top: 0;
 }
 

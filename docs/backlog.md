@@ -23,8 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Export personal training data (ROI 1.00)
-2. Show exercise-by-exercise history (ROI 1.00)
+1. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -37,16 +36,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Export personal training data — add a discoverable download action for the signed-in user
-  that produces versioned JSON containing their exercises (including archived names/notes),
-  templates and exercise order/targets, workouts and notes/timestamps, and sets with units/RPE.
-  Use the normal authenticated Supabase client and explicit pagination so a history over the
-  default 1,000-row API page limit is complete. Do not export auth tokens, push subscriptions, or
-  another account's rows. Give the file a dated name and show a useful error if any fetch fails
-  rather than downloading a partial backup. Add a Playwright download check with seeded records
-  and a separate verification of pagination/completeness. No import UI is in scope.
-  [Effort: 5, Value: 5, ROI: 1.00]
 
 - [ ] Show exercise-by-exercise history — from the Exercises tab and the active logger, open a
   focused detail view for one exercise with the latest workouts and sets in set order, including
