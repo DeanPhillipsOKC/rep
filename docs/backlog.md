@@ -24,7 +24,7 @@ it makes (excluding blocked/needs-review/human items), so it can't drift out of 
 scores by hand, recompute this line to match:
 
 1. Primary CTAs lost against ghost buttons (ROI 1.67)
-2. Show a compact three-set logging grid (ROI 1.60)
+2. Show compact rows for the configured set count (ROI 1.60)
 
 ## Features
 
@@ -38,17 +38,19 @@ anything was logged — several of its claims (workout-delete confirmation, temp
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
 
-- [ ] Show a compact three-set logging grid when an exercise is selected — user-requested
-  2026-09-25. Replace the large one-set-at-a-time form in `WorkoutLogger.vue` with three
-  numbered rows visible together on a phone, each with quick-entry reps and weight fields.
+- [ ] Show compact logging rows matching the exercise's configured set count — user-requested
+  2026-09-25. Replace the large one-set-at-a-time form in `WorkoutLogger.vue` with numbered
+  rows visible together on a phone, each with quick-entry reps and weight fields. For a
+  template workout, use that exercise's `target_sets` (two configured sets means two rows;
+  three means three). If no count is configured, start with one row and allow more to be added.
   Include optional RPE in each row if it stays readable and easy to tap at mobile width;
   otherwise keep RPE accessible through a compact per-row expansion. Keep the weight unit
   easy to set without repeating a full-width selector in every row. Pre-fill from the
   previous workout where available, while keeping each row independently editable.
   Completing a row saves that set and starts the existing rest flow for that exercise;
   later rows stay visible and ready to edit during rest. Empty planned rows must not be
-  saved. Allow adding or removing rows so workouts with fewer or more than three sets
-  remain possible, and preserve editing/deleting logged sets. Cover the mobile layout,
+  saved. Allow adding or removing rows when the actual workout differs from the configured
+  count, and preserve editing/deleting logged sets. Cover the mobile layout,
   sequential saves, and rest behavior in Playwright.
   [Effort: 5, Value: 8, ROI: 1.60]
 
