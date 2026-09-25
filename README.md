@@ -1,6 +1,6 @@
 # RepBunny (Workout Tracker PWA)
 
-Private, installable workout tracker for two users. Vue 3 + TS + Supabase + Cloudflare Pages.
+Installable strength workout tracker, currently in a two-user invite-only pilot with potential for a wider release. Vue 3 + TS + Supabase + Cloudflare Pages.
 
 - Architecture and build order: [`docs/architecture.md`](docs/architecture.md)
 - Backlog (active work, incl. human setup/device testing): [`docs/backlog.md`](docs/backlog.md)

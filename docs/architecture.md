@@ -5,15 +5,15 @@
 
 ## Purpose
 
-A private, installable workout tracker for two users (owner + one invited user). Installs to the home screen on both Android (Chrome) and iPhone (Safari). No App Store, no Mac, no recurring cost.
+An installable strength workout tracker currently running as an invite-only pilot for two users (owner + one invited user). Installs to the home screen on both Android (Chrome) and iPhone (Safari). The current pilot needs no App Store, Mac, or recurring cost. Public availability and commercial operation are possible future directions; the pilot's account count and free-tier choices are not permanent product requirements. See `docs/product-roadmap.md` for the product path.
 
 > Note: the original brief assumed iPhone-only. Actual usage is cross-platform — owner is on Android, the invited user is on iPhone. Android is the primary development/testing target; iPhone-specific behavior (see PWA configuration and Authentication below) gets verified second, opportunistically. Treat anything below marked "iOS" as applying only to the iPhone user, not as the default target.
 
 ## Guiding constraints
 
-1. **Zero recurring cost.** Everything must sit inside a free tier that does not require a card to start.
+1. **Low pilot cost.** The current build should sit inside a free tier that does not require a card to start. Reassess hosting and operating costs before a wider launch.
 2. **Secure by default.** Auth is passkey-first. Data is isolated per user at the database level, not just in application code.
-3. **Small surface area.** Two users. Do not build for scale that will never arrive.
+3. **Small surface area now.** Build the pilot for its real usage while keeping basic data isolation, recoverability, and account flows sound enough to evolve. Do not assume either that scale is guaranteed or that it will never arrive.
 
 ## Stack
 
@@ -57,7 +57,7 @@ Magic link is never the primary path after enrollment. It exists so a lost crede
 
 ### Access control
 
-The app is invite-only. There is no public sign-up.
+The current pilot is invite-only. There is no public sign-up yet. A wider release will need a separate enrollment design, abuse controls, and an account lifecycle before opening registration.
 
 - Disable open sign-ups in the Supabase Auth settings.
 - Maintain an allowlist by seeding the two user rows manually (Authentication → Users → Add user, with Auto Confirm), rather than building an `allowed_users` table the app would have to check on every sign-in attempt. With signups disabled, an unrecognized email simply can't create an account — there's nothing left for a table-based check to add for two users.
@@ -158,7 +158,7 @@ sets
 Notes:
 
 - `weight_unit` is stored per set rather than as a global setting. Cheap now, avoids a migration later.
-- `exercises` is per-user rather than a shared global catalog. Two users, no benefit to sharing, and it keeps RLS uniform.
+- `exercises` is per-user rather than a shared global catalog. This fits the pilot and keeps RLS uniform. A larger product may add an optional shared catalog without changing ownership of users' custom exercises or workout history.
 - Soft-delete exercises via `is_archived` so historical sets keep resolving to a name.
 - `push_subscriptions` has no `is_archived`/soft-delete — a dead subscription (uninstalled app, revoked permission) just fails to deliver a push; nothing reads this table for anything else, so there's no history to preserve.
 
@@ -291,7 +291,7 @@ via the Supabase CLI or dashboard.
 
 - **Supabase pauses free projects after roughly a week of inactivity.** Resuming is a dashboard click, but if usage is sporadic this will be the main friction. Consider a scheduled ping if it becomes a nuisance, or accept it.
 - Free tier limits change. Verify current allowances at build time rather than trusting this document.
-- No analytics, no third-party scripts, no tracking. Two users, private fitness data, nothing to gain from instrumentation.
+- No analytics or third-party tracking in the current pilot. Before a wider launch, decide what minimal, privacy-conscious product and reliability measurement is necessary, with a clear user-facing explanation and data retention plan.
 - **The service worker caches the previous deploy.** After pushing a change, a device that already has the app open/installed can take a moment to pick it up — the browser only checks a service worker script for byte-for-byte changes on navigation, so the first load after a deploy can still be the old one. If a deploy "doesn't seem to have worked," try an incognito/private tab first to rule out stale cache before assuming it's a real bug. A background/foreground of the installed app (or a second navigation) should pick up the update automatically; see the note below for why that wasn't true before 2026-09-24.
 - **Service worker auto-update wiring (fixed 2026-09-24).** `injectManifest` (used here so `sw.ts` can hand-add the push handler — see below) doesn't get the `skipWaiting`/`clientsClaim` pair `generateSW` auto-adds for `registerType: 'autoUpdate'`; without them a newly-fetched worker sat in "waiting" until every open tab/window fully closed, which for an installed PWA that's rarely fully quit meant it effectively never updated — the only fix was uninstalling and reinstalling. `sw.ts` now listens for a `SKIP_WAITING` message and calls `clientsClaim()`; `vite.config.ts` sets `injectRegister: false` (the plain auto-injected `registerSW.js` only registers once on load, no update checks); `main.ts` instead imports vite-plugin-pwa's real `virtual:pwa-register` client (`registerSW({ immediate: true })`), which polls for updates, posts `SKIP_WAITING` when one's found, and reloads the page on `controllerchange`.
 
@@ -310,4 +310,4 @@ Ship after step 4 if it is usable. The remaining steps improve it but are not bl
 ## Open decisions
 
 - Whether exercise history needs charting, or whether a simple list of previous sets per exercise is enough. **Start with the list.**
-- Whether the two users should ever see each other's workouts. **Assume no**; RLS above enforces that. Changing it later means new policies, not a schema change.
+- Whether users should ever share workouts. **Default to no**; RLS above enforces private records. Any future sharing must be opt-in and designed separately from basic account expansion.

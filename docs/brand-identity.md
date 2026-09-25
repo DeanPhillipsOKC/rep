@@ -10,7 +10,7 @@
 
 ## Who it is for
 
-RepBunny is a private app for its two invited users. It is built for people who want a reliable record of their own lifting: exercises, sets, reps, weight, reusable workout templates, and past sessions. The phone is often in one hand, the workout is already underway, and attention belongs to the training rather than the app.
+RepBunny currently serves two invited users, but the brand is intended to work for anyone who wants a reliable record of their own lifting: exercises, sets, reps, weight, reusable workout templates, and past sessions. The phone is often in one hand, the workout is already underway, and attention belongs to the training rather than the app. Each person's training data should remain private by default even if the app becomes publicly available.
 
 ## What we are — and what we are not
 
@@ -18,11 +18,11 @@ RepBunny is a private app for its two invited users. It is built for people who 
 | --- | --- |
 | A focused strength workout log | An all-in-one health or lifestyle platform |
 | A way to repeat routines and compare them over time | A coach that prescribes training plans or judges performance |
-| A private record of your own work | A social feed, competition, or public profile |
+| A personal record that is private by default | A feed or competition that interrupts logging |
 | A fast tool for the gym floor | A dashboard that asks for constant attention |
 | Encouraging when a real milestone happens | A streak machine that manufactures urgency or guilt |
 
-Nutrition, calories, sleep, step counts, community features, and endless metrics are outside the product's purpose. New features should earn their place by making strength training easier to record, repeat, or understand. “Could a fitness app have this?” is not enough.
+Nutrition, calories, sleep, step counts, and endless metrics are outside the current product focus. Community features are not a present priority; wider distribution does not require them, though future user research may reveal a useful, opt-in form of sharing. New features should earn their place by making strength training easier to record, repeat, or understand. “Could a fitness app have this?” is not enough.
 
 ## Personality
 
@@ -74,7 +74,7 @@ Before adding a feature or changing a screen, ask:
 2. Can it be used quickly in the middle of a workout?
 3. Does it remove thought or taps from the core flow?
 4. Is any celebration tied to a real event, and easy to leave?
-5. Will it still feel like a private, focused tool when the novelty wears off?
+5. Will it still feel like a focused tool that respects each person's privacy when the novelty wears off?
 
 If the answer is no, simplify it or leave it out. RepBunny's confidence comes from doing a few useful things very well.
 
