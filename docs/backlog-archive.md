@@ -39,6 +39,7 @@ on something already shipped. New entries get appended here when an item is remo
 
 ## Shipped features
 
+- Fix Add Set/RPE overlap and add weight/rep steppers (2026-09-25, `1b3f9fe`): compact set rows now wrap controls before they collide; inline buttons adjust reps by 1 and weight by 10 lb or 5 kg, while inputs still accept direct entry. Playwright checks the increments and mobile spacing at 320 px and 375 px; build and full e2e suite passed (45/45).
 - Core workout logging: create workout, add sets, view history (`8da13e5`).
 - `profiles` row auto-created on sign-in to satisfy `exercises`/`workouts` FK (`850742a`).
 - Dark, mobile-first styling for auth and logging screens (`714909b`).

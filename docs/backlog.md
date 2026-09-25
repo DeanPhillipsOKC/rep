@@ -23,11 +23,9 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Fix Add Set button overlapping the RPE field (ROI 2.00)
-2. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
-3. Remove JSON training data export (ROI 1.50)
-4. Quick weight/rep stepper controls on set rows (ROI 1.33)
-5. Show exercise-by-exercise history (ROI 1.00)
+1. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
+2. Remove JSON training data export (ROI 1.50)
+3. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -40,12 +38,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Fix Add Set button overlapping the RPE field — in the active workout logger, the Add Set
-  button slightly overlaps the RPE input while logging sets. Adjust the compact set-row spacing
-  so the controls have a clear gap at phone widths without making the row unnecessarily tall.
-  Verify the layout in Playwright at a narrow mobile viewport.
-  [Effort: 1, Value: 2, ROI: 2.00]
 
 - [ ] Fix RPE quick-entry requiring two taps with a flickering label — in the active workout
   logger's set row (`WorkoutLogger.vue`), RPE starts as a `+RPE` toggle button; tapping it swaps in
@@ -67,16 +59,6 @@ implemented and were dropped rather than logged.
   that concrete flow rather than reviving the full-account JSON export by default. Verify the
   Exercises screen no longer offers export and run the normal build and e2e gates.
   [Effort: 2, Value: 3, ROI: 1.50]
-
-- [ ] Quick weight/rep stepper controls on set rows — add small +/- buttons to each set row's
-  weight and reps fields so a routine adjustment (bump last time's weight, add or drop a rep)
-  doesn't require opening the keyboard. Weight steps by a fixed ±10 lb (±5 kg when the row's unit
-  is kg), reps step by ±1. Tapping the number field still opens the keyboard for exact entry —
-  the steppers are a fast path for the common case, not a replacement for typing. Keep the set row
-  layout from item 1 (`docs/backlog-archive.md`) compact; steppers should sit inline without adding
-  a second row of controls or a modal. Cover the increment behavior and the fallback-to-keyboard
-  path in Playwright.
-  [Effort: 3, Value: 4, ROI: 1.33]
 
 - [ ] Show exercise-by-exercise history — from the Exercises tab and the active logger, open a
   focused detail view for one exercise with the latest workouts and sets in set order, including
