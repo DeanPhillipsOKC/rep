@@ -30,10 +30,19 @@ test('templates: create, log a workout against one, and see it in history', asyn
   await page.getByLabel('Name').fill(templateName)
   await page.getByRole('button', { name: 'Add template' }).click()
   await expect(page.getByLabel('Name')).toHaveCount(0)
+
+  const templateRow = page.locator('.row-wrap', { hasText: templateName })
+  await expect(templateRow.locator('.row-sub')).toHaveText('0 exercises')
+
   await page.getByText(templateName).click()
   await page.getByRole('combobox').selectOption({ label: exerciseName })
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.locator('.exercise-row', { hasText: exerciseName })).toBeVisible()
+
+  // Backlog item 75: the header count used to stay stuck at the stale
+  // cached aggregate from fetchTemplates() instead of tracking the exercise
+  // just added in this same session.
+  await expect(templateRow.locator('.row-sub')).toHaveText('1 exercise')
 
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()

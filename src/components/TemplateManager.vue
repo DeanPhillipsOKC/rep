@@ -138,7 +138,16 @@ function paletteFor(id: string) {
   return templatePalette[hash % templatePalette.length]
 }
 
-function exerciseCount(template: { workout_template_exercises?: { count: number }[] }): number {
+// Backlog item 75: workout_template_exercises(count) is a cached aggregate
+// fetched once by fetchTemplates() and never updated by
+// addExerciseToTemplate/removeExerciseFromTemplate, so it goes stale as soon
+// as either mutates a template whose exercises have been expanded this
+// session. exercisesByTemplate is kept live by both, so prefer its length
+// once toggleExpand has populated it; fall back to the cached count for a
+// template that hasn't been expanded yet.
+function exerciseCount(template: { id: string; workout_template_exercises?: { count: number }[] }): number {
+  const live = templates.exercisesByTemplate[template.id]
+  if (live) return live.length
   return template.workout_template_exercises?.[0]?.count ?? 0
 }
 

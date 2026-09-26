@@ -246,3 +246,11 @@ on something already shipped. New entries get appended here when an item is remo
   `scripts/lib/cleanup-e2e-stamp.mjs`, `e2e/fixtures/exercise.ts`, plus `inDeck` call-site updates
   across ~20 spec files and doc updates to `docs/architecture.md`. Verified via `npm run build` and
   a full `npm run test:e2e` run (57/57, plus the 3+3 baseline/optimized timing runs above).
+- Fix stale "N exercises" template count after adding/removing in the same session (item 75,
+  2026-09-26): `TemplateManager.vue`'s `exerciseCount()` now prefers
+  `templates.exercisesByTemplate[template.id]?.length` (kept live by
+  `addExerciseToTemplate`/`removeExerciseFromTemplate`) and only falls back to the cached
+  `workout_template_exercises(count)` aggregate for a template that hasn't been expanded yet this
+  session. Files: `src/components/TemplateManager.vue`, `e2e/templates.spec.ts` (asserts the header
+  goes from "0 exercises" to "1 exercise" after adding one, in the same session, with no reload).
+  Verified via `npm run build` and a full `npm run test:e2e` run (57/57).

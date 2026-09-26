@@ -23,15 +23,14 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-2. Item 76 — exercise load type + "Level" type (ROI 1)
-3. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
-4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
-5. Item 78 — "Bodyweight" load type (ROI 1)
-6. Item 79 — "Assisted" load type (ROI 1)
-7. Item 80 — periodic "update your weight" reminder (ROI 1)
-8. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
-9. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
+1. Item 76 — exercise load type + "Level" type (ROI 1)
+2. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
+3. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+4. Item 78 — "Bodyweight" load type (ROI 1)
+5. Item 79 — "Assisted" load type (ROI 1)
+6. Item 80 — periodic "update your weight" reminder (ROI 1)
+7. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
+8. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
 
 ## Features
 
@@ -56,19 +55,6 @@ implemented and were dropped rather than logged.
   finished) plus an "Add set" affordance per expanded history card with an exercise picker (the
   existing flat set list has no exercise-scoped entry point today) and the same reps/weight/unit/RPE
   fields the edit form already uses. [Effort: 3, Value: 3, ROI: 1]
-
-- [ ] Template's "N exercises" count goes stale after adding or removing an exercise in the same
-  session (item 75, 2026-09-26 — ux-review, `07-template-detail.png`, shows "0 exercises" directly
-  above a list of the 2 exercises just added): `TemplateManager.vue`'s `exerciseCount()` (`:140-142`)
-  reads `template.workout_template_exercises?.[0]?.count`, a cached aggregate fetched once by
-  `fetchTemplates()` (`stores/templates.ts:32-45`) when the templates list loads. `addExerciseToTemplate`
-  and `removeExerciseFromTemplate` (`stores/templates.ts:87-102`, `:120-128`) both update
-  `exercisesByTemplate` (the expanded per-template list, which *does* show correctly) but never touch
-  the `templates` array's cached count, so the header subtext stays wrong — stuck at whatever it was
-  when the page first loaded — until a full reload re-fetches it. Update the matching `templates.value`
-  entry's cached count (or derive the header count from `exercisesByTemplate[templateId]?.length` when
-  that template's exercises have been fetched this session) in both mutation functions.
-  [Effort: 2, Value: 3, ROI: 1.5]
 
 Items 76-81 (2026-09-26, design discussion with the user): not every exercise is "reps × plate
 weight." Each exercise gets a **load type** (`weight` | `level` | `bodyweight` | `assisted`) chosen
