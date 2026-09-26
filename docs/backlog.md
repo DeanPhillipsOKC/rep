@@ -142,7 +142,10 @@ otherwise. Decisions already made with the user, don't relitigate:
     overweight, 30+ obese; shown only when both values exist, otherwise a prompt to fill in the
     missing one), and a small body-weight-over-time chart once there are 2+ entries (reuse the
     `VolumeChart.vue` styling). Empty state explains why it's worth filling in (bodyweight and
-    assisted exercises count toward volume). Check the five-tab bar still fits at 360px width.
+    assisted exercises count toward volume) and shows `public/body-bunny.png` (bunny stepping
+    onto a scale, ~150px tall, centered above the "Add your stats" heading, `alt=""` since it's
+    decorative) as in the mockup's first-visit artboard. Only the empty state gets the art; the
+    filled Body screen stays data-only. Check the five-tab bar still fits at 360px width.
   - **Reusable `BodyStatsModal.vue`**: height + current weight fields prefilled with whatever is
     already on file, with "Save", "Not now", and "Don't ask again" buttons (the modal just emits
     which one was chosen; callers decide what each means). Built here, triggered by items 78-80.
@@ -194,7 +197,10 @@ otherwise. Decisions already made with the user, don't relitigate:
   `'monthly'`, changeable in item 77's Reminders section). Check on app open, on the Home screen
   only. Never interrupt an in-progress workout: if one is active, wait until the next open without
   one. Show item 77's `BodyStatsModal.vue` in "update" mode (short "Time for a weigh-in?" line,
-  weight prefilled with the last value, height hidden). "Save" logs a new entry. "Not now" snoozes
+  weight prefilled with the last value, height hidden), with `public/body-bunny.png` (~128px
+  tall, `alt=""`) peeking over the sheet's top-right edge as in the mockup's weigh-in artboard.
+  The missing-weight prompt from items 78/79 does **not** get the art (it appears mid-workout and
+  should stay lean), so make the image an opt-in prop on `BodyStatsModal.vue`. "Save" logs a new entry. "Not now" snoozes
   for 3 days (per-device localStorage is fine for the snooze, wrapped in try/catch; worst case it
   asks again sooner). "Don't ask again" sets `weight_reminder = 'off'`. Keep the due/snooze
   decision in a pure, unit-tested function (inputs: latest entry date, cadence, snooze-until, has
