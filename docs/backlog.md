@@ -91,7 +91,10 @@ that order. Decisions already made with the user, don't relitigate:
   "each level ≈ X lb" scale factor). They still get per-exercise progress and PRs.
 - Levels are whole numbers (every machine the user has seen); revisit only if one turns up that isn't.
 - Body weight is tracked as a dated log, not a single profile field, so old sets keep the body
-  weight the user had at the time instead of shifting whenever it's updated.
+  weight the user had at the time instead of shifting whenever it's updated. It lives on a new
+  "Body" bottom-nav tab alongside height and BMI.
+- When body weight is missing, bodyweight/assisted exercises prompt for it with a modal, but the
+  user can always decline; those sets then just stay out of volume.
 - Timed/cardio exercises (treadmill speed × time, planks) are out of scope for now.
 
 - [ ] Exercise load type + "Level" type (item 76, 2026-09-26): add a load-type picker to exercise
@@ -113,34 +116,49 @@ that order. Decisions already made with the user, don't relitigate:
   create a level exercise, log a set, and check it renders as a level and doesn't move the volume
   chart. [Effort: 5, Value: 5, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
-- [ ] Body-weight tracking (item 77, 2026-09-26): prerequisite for items 78/79's volume math
-  (assisted machines are counterweighted, so the work done depends on what the lifter weighs). New
-  `body_weight_entries` table (DDL in the human SQL item; mirror into `supabase/schema.sql`,
-  `supabase/policies.sql`, and `docs/architecture.md`, owner-only RLS like `push_subscriptions`)
-  plus a small store. UI: a "Body weight" entry on whatever screen holds account/profile settings
-  today (number + lb/kg, saves a new dated entry; show the current value and when it was last
-  set). Expose one pure helper, e.g. `bodyWeightAt(entries, performedAt, unit)`: the latest entry
-  recorded at or before `performedAt`, falling back to the earliest entry if none is that old (so
-  entering a body weight today still covers sets logged last week), converted to `unit` (1 kg =
-  2.20462 lb), or `null` if there are no entries at all. Unit-test it. No logger prompts here;
-  items 78/79 own nudging the user when a body weight is missing. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+- [ ] "Body" tab: body-weight and height tracking (item 77, 2026-09-26): prerequisite for items
+  78/79's volume math (assisted machines are counterweighted, so the work done depends on what the
+  lifter weighs). Data: new `body_weight_entries` table plus `profiles.height`/`height_unit` (DDL
+  in the human SQL item; mirror into `supabase/schema.sql`, `supabase/policies.sql`, and
+  `docs/architecture.md`, owner-only RLS like `push_subscriptions`) and a small store. Height is a
+  single profile value (it rarely changes, so no history); body weight is a dated log.
+  - **New fifth tab "Body"** in `BottomNav.vue` (after Exercises, same icon/label pattern; a
+    simple person/scale glyph) with its own route. Screen shows: current body weight and when it
+    was last entered, a button to log a new weight (number + lb/kg, saves a new dated entry),
+    height (ft/in or cm, editable), **BMI** computed from latest weight + height (kg / m², one
+    decimal, with the standard category label: under 18.5 underweight, 18.5-24.9 normal, 25-29.9
+    overweight, 30+ obese; shown only when both values exist, otherwise a prompt to fill in the
+    missing one), and a small body-weight-over-time chart once there are 2+ entries (reuse the
+    `VolumeChart.vue` styling). Empty state explains why it's worth filling in (bodyweight and
+    assisted exercises count toward volume). Check the five-tab bar still fits at 360px width.
+  - **Reusable `BodyStatsModal.vue`**: height + current weight fields prefilled with whatever is
+    already on file, "Save" and "Not now" buttons. Built here, triggered by items 78/79.
+  - Expose one pure helper, e.g. `bodyWeightAt(entries, performedAt, unit)`: the latest entry
+    recorded at or before `performedAt`, falling back to the earliest entry if none is that old (so
+    entering a body weight today still covers sets logged last week), converted to `unit` (1 kg =
+    2.20462 lb), or `null` if there are no entries at all. Unit-test it along with the BMI math.
+  - e2e: navigate to Body, enter height + weight, see BMI; log a second weight, see the chart.
+  [Effort: 5, Value: 5, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
 - [ ] "Bodyweight" load type (item 78, 2026-09-26, depends on items 76 and 77): push-ups, pull-ups,
   dips. Logger shows reps plus an optional "Added weight" field (vest/dip belt; defaults to 0,
   stored in `weight`/`weight_unit` as today). Effective load per set = body weight at the workout's
   `performed_at` (item 77's helper, in the set's unit) + added weight; volume = reps × effective
   load, so these do count toward the volume chart. If no body weight has been entered, the set is
-  excluded from volume (same "skip, not zero" rule as item 76's level sets) and the logger shows a
-  one-line nudge linking to the body-weight setting the first time a bodyweight exercise is logged
-  without one. PRs use effective-load volume when body weight is known, otherwise most reps (with
+  excluded from volume (same "skip, not zero" rule as item 76's level sets). **Missing body weight
+  prompt:** open item 77's `BodyStatsModal.vue` (a) right after the user creates a bodyweight or
+  assisted exercise, and (b) when they log the first bodyweight/assisted set of a workout, in both
+  cases only if no body weight is on file. "Not now" is always allowed and nothing is blocked: the
+  set still saves, it just stays out of volume. After a "Not now," don't ask again for the rest of
+  that workout. Share this trigger logic with item 79 (one composable), don't duplicate it. PRs use effective-load volume when body weight is known, otherwise most reps (with
   added weight as tiebreak). Set rendering: "12 reps · bodyweight" or "8 reps · BW + 25 lb". Unhide
   the Bodyweight option in item 76's picker. Extend e2e. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
 - [ ] "Assisted" load type (item 79, 2026-09-26, depends on items 76 and 77): counterweighted
   assisted pull-up/dip machines, where a bigger number means an easier set. Logger field is labeled
   "Assist" (stored in `weight`/`weight_unit`). Effective load = max(body weight − assist, 0); volume
-  = reps × effective load, with the same "excluded, plus nudge" behavior as item 78 when no body
-  weight is on file. PRs run **inverted** when body weight is unknown: less assist beats more, ties
+  = reps × effective load, with the same "excluded from volume, plus `BodyStatsModal` prompt"
+  behavior as item 78 when no body weight is on file (reuse item 78's composable). PRs run **inverted** when body weight is unknown: less assist beats more, ties
   broken by more reps; with body weight known, compare effective-load volume. Progress/history
   views must not show a rising assist number as improvement: check `ExerciseHistoryDetail.vue` and
   `exerciseHistory.ts` for any "heavier is better" assumptions. Set rendering: "10 reps · 40 lb
@@ -161,6 +179,8 @@ that order. Decisions already made with the user, don't relitigate:
   alter table exercises add column load_type text not null default 'weight'
     check (load_type in ('weight', 'level', 'bodyweight', 'assisted'));
   alter table sets add column level int null check (level is null or level > 0);
+  alter table profiles add column height numeric null check (height is null or height > 0);
+  alter table profiles add column height_unit text null check (height_unit in ('in', 'cm'));
 
   create table body_weight_entries (
     id          uuid primary key default gen_random_uuid(),
