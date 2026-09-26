@@ -246,6 +246,20 @@ function handleWorkoutPointerDown(event: PointerEvent) {
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
+// The crossing-slide Transition below (no `mode="out-in"`) briefly mounts
+// two `.exercise-card`s at once -- the outgoing one sliding out while the
+// incoming one slides in. Both render the same content shape (name,
+// position, "View exercise history" button, etc.), which would otherwise
+// give assistive tech and any test querying by role/class two matches for
+// the same thing for the animation's duration. The outgoing copy is inert
+// visual chrome only by this point, so `@leave` (fired the instant Vue
+// starts animating it out) marks it `aria-hidden` and strips the one class
+// e2e specs query by CSS selector rather than role/label.
+function handleCardLeaveStart(el: Element) {
+  el.setAttribute('aria-hidden', 'true')
+  el.querySelector('.exercise-card-name')?.classList.remove('exercise-card-name')
+}
+
 function handleWorkoutPointerUp(event: PointerEvent) {
   if (dragStartX === null) return
   const delta = event.clientX - dragStartX
@@ -977,7 +991,7 @@ async function handleResumeJustFinished() {
             </button>
 
             <div class="exercise-card-viewport">
-              <Transition :name="slideDirection >= 0 ? 'slide-next' : 'slide-prev'" mode="out-in">
+              <Transition :name="slideDirection >= 0 ? 'slide-next' : 'slide-prev'" @leave="handleCardLeaveStart">
                 <div :key="exerciseId" class="exercise-card">
                   <span class="exercise-card-position">{{ currentExerciseIndex + 1 }} / {{ workoutExerciseIds.length }}</span>
                   <div class="exercise-card-name">{{ exerciseName(exerciseId) }}</div>
@@ -1853,10 +1867,12 @@ async function handleResumeJustFinished() {
   opacity: 0.35;
 }
 
-/* Clips the slide transition below to the card's rounded corners, and gives
-   the transition's absolutely-unnecessary-but-simpler out-in swap a fixed
-   box to happen inside instead of the surrounding flex row reflowing. */
+/* Clips the crossing-slide transition below to the card's rounded corners.
+   position: relative makes this the positioning context for the outgoing
+   and incoming cards below, which both go absolute for the transition's
+   duration so they can occupy the same box at once and visibly cross. */
 .exercise-card-viewport {
+  position: relative;
   flex: 1;
   min-width: 0;
   height: 150px;
@@ -1879,34 +1895,44 @@ async function handleResumeJustFinished() {
 
 /* Redesign item 67 follow-up: swiping/tapping a dot used to swap the
    exercise card's content instantly, easy to miss as "nothing happened" at
-   a glance. Slides the new exercise in from the direction it came from
-   (slideDirection in the script), fading the old one out first (`out-in`
-   so the two never overlap and fight for the same box). */
+   a glance, then just faded/nudged one card out before fading the next one
+   in (out-in). This is a true crossing slide instead: default (non-out-in)
+   Transition mode runs enter and leave at the same time, and going
+   `position: absolute` for just the transition's duration (harmless the
+   rest of the time, when only one card ever exists) is what lets the
+   outgoing and incoming cards occupy the same box simultaneously and
+   actually pass each other, like the mockup's own deck-of-cards feel,
+   rather than a static swap with a bit of motion on top. This is safe for
+   this read-only card (position/name/notes/sets-logged, no form inputs) --
+   see setRowsPanelEl's watcher above for why the larger set-rows panel
+   deliberately does NOT get this same treatment (briefly having two copies
+   of a live, editable row would risk a real gap where a fast keystroke
+   lands on the wrong exercise's fields, not just a cosmetic issue). */
 .slide-next-enter-active,
 .slide-next-leave-active,
 .slide-prev-enter-active,
 .slide-prev-leave-active {
-  transition: transform 0.18s ease, opacity 0.18s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .slide-next-enter-from {
-  transform: translateX(28px);
-  opacity: 0;
+  transform: translateX(100%);
 }
 
 .slide-next-leave-to {
-  transform: translateX(-28px);
-  opacity: 0;
+  transform: translateX(-100%);
 }
 
 .slide-prev-enter-from {
-  transform: translateX(-28px);
-  opacity: 0;
+  transform: translateX(-100%);
 }
 
 .slide-prev-leave-to {
-  transform: translateX(28px);
-  opacity: 0;
+  transform: translateX(100%);
 }
 
 .exercise-card-position {
@@ -2053,24 +2079,27 @@ async function handleResumeJustFinished() {
 
 @keyframes set-rows-slide-in-next {
   from {
-    transform: translateX(20px);
+    transform: translateX(36px);
     opacity: 0;
   }
 }
 
 @keyframes set-rows-slide-in-prev {
   from {
-    transform: translateX(-20px);
+    transform: translateX(-36px);
     opacity: 0;
   }
 }
 
+/* Same duration/easing as the exercise card's crossing slide above, so the
+   two read as one connected motion even though this panel animates in
+   place rather than crossing (see the comment above .set-rows-viewport). */
 .set-rows-panel-anim-next {
-  animation: set-rows-slide-in-next 0.22s ease;
+  animation: set-rows-slide-in-next 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .set-rows-panel-anim-prev {
-  animation: set-rows-slide-in-prev 0.22s ease;
+  animation: set-rows-slide-in-prev 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .set-rows {
