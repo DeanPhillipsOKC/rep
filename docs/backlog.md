@@ -23,15 +23,14 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Carry over RPE from the previous set when pre-filling a new set (ROI 3.00)
-2. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
-3. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
-4. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
-5. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-6. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
-7. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
-8. Remove JSON training data export (ROI 1.50)
-9. Show exercise-by-exercise history (ROI 1.00)
+1. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
+2. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
+3. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
+4. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
+5. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
+6. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
+7. Remove JSON training data export (ROI 1.50)
+8. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -83,17 +82,6 @@ implemented and were dropped rather than logged.
   with both short and long exercise names, and cover truncation + full-name accessibility (aria
   label or title) in Playwright/visual check.
   [Effort: 2, Value: 3, ROI: 1.50]
-
-- [ ] Carry over RPE from the previous set when pre-filling a new set — the active workout
-  logger's `applyPrefillToRow` (`WorkoutLogger.vue`) already seeds a new draft row's reps and
-  weight from the position-matching set logged last time, but leaves `rpe` at `null` and
-  `rpeOpen` at `false`, so a value entered for set N previously has no effect on the same set
-  position this session even though reps/weight do carry over. Seed `row.rpe` from the matching
-  previous set the same way reps/weight already are, and open the RPE field (`rpeOpen = true`)
-  when the seeded value is non-null so it's visible without an extra tap. Leave it untouched
-  (closed, `null`) when the previous set had no RPE recorded. Cover both cases — carried-over
-  value shown open, and no-prior-RPE staying closed — in Playwright.
-  [Effort: 1, Value: 3, ROI: 3.00]
 
 - [ ] Let an accidentally-finished workout be resumed instead of only starting a new one —
   reported from real use: tapping "Finish workout" (`WorkoutLogger.vue`'s `handleFinishClick`)

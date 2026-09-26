@@ -182,3 +182,72 @@ test('pre-fill: set position tracks across exercises logged in parallel', async 
   await expect(page.getByLabel('Reps')).toHaveValue('')
   await expect(page.getByLabel('Weight')).toHaveValue('')
 })
+
+// Covers docs/backlog.md item 1 (RPE carry-over): applyPrefillToRow already
+// seeds reps/weight from the position-matching previous set; RPE should
+// carry over the same way and open the RPE field automatically, but only
+// when the previous set actually had one recorded.
+test('pre-fill: RPE carries over from the previous set when present, stays closed when not', async ({
+  page,
+  stamp,
+}) => {
+  const withRpeName = `E2E Squat RPE ${stamp}`
+  const noRpeName = `E2E Deadlift RPE ${stamp}`
+  const templateName = `E2E RPE Day ${stamp}`
+
+  const userId = await signInAsTestUser(page)
+
+  const admin = getAdminClient()
+  const { data: withRpe } = await admin
+    .from('exercises')
+    .insert({ user_id: userId, name: withRpeName })
+    .select('id')
+    .single()
+  const { data: noRpe } = await admin
+    .from('exercises')
+    .insert({ user_id: userId, name: noRpeName })
+    .select('id')
+    .single()
+  const { data: template } = await admin
+    .from('workout_templates')
+    .insert({ user_id: userId, name: templateName })
+    .select('id')
+    .single()
+  await admin.from('workout_template_exercises').insert([
+    { template_id: template!.id, exercise_id: withRpe!.id, position: 0 },
+    { template_id: template!.id, exercise_id: noRpe!.id, position: 1 },
+  ])
+  const { data: workout } = await admin
+    .from('workouts')
+    .insert({ user_id: userId, template_id: template!.id })
+    .select('id')
+    .single()
+  await admin
+    .from('sets')
+    .insert({ workout_id: workout!.id, exercise_id: withRpe!.id, set_index: 0, reps: 5, weight: 200, weight_unit: 'lb', rpe: 8 })
+  await admin
+    .from('sets')
+    .insert({ workout_id: workout!.id, exercise_id: noRpe!.id, set_index: 0, reps: 5, weight: 225, weight_unit: 'lb' })
+
+  // Reload so the app's onMounted fetch picks up the seeded template — the
+  // initial navigation in signInAsTestUser happened before it existed.
+  await page.reload()
+
+  await page.getByRole('button', { name: templateName, exact: true }).click()
+  await page.getByRole('button', { name: 'Start workout' }).click()
+
+  // Previous set had an RPE: the field should already be open and seeded,
+  // no need to tap "+RPE" first.
+  await page.getByRole('button', { name: withRpeName, exact: true }).click()
+  await expect(page.getByLabel('Reps')).toHaveValue('5')
+  await expect(page.getByLabel('Weight')).toHaveValue('200')
+  await expect(page.getByRole('button', { name: '+RPE' })).not.toBeVisible()
+  await expect(page.getByLabel('RPE (optional)')).toHaveValue('8')
+
+  // Previous set had no RPE: stays closed behind the toggle, same as before.
+  await page.getByRole('button', { name: noRpeName, exact: true }).click()
+  await expect(page.getByLabel('Reps')).toHaveValue('5')
+  await expect(page.getByLabel('Weight')).toHaveValue('225')
+  await expect(page.getByRole('button', { name: '+RPE' })).toBeVisible()
+  await expect(page.getByLabel('RPE (optional)')).not.toBeVisible()
+})

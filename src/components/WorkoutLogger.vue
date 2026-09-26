@@ -260,10 +260,14 @@ function applyPrefillToRow(row: DraftRow, id: string, position: number) {
   if (!matchingSet) {
     row.reps = null
     row.weight = null
+    row.rpe = null
+    row.rpeOpen = false
     return
   }
   row.reps = matchingSet.reps
   row.weight = matchingSet.weight
+  row.rpe = matchingSet.rpe
+  row.rpeOpen = matchingSet.rpe !== null
 }
 
 // Lazily builds this exercise's row list the first time it's selected in
