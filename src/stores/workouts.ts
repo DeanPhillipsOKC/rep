@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
 import { findRecentPr, type RecentPr } from '../lib/progress'
 import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
+import type { ExerciseHistoryWorkout } from '../lib/exerciseHistory'
 import type { SetEntry, WeightUnit, WorkoutWithSets } from '../lib/types'
 
 // Recover-interrupted-workout item: the only local trace of "which workout
@@ -626,6 +627,55 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     return { error }
   }
 
+  // Backlog item 1: exercise-by-exercise history detail (ExerciseHistoryDetail.vue),
+  // opened from the Exercises tab and the active logger. Same query shape as
+  // fetchPreviousWorkout above (base table `workouts`, `sets!inner` embed) --
+  // ordering a base-table query by an embedded table's column (sets as the
+  // base table, ordering by the embedded workout's performed_at) silently
+  // failed to actually sort by it, so this goes through workouts instead,
+  // filtering the embedded sets down to just this exercise via
+  // `.eq('sets.exercise_id', ...)` (a `!inner` embed filter narrows the
+  // nested array itself, not just which parent rows qualify).
+  const exerciseHistory = ref<ExerciseHistoryWorkout[]>([])
+  const exerciseHistoryLoading = ref(false)
+  const exerciseHistoryError = ref('')
+
+  async function fetchExerciseHistory(exerciseId: string) {
+    exerciseHistoryLoading.value = true
+    exerciseHistoryError.value = ''
+
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('id, performed_at, sets!inner(id, reps, weight, weight_unit, rpe)')
+      .eq('sets.exercise_id', exerciseId)
+      .order('performed_at', { ascending: false })
+      .order('set_index', { foreignTable: 'sets', ascending: true })
+
+    if (error) {
+      exerciseHistoryError.value = error.message
+      exerciseHistoryLoading.value = false
+      return
+    }
+
+    type Row = {
+      id: string
+      performed_at: string
+      sets: { id: string; reps: number; weight: number; weight_unit: WeightUnit; rpe: number | null }[]
+    }
+
+    exerciseHistory.value = ((data ?? []) as unknown as Row[]).map((row) => ({
+      workoutId: row.id,
+      performedAt: row.performed_at,
+      sets: row.sets,
+    }))
+    exerciseHistoryLoading.value = false
+  }
+
+  function clearExerciseHistory() {
+    exerciseHistory.value = []
+    exerciseHistoryError.value = ''
+  }
+
   async function fetchHistory() {
     loading.value = true
     errorMessage.value = ''
@@ -657,6 +707,9 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     justFinishedWorkout,
     volumeHistory,
     volumeHistoryError,
+    exerciseHistory,
+    exerciseHistoryLoading,
+    exerciseHistoryError,
     newRecord,
     workoutsThisWeek,
     workoutDaysThisWeek,
@@ -681,6 +734,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     fetchPreviousWorkout,
     fetchTemplateVolumeHistory,
     clearVolumeHistory,
+    fetchExerciseHistory,
+    clearExerciseHistory,
     fetchProgressStats,
   }
 })

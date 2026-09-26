@@ -2,10 +2,15 @@
 import { onMounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
+import ExerciseHistoryDetail from './ExerciseHistoryDetail.vue'
 import type { Exercise } from '../lib/types'
 
 const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
+
+// Backlog item 1: id of the exercise whose history overlay is open, null
+// means none.
+const viewingHistoryFor = ref<string | null>(null)
 const name = ref('')
 const setupNotes = ref('')
 const restSeconds = ref<number | null>(null)
@@ -167,6 +172,17 @@ async function confirmDelete(id: string) {
             </div>
           </div>
           <div class="row-actions">
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="View exercise history"
+              @click="viewingHistoryFor = exercise.id"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7.5V12l3 2" />
+              </svg>
+            </button>
             <button type="button" class="icon-button" aria-label="Edit exercise" @click="startEditing(exercise)">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
@@ -227,6 +243,12 @@ async function confirmDelete(id: string) {
     <p v-if="!exercises.loading && exercises.activeExercises.length === 0" class="empty">
       No exercises yet. Add one above before logging a workout.
     </p>
+
+    <ExerciseHistoryDetail
+      v-if="viewingHistoryFor"
+      :exercise-id="viewingHistoryFor"
+      @dismiss="viewingHistoryFor = null"
+    />
   </div>
 </template>
 

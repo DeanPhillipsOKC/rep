@@ -5,6 +5,7 @@ import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
+import ExerciseHistoryDetail from './ExerciseHistoryDetail.vue'
 import RecordCelebration from './RecordCelebration.vue'
 import RestTimer from './RestTimer.vue'
 import VolumeChart from './VolumeChart.vue'
@@ -586,6 +587,11 @@ const selectedExerciseNotes = computed(() => {
   return exercises.exercises.find((e) => e.id === exerciseId.value)?.setup_notes ?? null
 })
 
+// Backlog item 1: id of the exercise whose history overlay is open, opened
+// from right where a set gets logged (same idea as selectedExerciseNotes
+// above) rather than requiring a trip to the Exercises tab mid-workout.
+const viewingHistoryFor = ref<string | null>(null)
+
 // Backlog item 6: post-workout volume-over-time chart. Captured before
 // finishWorkout() clears activeTemplateId/activeSets — a freeform workout
 // (no template) or a workout finished with zero sets logged (deleted by
@@ -856,6 +862,15 @@ async function handleResumeJustFinished() {
 
           <p v-if="selectedExerciseNotes" class="setup-notes">{{ selectedExerciseNotes }}</p>
 
+          <button
+            v-if="exerciseId"
+            type="button"
+            class="link-button history-link"
+            @click="viewingHistoryFor = exerciseId"
+          >
+            View exercise history
+          </button>
+
           <template v-if="exerciseId">
             <div class="unit-toggle" role="group" aria-label="Units">
               <button
@@ -1095,6 +1110,12 @@ async function handleResumeJustFinished() {
       @dismiss="skipRest"
       @minimize="restMinimized = true"
       @adjust="adjustRest"
+    />
+
+    <ExerciseHistoryDetail
+      v-if="viewingHistoryFor"
+      :exercise-id="viewingHistoryFor"
+      @dismiss="viewingHistoryFor = null"
     />
 
     <div v-if="activeRest && restMinimized" class="rest-mini-bar" role="status" aria-live="polite">
@@ -1395,6 +1416,12 @@ async function handleResumeJustFinished() {
   color: var(--accent);
   font: inherit;
   text-decoration: underline;
+}
+
+.history-link {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 0.85rem;
 }
 
 .empty {

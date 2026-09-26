@@ -23,10 +23,9 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Show exercise-by-exercise history (ROI 1.00)
-2. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
-3. Flaky click on "Start workout" in `volume-chart.spec.ts` (ROI 1.00)
-4. Flaky "exercise-row not visible" in `resume-after-finish.spec.ts` (ROI 1.00)
+1. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
+2. Flaky click on "Start workout" in `volume-chart.spec.ts` (ROI 1.00)
+3. Flaky "exercise-row not visible" in `resume-after-finish.spec.ts` (ROI 1.00)
 
 ## Features
 
@@ -39,18 +38,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Show exercise-by-exercise history — from the Exercises tab and the active logger, open a
-  focused detail view for one exercise with the latest workouts and sets in set order, including
-  date, reps, weight/unit, and optional RPE. Make the prior session easy to find while logging;
-  do not require scanning the entire workout History. Add one clearly labeled progress summary
-  (for example, heaviest completed set), calculated separately for lb and kg unless values are
-  converted correctly. Handle an exercise with no history and an archived exercise already in
-  past workouts. Keep the first version a readable list; a chart or extra metrics can follow only
-  if they answer a question the list cannot. Cover navigation, ordering, and mixed units in
-  Playwright. Fit the logger entry point to the compact set-row UI (item 1, shipped 2026-09-25,
-  `docs/backlog-archive.md`) now that it's the logger's entry form.
-  [Effort: 5, Value: 5, ROI: 1.00]
 
 ## Testing / tooling
 
