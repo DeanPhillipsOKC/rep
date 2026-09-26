@@ -193,28 +193,34 @@ function goToNextExercise() {
 
 // Real swipe support (not just the peek buttons/dots) via pointer events,
 // which unify touch/mouse/pen instead of needing separate touch handlers.
-// `setPointerCapture` keeps delivering move/up events to this element even
-// once the finger has moved outside its bounds mid-drag — without it, a
-// real swipe (which almost always drifts off the starting element) never
-// reaches `handleCardPointerUp` and only the on-screen prev/next buttons
-// end up doing anything. `.exercise-card`'s `touch-action: pan-y` (below)
-// is the other half of this: it stops the browser from treating a
-// horizontal drag as a page-scroll/navigation gesture before our own
-// handler ever sees it, while still letting a vertical drag scroll the page
-// normally.
+// Bound on the whole active-workout screen (not just the exercise card)
+// per the redesign follow-up -- a swipe starting anywhere over the set
+// rows, notes, etc. still moves the carousel, not just a drag confined to
+// the small card itself. `setPointerCapture` keeps delivering move/up
+// events to this element even once the finger has moved outside its bounds
+// mid-drag — without it, a real swipe (which almost always drifts off the
+// starting element) never reaches `handleWorkoutPointerUp` and only the
+// on-screen prev/next buttons end up doing anything. The screen's
+// `touch-action: pan-y` (below) is the other half of this: it stops the
+// browser from treating a horizontal drag as a page-scroll/navigation
+// gesture before our own handler ever sees it, while still letting a
+// vertical drag scroll the page normally.
 let dragStartX: number | null = null
 
-function handleCardPointerDown(event: PointerEvent) {
-  // A pointerdown starting on a button/link inside the card (e.g. "View
-  // exercise history") must not be captured here -- setPointerCapture on an
-  // ancestor redirects the browser's click-target hit-testing to the
-  // captured element, which silently swallowed that button's own click.
-  if ((event.target as HTMLElement).closest('button, a')) return
+function handleWorkoutPointerDown(event: PointerEvent) {
+  // A pointerdown starting on a button/link/form field (e.g. "View exercise
+  // history", a weight input, the lb/kg toggle) must not be captured here --
+  // setPointerCapture on an ancestor redirects the browser's click-target
+  // hit-testing to the captured element, which silently swallows that
+  // control's own click/focus.
+  if ((event.target as HTMLElement).closest('button, a, input, textarea, select')) return
+  // Nothing to swipe between with zero or one exercise in the deck.
+  if (workoutExerciseIds.value.length < 2) return
   dragStartX = event.clientX
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
-function handleCardPointerUp(event: PointerEvent) {
+function handleWorkoutPointerUp(event: PointerEvent) {
   if (dragStartX === null) return
   const delta = event.clientX - dragStartX
   dragStartX = null
@@ -907,7 +913,7 @@ async function handleResumeJustFinished() {
       </template>
     </template>
 
-    <div v-else>
+    <div v-else class="active-workout-screen" @pointerdown="handleWorkoutPointerDown" @pointerup="handleWorkoutPointerUp">
       <p v-if="exercises.activeExercises.length === 0" class="empty">
         No exercises yet. Add one under the Exercises tab first.
       </p>
@@ -946,12 +952,7 @@ async function handleResumeJustFinished() {
 
             <div class="exercise-card-viewport">
               <Transition :name="slideDirection >= 0 ? 'slide-next' : 'slide-prev'" mode="out-in">
-                <div
-                  :key="exerciseId"
-                  class="exercise-card"
-                  @pointerdown="handleCardPointerDown"
-                  @pointerup="handleCardPointerUp"
-                >
+                <div :key="exerciseId" class="exercise-card">
                   <span class="exercise-card-position">{{ currentExerciseIndex + 1 }} / {{ workoutExerciseIds.length }}</span>
                   <div class="exercise-card-name">{{ exerciseName(exerciseId) }}</div>
                   <p v-if="selectedExerciseNotes" class="setup-notes exercise-card-notes">{{ selectedExerciseNotes }}</p>
@@ -983,25 +984,34 @@ async function handleResumeJustFinished() {
         </div>
 
         <div v-if="exerciseId" class="card">
-          <div class="unit-toggle" role="group" aria-label="Units">
-            <button
-              type="button"
-              class="unit-btn"
-              :class="{ 'unit-selected': rowWeightUnit === 'lb' }"
-              :aria-pressed="rowWeightUnit === 'lb'"
-              @click="rowWeightUnit = 'lb'"
-            >
-              lb
-            </button>
-            <button
-              type="button"
-              class="unit-btn"
-              :class="{ 'unit-selected': rowWeightUnit === 'kg' }"
-              :aria-pressed="rowWeightUnit === 'kg'"
-              @click="rowWeightUnit = 'kg'"
-            >
-              kg
-            </button>
+          <div class="set-header-row">
+            <span class="set-header-number" aria-hidden="true">Set</span>
+            <span class="set-header-weight">
+              <span aria-hidden="true">Weight</span>
+              <span class="unit-toggle" role="group" aria-label="Units">
+                <button
+                  type="button"
+                  class="unit-btn"
+                  :class="{ 'unit-selected': rowWeightUnit === 'lb' }"
+                  :aria-pressed="rowWeightUnit === 'lb'"
+                  @click="rowWeightUnit = 'lb'"
+                >
+                  lb
+                </button>
+                <button
+                  type="button"
+                  class="unit-btn"
+                  :class="{ 'unit-selected': rowWeightUnit === 'kg' }"
+                  :aria-pressed="rowWeightUnit === 'kg'"
+                  @click="rowWeightUnit = 'kg'"
+                >
+                  kg
+                </button>
+              </span>
+            </span>
+            <span class="set-header-reps" aria-hidden="true">Reps</span>
+            <span class="set-header-rpe" aria-hidden="true">RPE</span>
+            <span class="set-header-spacer" aria-hidden="true"></span>
           </div>
 
           <ul class="set-rows">
@@ -1293,6 +1303,19 @@ async function handleResumeJustFinished() {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Redesign item 67 follow-up: the carousel's swipe gesture is bound here
+   (handleWorkoutPointerDown/Up in the script) rather than just on the
+   exercise card, so a drag starting anywhere over the set rows, notes, etc.
+   still moves the carousel -- not just one confined to the small card.
+   `touch-action: pan-y` keeps a vertical drag scrolling the page normally
+   while stopping the browser from treating a horizontal one as its own
+   scroll/navigation gesture before the pointer handlers see it. */
+.active-workout-screen {
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .elapsed-time {
@@ -1822,12 +1845,6 @@ async function handleResumeJustFinished() {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  /* Let a vertical drag still scroll the page, but keep a horizontal one
-     from being hijacked as browser scroll/navigation before our own
-     pointerdown/up swipe handlers (script above) see it. */
-  touch-action: pan-y;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 /* Redesign item 67 follow-up: swiping/tapping a dot used to swap the
@@ -1915,19 +1932,71 @@ async function handleResumeJustFinished() {
   border: 0;
 }
 
-/* Backlog item 1: compact numbered rows replacing the old one-set-at-a-time
-   form. Shared unit toggle sits once above the rows instead of repeating a
-   full-width lb/kg <select> on every one. */
+/* Redesign item 67 follow-up: column headers (Set/Weight/Reps/RPE) matching
+   the canvas mockup, so the compact single-line rows below aren't unlabeled
+   at a glance. Widths mirror the row fields' own widths (.set-row-number,
+   .set-field-reps/-rpe, .set-row-actions-compact) so the labels roughly line
+   up over their column, though pixel-perfect alignment isn't the point --
+   only .set-header-weight's text is aria-hidden (plus the other plain
+   labels); the nested unit-toggle group stays in the accessibility tree
+   since it's interactive. */
+.set-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 6px;
+}
+
+.set-header-row > span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.set-header-number {
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.set-header-weight {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.set-header-reps {
+  width: 44px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.set-header-rpe {
+  width: 34px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.set-header-spacer {
+  width: 56px;
+  flex-shrink: 0;
+}
+
+/* Backlog item 1: shared unit toggle drives every row's weight unit instead
+   of repeating a full-width lb/kg <select> on every one -- now embedded
+   inline in the header (above) next to the "Weight" label. */
 .unit-toggle {
   display: flex;
-  gap: 6px;
-  margin: 12px 0;
+  gap: 4px;
 }
 
 .unit-btn {
-  min-height: 36px;
-  padding: 0 16px;
-  font-size: 0.85rem;
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 0.62rem;
   background: var(--surface-2);
 }
 
