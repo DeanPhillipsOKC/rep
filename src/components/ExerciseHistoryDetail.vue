@@ -94,7 +94,7 @@ function formatDate(iso: string): string {
         No sets logged for this exercise yet.
       </p>
 
-      <ul class="history-list">
+      <ul v-if="!workout.exerciseHistoryLoading" class="history-list">
         <li v-for="entry in workout.exerciseHistory" :key="entry.workoutId" class="history-entry">
           <h3>{{ formatDate(entry.performedAt) }}</h3>
           <ol class="set-list">

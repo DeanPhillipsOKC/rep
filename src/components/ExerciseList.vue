@@ -162,7 +162,7 @@ async function confirmDelete(id: string) {
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     <SkeletonRows v-if="exercises.loading" :rows="3" />
 
-    <ul class="list">
+    <ul v-else class="list">
       <li v-for="exercise in exercises.activeExercises" :key="exercise.id" class="row-wrap">
         <div v-if="confirmingDeleteId !== exercise.id" class="row">
           <div>

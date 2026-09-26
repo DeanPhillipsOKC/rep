@@ -203,7 +203,7 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
     <p v-if="!showAddForm && errorMessage" class="error">{{ errorMessage }}</p>
     <SkeletonRows v-if="templates.loading" :rows="3" />
 
-    <ul class="list">
+    <ul v-else class="list">
       <li v-for="template in templates.activeTemplates" :key="template.id" class="row-wrap">
         <div v-if="confirmingArchiveId !== template.id" class="row" @click="toggleExpand(template.id)">
           <span

@@ -190,6 +190,20 @@ on something already shipped. New entries get appended here when an item is remo
   variant renders inside. Files: `src/components/FirstWorkoutCelebration.vue`,
   `src/components/WorkoutLogger.vue`, `e2e/volume-chart.spec.ts`, `e2e/resume-after-finish.spec.ts`.
   Verified via `npm run build` and a full `npm run test:e2e` run (55/55).
+- Fix the skeleton rows rendering alongside stale real rows on a re-fetch (item 73 follow-up,
+  2026-09-26 — user-reported, Templates tab): the previous item only gated `SkeletonRows` on each
+  store's `loading` flag and left the real `<ul>`/`<div class="timeline">` list unconditional, so
+  navigating away from a list screen and back (remounting the component and re-triggering its
+  fetch while the store still held the previous fetch's rows) showed the skeleton on top of the
+  stale real rows instead of replacing them — six rows on screen for Templates' three real +
+  three skeleton. `ExerciseList.vue` and `TemplateManager.vue` now use `v-else` on the list (the
+  skeleton and list are adjacent), and `WorkoutHistory.vue`/`ExerciseHistoryDetail.vue` (which have
+  error/empty-state `<p>` tags between the skeleton and the list) use an explicit
+  `v-if="!loading"` instead, since `v-else` requires the element to immediately follow. Extended
+  `e2e/loading-skeletons.spec.ts` with a regression test that seeds a template via the admin
+  client, navigates to Templates once (real data loads), navigates away and back with the
+  `workout_templates` GET delayed, and asserts the skeleton and the seeded template's name are
+  never both present. Verified via `npm run build` and a full `npm run test:e2e` run (57/57).
 - Replace bare "Loading…" text with branded skeleton rows (item 73, 2026-09-26): new shared
   `SkeletonRows.vue` renders 2-3 `row-wrap`-shaped placeholder cards (a wide title bar, a narrower
   subtext bar) with a `background-size: 200% 100%` shimmer sliding via `@keyframes`, tinted off

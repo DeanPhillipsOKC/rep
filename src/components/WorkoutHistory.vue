@@ -159,7 +159,7 @@ async function saveNotes(id: string) {
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     <p v-if="!workout.loading && workout.history.length === 0" class="empty">No workouts logged yet.</p>
 
-    <div class="timeline">
+    <div v-if="!workout.loading" class="timeline">
       <div v-for="(entry, index) in workout.history" :key="entry.id" class="timeline-row">
         <div class="rail">
           <span class="dot" :class="{ 'dot-pr': prWorkoutIds.has(entry.id) }"></span>
