@@ -8,7 +8,19 @@ import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 test('finishing a workout with no sets deletes the workout row', async ({ page, stamp }) => {
   const notes = `E2E zero-set ${stamp}`
 
-  await signInAsTestUser(page)
+  const admin = getAdminClient()
+
+  // The start-workout form (including the Notes field) only renders once the
+  // account has at least one active exercise (docs/backlog-archive.md item
+  // 27's zero-exercise welcome card) — this test doesn't care which
+  // exercise, just that the account isn't empty, so seed a throwaway one
+  // directly via the admin client (item 57's pattern) instead of driving the
+  // Exercises UI just to get past the welcome screen.
+  await signInAsTestUser(page, {
+    beforeNavigate: async (userId) => {
+      await admin.from('exercises').insert({ user_id: userId, name: `E2E Baseline ${stamp}` })
+    },
+  })
 
   await page.getByLabel('Notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Freeform' }).click()
@@ -22,7 +34,6 @@ test('finishing a workout with no sets deletes the workout row', async ({ page, 
 
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
 
-  const admin = getAdminClient()
   const { data, error } = await admin.from('workouts').select('id').eq('notes', notes)
   expect(error).toBeNull()
   expect(data).toEqual([])

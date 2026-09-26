@@ -7,8 +7,20 @@ import { mintTestSession } from '../../scripts/lib/mint-test-session.mjs'
 // test account's user id so specs that need to seed rows directly via the
 // admin client (rather than driving the UI just to set up fixture state)
 // don't have to mint a second session to learn it.
-export async function signInAsTestUser(page: Page) {
+//
+// `beforeNavigate`, if given, runs after the session is minted (so it has
+// the user id) but before the one and only `page.goto('/')` — for seeding
+// rows that must exist at the app's first mount. Seeding *after* navigating
+// instead (via a second `page.reload()`) would leave two overlapping
+// `fetchProgressStats()`-style onMounted fetches in flight; whichever
+// resolves last wins the Pinia store write regardless of which was issued
+// more recently, which silently reintroduced a stale "this week" count in
+// e2e/progress-strip.spec.ts when first tried this way (docs/backlog.md
+// item 58).
+export async function signInAsTestUser(page: Page, options?: { beforeNavigate?: (userId: string) => Promise<void> }) {
   const { storageKey, session } = await mintTestSession()
+
+  if (options?.beforeNavigate) await options.beforeNavigate(session.user.id)
 
   await page.addInitScript(
     ([key, value]) => {

@@ -2,6 +2,20 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
+
+// This spec predates the "resume after finish" item (docs/backlog-archive.md,
+// "Let an accidentally-finished workout be resumed..."): finishing a freeform
+// workout with at least one set now shows a "Resume your workout?" card
+// immediately, covering the whole Home screen — including the progress strip
+// this spec reads — until dismissed. Two earlier next-item runs hit exactly
+// this and misdiagnosed it as the already-tracked shared-account row-leak
+// flake (matching counts only by coincidence, since both grow over time);
+// it's really this card, confirmed by reproducing with diagnostics that
+// showed the stat tile disappearing from the DOM entirely once the card
+// finishes rendering. Non-destructively dismissed below via "Start a new
+// workout", the same button e2e/resume-after-finish.spec.ts's freeform case
+// uses.
 
 // Covers docs/backlog.md item 19: Log home screen's progress strip. Reads
 // the "workouts this week" tile before/after so the test doesn't depend on
@@ -14,7 +28,25 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
 }) => {
   const exerciseName = `E2E Deadlift ${stamp}`
 
-  await signInAsTestUser(page)
+  const admin = getAdminClient()
+
+  // The progress strip and the start-workout form both only render once the
+  // account has at least one active exercise (docs/backlog-archive.md item
+  // 27's zero-exercise welcome card) — seed a throwaway one directly via the
+  // admin client (item 57's pattern) so this test's own before/after tile
+  // reads aren't gated behind creating `exerciseName` first. Seeded via
+  // signInAsTestUser's beforeNavigate hook (rather than seed-then-reload) so
+  // there's only ever one onMounted fetchProgressStats() call — two calls
+  // across two mounts can resolve out of order and silently overwrite the
+  // fresher "this week" count with the stale one, which is exactly what
+  // broke this test's own before/after comparison the first time this fix
+  // was tried with a reload (docs/backlog.md item 58).
+  await signInAsTestUser(page, {
+    beforeNavigate: async (userId) => {
+      await admin.from('exercises').insert({ user_id: userId, name: `E2E Baseline ${stamp}` })
+    },
+  })
+
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
   // fetchProgressStats() (workouts.ts) runs in the background from onMounted
   // alongside the exercises/templates fetches — wait for it to land instead
@@ -38,6 +70,11 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
   await dismissCelebrationIfShown(page)
   await expect(page.locator('.row', { hasText: exerciseName })).toHaveCount(1)
   await page.getByRole('button', { name: 'Finish workout' }).click()
+
+  // Freeform + at least one set means the "Resume your workout?" offer
+  // appears right away, covering the progress strip until dismissed.
+  await expect(page.locator('.card', { hasText: 'Resume your workout?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Start a new workout' }).click()
 
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
   await expect(page.locator('.stat-tile').first().locator('.stat-value')).toHaveText(String(weekCountBefore + 1))

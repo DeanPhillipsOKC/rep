@@ -23,9 +23,9 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
-2. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
-3. Remove JSON training data export (ROI 1.50)
+1. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
+2. Remove JSON training data export (ROI 1.50)
+3. Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check (ROI 1.33)
 4. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
@@ -81,25 +81,28 @@ implemented and were dropped rather than logged.
 
 ## Testing / tooling
 
-- [ ] E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (item 57,
-  `docs/backlog-archive.md`) — measured today, same day the shared test account was last wiped to
-  zero (item 56 follow-up): `npm run check:e2e-leaks` currently reports 176 leftover `exercises`,
-  61 `workout_templates`, and 7 `workouts` rows, all `E2E <thing> <stamp>`-named. This is the exact
-  row-cap flakiness mechanism item 56 root-caused before (Supabase/PostgREST's 1000-row default
-  page size silently truncating an unbounded `.select()`), regrowing. Ruled out: every spec that
-  creates stamped data already imports `./fixtures/cleanup` (checked all 30 specs directly), so
-  this isn't a spec that skipped the fixture. Leading hypothesis, not yet confirmed: the cleanup
-  fixture's teardown only runs when a test finishes normally (pass or fail) — it can't run if the
-  whole `npm run test:e2e` process is killed or times out mid-run, which is plausible given how
-  many `next-item`/`Run-Backlog.ps1` gate iterations ran today (a hung or interrupted gate check
-  would permanently leak that run's rows). Confirm the hypothesis (e.g. forcibly kill a
-  `playwright test` run mid-spec and check whether its stamped rows survive), then add a
-  structural fix that doesn't depend on graceful teardown — e.g. a standalone sweep (reusing
-  `scripts/lib/mint-test-session.mjs`'s admin client) that deletes any `E2E`-stamped row older than
-  some threshold (an hour+, well past any single test run), run periodically or as a
-  `next-item`/`Run-Backlog.ps1` precondition. `npm run wipe:account` remains the human-run full
-  reset for existing bloat in the meantime.
-  [Effort: 3, Value: 5, ROI: 1.67]
+- [ ] Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check —
+  found while confirming a since-shipped fix's kill-mid-run hypothesis (e2e-stamped-row cleanup
+  resilience, `docs/backlog-archive.md`): a query for `workouts` with no `notes`, no `template_id`,
+  and no `sets` turned up 116 rows on the shared test account spanning the entire day (13:09
+  through the current run), well before this session started. Root cause: some specs (confirmed:
+  `exercise-notes.spec.ts`) start a freeform workout via the UI to reach a later assertion (e.g.
+  checking setup notes render while logging) but never call Finish or Discard, so the `workouts`
+  row — created with `notes: null`, no template — persists forever. Neither
+  `scripts/check-e2e-leaks.mjs` nor `scripts/sweep-stale-e2e-rows.mjs` (both from that same fix)
+  can see these: both key off an `E2E`-tagged `name`/`notes` string, and these rows have neither.
+  Not urgent (116 rows in a day is nowhere near PostgREST's 1000-row truncation point, and they
+  don't affect any current test's assertions — verified while fixing 5 unrelated specs that broke
+  when the *other* leak category was swept to zero for the first time), but the same
+  silent-accumulation mechanism given enough time. Fix options: (a) audit specs that start a
+  workout and add a Finish+Discard/Finish+set at the end, mirroring `docs/backlog-archive.md` item
+  56's fix to `archived-template-exercise.spec.ts` for the same pattern; or (b) extend the sweep
+  script with a *second*, narrowly-scoped pass that deletes `workouts` with no notes/template/sets,
+  older than the same threshold, filtered to the test account's own `user_id` specifically (never a
+  blanket `notes IS NULL` sweep — that shape of row is exactly what a real pilot user's
+  abandoned-mid-workout freeform session looks like too, and must never be touched). Left uncleaned
+  for now rather than bulk-deleting 116 rows via an ad hoc script outside reviewable tooling.
+  [Effort: 3, Value: 4, ROI: 1.33]
 
 ## Human setup / device verification
 

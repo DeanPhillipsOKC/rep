@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 
 // Covers docs/backlog.md's "Recover an interrupted workout after reload"
 // item: activeWorkoutId/activeSets used to live only in the Pinia store, so
@@ -159,9 +160,29 @@ test('resume workout: Discard on a recovered workout requires confirmation and r
   await expect(page.getByRole('heading', { name: 'Resume your workout?' })).toHaveCount(0)
 })
 
-test('resume workout: a stale local reference (deleted or foreign row) is silently dropped', async ({ page }) => {
-  await signInAsTestUser(page)
+test('resume workout: a stale local reference (deleted or foreign row) is silently dropped', async ({
+  page,
+  stamp,
+}) => {
+  const admin = getAdminClient()
 
+  // The start-workout form only renders once the account has at least one
+  // active exercise (docs/backlog-archive.md item 27's zero-exercise welcome
+  // card) — this test only exercises the stale-reference-drop path, so seed
+  // a throwaway exercise directly via the admin client (item 57's pattern)
+  // rather than creating one through the UI just to get past the welcome
+  // screen. Seeded via signInAsTestUser's beforeNavigate hook rather than
+  // seed-then-reload, which can leave two competing onMounted fetches racing
+  // each other (docs/backlog.md item 58).
+  await signInAsTestUser(page, {
+    beforeNavigate: async (userId) => {
+      await admin.from('exercises').insert({ user_id: userId, name: `E2E Baseline ${stamp}` })
+    },
+  })
+
+  // The stale-reference tamper still needs its own reload — checkForRecoverableWorkout()
+  // only runs on the auth transition/mount, so setting this after the app has
+  // already mounted needs a fresh mount to actually exercise it.
   await page.evaluate(() => {
     localStorage.setItem('repbunny-active-workout-id', '00000000-0000-0000-0000-000000000000')
   })

@@ -11,6 +11,7 @@
     "test:session": "node scripts/create-test-session.mjs",
     "wipe:account": "node scripts/wipe-account-data.mjs",
     "check:e2e-leaks": "node scripts/check-e2e-leaks.mjs",
+    "sweep:e2e-stale": "node scripts/sweep-stale-e2e-rows.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

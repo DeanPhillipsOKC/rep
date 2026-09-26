@@ -76,6 +76,18 @@ if ((& git @gitArgs status --porcelain)) {
     exit 1
 }
 
+# Precondition, not a gate (item 58, docs/backlog-archive.md): sweep any
+# E2E-stamped rows whose per-test cleanup fixture never got to run (e.g. a
+# prior iteration's gate check hanging or getting killed mid-run) before
+# starting a run that's about to do many more full `npm run test:e2e` passes
+# and risk the same thing. Best-effort — a failure here (e.g. no
+# SUPABASE_SERVICE_ROLE_KEY set) is logged and never blocks the run.
+try {
+    & node (Join-Path $PSScriptRoot 'sweep-stale-e2e-rows.mjs')
+} catch {
+    Write-Host "Run-Backlog.ps1: sweep-stale-e2e-rows.mjs failed (non-blocking): $_"
+}
+
 $logDir = Join-Path $RepoRoot 'logs'
 if (-not (Test-Path $logDir)) {
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null

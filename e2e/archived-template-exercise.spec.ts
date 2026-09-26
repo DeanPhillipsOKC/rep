@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 
 // Covers docs/backlog.md item 25: archiving an exercise only flips
 // exercises.is_archived, it never touches workout_template_exercises, so an
@@ -10,7 +11,23 @@ test('archived exercise stops appearing in a template it is still attached to', 
   const exerciseName = `E2E Archived ${stamp}`
   const templateName = `E2E Push Day ${stamp}`
 
-  await signInAsTestUser(page)
+  const admin = getAdminClient()
+
+  // This test deletes (archives) its own only exercise partway through —
+  // without a second, still-active exercise on the account, that leaves
+  // exercises.activeExercises at zero, which flips WorkoutLogger.vue over to
+  // its zero-exercise welcome card (docs/backlog-archive.md item 27) and
+  // pulls the Home screen's template chips out from under the later steps
+  // below. Seed a throwaway second exercise directly via the admin client
+  // (item 57's pattern) so archiving `exerciseName` never zeroes the count.
+  // Seeded via signInAsTestUser's beforeNavigate hook rather than
+  // seed-then-reload, which can leave two competing onMounted fetches racing
+  // each other (docs/backlog.md item 58).
+  await signInAsTestUser(page, {
+    beforeNavigate: async (userId) => {
+      await admin.from('exercises').insert({ user_id: userId, name: `E2E Baseline ${stamp}` })
+    },
+  })
 
   await goTo(page, 'Exercises')
   await page.getByLabel('Name').fill(exerciseName)

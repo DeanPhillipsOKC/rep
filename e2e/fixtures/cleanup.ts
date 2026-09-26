@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test'
-import { getAdminClient } from '../../scripts/lib/mint-test-session.mjs'
+import { cleanupStamp } from '../../scripts/lib/cleanup-e2e-stamp.mjs'
 
 // Backlog item 57: every spec stamps the entities it creates with a unique
 // `E2E <thing> <stamp>` name so runs don't collide, but nothing ever deleted
@@ -10,9 +10,12 @@ import { getAdminClient } from '../../scripts/lib/mint-test-session.mjs'
 // done with it, deletes everything the stamp touched via the admin client
 // (RLS is bypassed on purpose here — same trust level as session minting).
 //
-// Deletion order matters: workouts first (cascades sets), then templates
-// (cascades workout_template_exercises), then exercises last, since
-// FK constraints only cascade in that direction.
+// The actual deletion logic lives in scripts/lib/cleanup-e2e-stamp.mjs so it
+// can be shared with scripts/sweep-stale-e2e-rows.mjs (item 58), which catches
+// stamps whose teardown here never got to run at all — e.g. the whole
+// `playwright test` process being killed or timing out mid-run, which this
+// fixture has no way to guard against since it only runs as part of a test
+// that completes (pass or fail).
 export const test = base.extend<{ stamp: number }>({
   stamp: async ({}, use) => {
     const stamp = Date.now() + Math.floor(Math.random() * 1000)
@@ -22,42 +25,3 @@ export const test = base.extend<{ stamp: number }>({
 })
 
 export { expect }
-
-async function cleanupStamp(stamp: number) {
-  const admin = getAdminClient()
-  const pattern = `%${stamp}%`
-
-  const { data: exerciseRows } = await admin.from('exercises').select('id').ilike('name', pattern)
-  const exerciseIds = (exerciseRows ?? []).map((r) => r.id)
-
-  const { data: templateRows } = await admin
-    .from('workout_templates')
-    .select('id')
-    .ilike('name', pattern)
-  const templateIds = (templateRows ?? []).map((r) => r.id)
-
-  const workoutIds = new Set<string>()
-
-  if (exerciseIds.length) {
-    const { data: setRows } = await admin.from('sets').select('workout_id').in('exercise_id', exerciseIds)
-    for (const row of setRows ?? []) workoutIds.add(row.workout_id)
-  }
-  if (templateIds.length) {
-    const { data: workoutRows } = await admin.from('workouts').select('id').in('template_id', templateIds)
-    for (const row of workoutRows ?? []) workoutIds.add(row.id)
-  }
-  // Some specs (e.g. zero-set-cleanup, workout-header's freeform case) stamp
-  // a freeform workout's notes instead of/alongside a template or exercise.
-  const { data: notedWorkoutRows } = await admin.from('workouts').select('id').ilike('notes', pattern)
-  for (const row of notedWorkoutRows ?? []) workoutIds.add(row.id)
-
-  if (workoutIds.size) {
-    await admin.from('workouts').delete().in('id', [...workoutIds])
-  }
-  if (templateIds.length) {
-    await admin.from('workout_templates').delete().in('id', templateIds)
-  }
-  if (exerciseIds.length) {
-    await admin.from('exercises').delete().in('id', exerciseIds)
-  }
-}

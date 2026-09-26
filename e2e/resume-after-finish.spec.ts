@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 
 // Covers docs/backlog.md's "Let an accidentally-finished workout be resumed"
 // item: tapping "Finish workout" used to be a one-way door the moment any
@@ -124,7 +125,22 @@ test('resume after finish: templated workout offers resume after the volume char
 test('resume after finish: finishing with no sets logged does not offer to resume', async ({ page, stamp }) => {
   const templateName = `E2E ResumeFinish Empty ${stamp}`
 
-  await signInAsTestUser(page)
+  const admin = getAdminClient()
+
+  // The start-workout form (including the template chips this test needs)
+  // only renders once the account has at least one active exercise
+  // (docs/backlog-archive.md item 27's zero-exercise welcome card) — this
+  // test only exercises the template/resume path, so seed a throwaway
+  // exercise directly via the admin client (item 57's pattern) rather than
+  // creating one through the UI just to get past the welcome screen. Seeded
+  // via signInAsTestUser's beforeNavigate hook rather than seed-then-reload,
+  // which can leave two competing onMounted fetches racing each other
+  // (docs/backlog.md item 58).
+  await signInAsTestUser(page, {
+    beforeNavigate: async (userId) => {
+      await admin.from('exercises').insert({ user_id: userId, name: `E2E Baseline ${stamp}` })
+    },
+  })
 
   await goTo(page, 'Templates')
   await page.getByRole('button', { name: 'Add template' }).click()
