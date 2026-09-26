@@ -86,7 +86,10 @@ volume. All five need the SQL in the **[human]** "Apply load-type / body-weight 
 *Human setup* applied to the live DB first, hence `Status: blocked` on each; once the user has run
 it, remove the Status from all five. Document order below is also dependency order (76 and 77
 before 78-80), and equal ROI/tie-break on Value/document order makes the runner take them in
-that order. Decisions already made with the user, don't relitigate:
+that order. **Design source:** private canvas mockup at
+https://claude.ai/artifact/KKgHc6kBSGawfboGGE2TMd (2026-09-26; artboard titles name the item each
+frame belongs to). Match its layout, copy, and set-label formats unless the item text says
+otherwise. Decisions already made with the user, don't relitigate:
 - Level exercises are **excluded from volume entirely** (difficulty levels aren't linear, so no
   "each level ≈ X lb" scale factor). They still get per-exercise progress and PRs.
 - Levels are whole numbers (every machine the user has seen); revisit only if one turns up that isn't.
@@ -109,8 +112,8 @@ that order. Decisions already made with the user, don't relitigate:
   the types in `src/lib/types.ts`. For a `level` exercise, `WorkoutLogger.vue`'s set form shows a
   whole-number "Level" stepper instead of weight + lb/kg; the set saves `level = N`, `weight = 0`
   (the existing `weight not null` constraint stays). Same substitution in the set edit forms (active
-  workout and `WorkoutHistory.vue`) and anywhere a set is rendered ("12 reps · Level 3", not
-  "12 × 0 lb"). Volume: `src/lib/volume.ts` (`computeVolumeHistory`, both the `actual` sum and the
+  workout and `WorkoutHistory.vue`) and anywhere a set is rendered ("12 × Level 3", not
+  "12 × 0lb"). Volume: `src/lib/volume.ts` (`computeVolumeHistory`, both the `actual` sum and the
   per-template-exercise carry-forward) and `src/lib/progress.ts` must skip level sets entirely,
   not count them as 0 (a 0 would make a level-only workout look like a volume collapse, and a
   template exercise that's level-typed must not be treated as "skipped" for projection). PRs
@@ -165,7 +168,7 @@ that order. Decisions already made with the user, don't relitigate:
   every device) and the modal never opens for this reason again; item 77's Body screen gets a
   toggle to turn the prompt back on. Share this trigger logic with item 79 (one composable), don't
   duplicate it. PRs use effective-load volume when body weight is known, otherwise most reps (with
-  added weight as tiebreak). Set rendering: "12 reps · bodyweight" or "8 reps · BW + 25 lb". Unhide
+  added weight as tiebreak). Set rendering: "10 × BW" or "8 × BW + 25 lb". Unhide
   the Bodyweight option in item 76's picker. Extend e2e. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
 - [ ] "Assisted" load type (item 79, 2026-09-26, depends on items 76 and 77): counterweighted
@@ -176,7 +179,7 @@ that order. Decisions already made with the user, don't relitigate:
   "Don't ask again" opt-out). PRs run **inverted** when body weight is unknown: less assist beats
   more, ties broken by more reps; with body weight known, compare effective-load volume. Progress/history
   views must not show a rising assist number as improvement: check `ExerciseHistoryDetail.vue` and
-  `exerciseHistory.ts` for any "heavier is better" assumptions. Set rendering: "10 reps · 40 lb
+  `exerciseHistory.ts` for any "heavier is better" assumptions. Set rendering: "10 × 40 lb
   assist". Unhide the Assisted option in item 76's picker. Extend e2e.
   [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
