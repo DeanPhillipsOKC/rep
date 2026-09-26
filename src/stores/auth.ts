@@ -14,6 +14,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isSignedIn = computed(() => session.value !== null)
 
+  // Item 84: bumped only when the signed-in identity itself changes (sign
+  // out, sign in, or switching accounts on the same device) — not on a
+  // same-user TOKEN_REFRESHED. Account-scoped fetches that are still in
+  // flight when this happens (e.g. workouts.ts's fetchProgressStats,
+  // triggered by the previous account's Home mount) capture the epoch
+  // before their await and discard their result if it's since moved on,
+  // so a slow response from the old account can't land on top of the new
+  // one's freshly-fetched (and correctly empty) data.
+  const sessionEpoch = ref(0)
+  let lastUserId: string | null = null
+
   async function refreshPasskeyStatus() {
     if (!session.value) {
       hasPasskey.value = false
@@ -34,11 +45,17 @@ export const useAuthStore = defineStore('auth', () => {
   async function init() {
     const { data } = await supabase.auth.getSession()
     session.value = data.session
+    lastUserId = data.session?.user.id ?? null
     await ensureProfile()
     await refreshPasskeyStatus()
     loading.value = false
 
     supabase.auth.onAuthStateChange((_event, newSession) => {
+      const newUserId = newSession?.user.id ?? null
+      if (newUserId !== lastUserId) {
+        sessionEpoch.value += 1
+        lastUserId = newUserId
+      }
       session.value = newSession
       ensureProfile()
       refreshPasskeyStatus()
@@ -75,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     hasPasskey,
     isSignedIn,
+    sessionEpoch,
     init,
     sendMagicLink,
     registerPasskey,

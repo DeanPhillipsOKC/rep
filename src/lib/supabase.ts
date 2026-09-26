@@ -16,3 +16,16 @@ export const supabase = createClient(
     },
   }
 )
+
+// Item 84: lets the e2e suite (e2e/cross-account-switch.spec.ts) call
+// `supabase.auth.setSession()` to swap the signed-in identity in place,
+// mid-SPA-lifetime, the same way a real passkey sign-in does internally —
+// there's no user-facing passkey to drive in a headless browser, and a
+// page.goto/reload to simulate the switch would reset every Pinia store on
+// its own, defeating the point of a test for a same-session account-switch
+// bug. `import.meta.env.DEV` is compiled away by Vite's production build
+// (`npm run build`); only `npm run dev`, which the e2e webServer runs, has
+// it true, so this never exists outside a local/CI test run.
+if (import.meta.env.DEV) {
+  (window as unknown as { __e2eSupabase?: typeof supabase }).__e2eSupabase = supabase
+}

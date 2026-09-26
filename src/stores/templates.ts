@@ -156,6 +156,18 @@ export const useTemplatesStore = defineStore('templates', () => {
     return { error }
   }
 
+  // Item 84: sign-out (AuthGate.vue) — same app-lifetime-singleton concern
+  // as exercises.ts's resetExercisesState. TemplateManager.vue's own mount
+  // fetch is unconditional, but WorkoutLogger.vue's exercisesByTemplate
+  // reads for the active template aren't refetched on their own, so a
+  // stale entry from the previous account could otherwise surface there.
+  function resetTemplatesState() {
+    templates.value = []
+    exercisesByTemplate.value = {}
+    exercisesVersion.value = {}
+    errorMessage.value = ''
+  }
+
   return {
     templates,
     activeTemplates,
@@ -170,5 +182,6 @@ export const useTemplatesStore = defineStore('templates', () => {
     updateTemplateExercise,
     removeExerciseFromTemplate,
     moveExercise,
+    resetTemplatesState,
   }
 })

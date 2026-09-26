@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useExercisesStore } from '../stores/exercises'
+import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
 import LoginForm from './LoginForm.vue'
 import OnboardingScreen from './OnboardingScreen.vue'
@@ -20,6 +22,8 @@ const LOADING_CAPTIONS = [
 
 const auth = useAuthStore()
 const workout = useWorkoutsStore()
+const exercises = useExercisesStore()
+const templates = useTemplatesStore()
 const hasSeenOnboarding = ref(localStorage.getItem(ONBOARDING_SEEN_KEY) === '1')
 const captionIndex = ref(0)
 let captionTimer: ReturnType<typeof setInterval> | undefined
@@ -34,11 +38,22 @@ let captionTimer: ReturnType<typeof setInterval> | undefined
 // auth.init() resolves, and firing resetActiveWorkoutState() on that first
 // tick would clear the persisted reference before the real, post-init
 // sign-in transition ever gets a chance to check it.
+// Item 84: the sign-out branch also clears exercises/templates, and
+// resetActiveWorkoutState() itself now clears workouts.ts's own read caches
+// (history, progress stats, exercise history) — none of that is
+// re-fetched-on-empty the way exercises/templates are on their own screens,
+// so left alone it would surface the previous account's real data on this
+// device instead of the newly-signed-in account's (correctly empty) data.
 watch(
   () => auth.isSignedIn,
   (signedIn) => {
-    if (signedIn) workout.checkForRecoverableWorkout()
-    else workout.resetActiveWorkoutState()
+    if (signedIn) {
+      workout.checkForRecoverableWorkout()
+    } else {
+      workout.resetActiveWorkoutState()
+      exercises.resetExercisesState()
+      templates.resetTemplatesState()
+    }
   },
 )
 

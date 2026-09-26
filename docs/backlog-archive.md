@@ -279,3 +279,33 @@ on something already shipped. New entries get appended here when an item is remo
   `npm run build` and a full `npm run test:e2e` run (59/59; one spec unrelated to this change needed
   its already-configured retry once, matching the documented worker-contention flake pattern, not a
   new one).
+- Fix stale/cross-account data flash on Home after switching accounts on the same device (item 84,
+  2026-09-26): root-caused (confirmed by deliberately disabling the new guard below and watching the
+  regression spec fail with the shared test account's real weekly count) to `fetchProgressStats`
+  (`stores/workouts.ts`) having no protection against its own response landing after a newer
+  account's — exactly the "two overlapping onMounted fetches can resolve out of order" hazard
+  `e2e/fixtures/auth.ts`'s `beforeNavigate` doc comment already flags for this same function (see
+  item 58 below). Two changes: (1) `stores/auth.ts` gained `sessionEpoch`, bumped only when the
+  signed-in *identity* changes (sign-out, sign-in, or an account switch — not a same-user
+  `TOKEN_REFRESHED`), which `fetchProgressStats` now captures before its awaits and checks after
+  each one, discarding its result if the epoch moved on while it was in flight. (2)
+  `resetActiveWorkoutState` (`stores/workouts.ts`, called from `AuthGate.vue`'s sign-out watcher)
+  now also clears `history`, `workoutsThisWeek`, `workoutDaysThisWeek`, `recentPr`,
+  `exerciseHistory`, `volumeHistory`, `recentlyLoggedExerciseIds`, and `bestMarkerCache` — none of
+  which it touched before — and two new store actions, `exercises.ts`'s `resetExercisesState` and
+  `templates.ts`'s `resetTemplatesState`, are called alongside it, since those stores are also
+  app-lifetime singletons in this SPA with no full reload on sign-out. `scripts/lib/mint-test-session.mjs`
+  gained `mintSessionForEmail` (extracted from `mintTestSession`) and `deriveSecondaryEmail`, so a
+  spec can mint a one-off second test identity distinct from a worker's own dedicated account.
+  `src/lib/supabase.ts` exposes the client as `window.__e2eSupabase` under `import.meta.env.DEV`
+  only (compiled away by `npm run build`), letting the new e2e spec swap the signed-in session via
+  `setSession()` mid-SPA-lifetime the way a real passkey sign-in does, without a page reload (which
+  would reset every Pinia store on its own and defeat the point of a same-session test). Added
+  `e2e/cross-account-switch.spec.ts`: gates the first account's progress-stats fetch in flight,
+  switches to a second, freshly-minted account with a seeded exercise, confirms its Home shows the
+  correct empty stat before releasing the gate, then confirms releasing it doesn't overwrite that
+  with the first account's real data; deletes the synthetic second account's exercises/profile/auth
+  user in a `finally` block so this one-off identity doesn't accumulate run over run. Verified via
+  `npm run build` and a full `npm run test:e2e` run (60/60; one unrelated spec,
+  `delete-workout.spec.ts`, needed its already-configured retry once, matching the documented
+  worker-contention flake pattern, not a new one).

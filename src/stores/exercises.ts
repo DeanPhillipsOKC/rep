@@ -94,6 +94,17 @@ export const useExercisesStore = defineStore('exercises', () => {
     return !error && (count ?? 0) > 0
   }
 
+  // Item 84: sign-out (AuthGate.vue) — this store is an app-lifetime
+  // singleton in this SPA, so without clearing it a second account signing
+  // in on the same device would see the first account's exercise catalog
+  // until fetchExercises happened to run again, and WorkoutLogger.vue's
+  // mount guard (`if (exercises.exercises.length === 0)`) would skip that
+  // refetch entirely since the stale array isn't empty.
+  function resetExercisesState() {
+    exercises.value = []
+    errorMessage.value = ''
+  }
+
   return {
     exercises,
     activeExercises,
@@ -104,5 +115,6 @@ export const useExercisesStore = defineStore('exercises', () => {
     archiveExercise,
     updateExercise,
     hasLoggedSets,
+    resetExercisesState,
   }
 })

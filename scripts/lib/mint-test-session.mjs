@@ -72,6 +72,24 @@ function deriveWorkerEmail(baseEmail) {
   return `${baseEmail.slice(0, at)}+e2e-w${parallelIndex}${baseEmail.slice(at)}`
 }
 
+// Item 84: a one-off second identity for specs that need to reproduce an
+// actual account switch, distinct from the per-worker account above (which
+// is reused run over run, not meant to be swapped away from mid-test). Same
+// plus-addressing trick; `suffix` is the caller's to make unique (e.g. the
+// cleanup fixture's stamp) so concurrent runs/workers never collide. Kept in
+// this module (rather than inline in the spec) so the `.ts` spec doesn't
+// need its own `process.env`/Node typing.
+export function deriveSecondaryEmail(suffix) {
+  loadEnvLocal()
+  const testEmail = process.env.TEST_ACCOUNT_EMAIL
+  if (!testEmail) {
+    throw new Error('TEST_ACCOUNT_EMAIL is not set.')
+  }
+  const at = testEmail.indexOf('@')
+  if (at === -1) return testEmail
+  return `${testEmail.slice(0, at)}+${suffix}${testEmail.slice(at)}`
+}
+
 const isRateLimited = (message) => /rate limit/i.test(message ?? '')
 
 function sleep(ms) {
@@ -96,31 +114,28 @@ async function withRateLimitRetry(label, fn) {
   }
 }
 
-export async function mintTestSession() {
+// Item 84's cross-account e2e spec needs a *second*, genuinely distinct test
+// identity on demand (not just this worker's own dedicated account) to
+// reproduce a same-device account switch — split out from mintTestSession so
+// it can mint one for an arbitrary plus-addressed email without duplicating
+// the generateLink/verifyOtp plumbing. Still refuses either real allowlisted
+// account, same as mintTestSession itself.
+export async function mintSessionForEmail(email) {
   loadEnvLocal()
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY
-  const testEmail = process.env.TEST_ACCOUNT_EMAIL
 
   if (!supabaseUrl) throw new Error('SUPABASE_URL (or VITE_SUPABASE_URL) is not set.')
   if (!anonKey) throw new Error('VITE_SUPABASE_ANON_KEY is not set.')
-  if (!testEmail) {
-    throw new Error(
-      'TEST_ACCOUNT_EMAIL is not set. Point it at a dedicated test account, not either real ' +
-        'allowlisted user.'
-    )
+  if (REAL_ACCOUNT_EMAILS.has(email.toLowerCase())) {
+    throw new Error(`Refusing to mint a session for a real allowlisted account (${email}).`)
   }
-  if (REAL_ACCOUNT_EMAILS.has(testEmail.toLowerCase())) {
-    throw new Error(`TEST_ACCOUNT_EMAIL (${testEmail}) is one of the real allowlisted accounts. Refusing.`)
-  }
-
-  const workerEmail = deriveWorkerEmail(testEmail)
 
   const admin = getAdminClient()
 
   const linkData = await withRateLimitRetry('generateLink', () =>
-    admin.auth.admin.generateLink({ type: 'magiclink', email: workerEmail })
+    admin.auth.admin.generateLink({ type: 'magiclink', email })
   )
 
   const hashedToken = linkData.properties?.hashed_token
@@ -139,4 +154,22 @@ export async function mintTestSession() {
   const storageKey = `sb-${projectRef}-auth-token`
 
   return { storageKey, session: verifyData.session }
+}
+
+export async function mintTestSession() {
+  loadEnvLocal()
+
+  const testEmail = process.env.TEST_ACCOUNT_EMAIL
+  if (!testEmail) {
+    throw new Error(
+      'TEST_ACCOUNT_EMAIL is not set. Point it at a dedicated test account, not either real ' +
+        'allowlisted user.'
+    )
+  }
+  if (REAL_ACCOUNT_EMAILS.has(testEmail.toLowerCase())) {
+    throw new Error(`TEST_ACCOUNT_EMAIL (${testEmail}) is one of the real allowlisted accounts. Refusing.`)
+  }
+
+  const workerEmail = deriveWorkerEmail(testEmail)
+  return mintSessionForEmail(workerEmail)
 }

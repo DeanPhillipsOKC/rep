@@ -23,14 +23,13 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 84 — stale/cross-account data flashes on Home after switching accounts (ROI 1.67)
-2. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
-3. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
-4. Item 78 — "Bodyweight" load type (ROI 1)
-5. Item 79 — "Assisted" load type (ROI 1)
-6. Item 80 — periodic "update your weight" reminder (ROI 1)
-7. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
-8. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
+1. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
+2. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+3. Item 78 — "Bodyweight" load type (ROI 1)
+4. Item 79 — "Assisted" load type (ROI 1)
+5. Item 80 — periodic "update your weight" reminder (ROI 1)
+6. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
+7. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
 
 ## Features
 
@@ -43,39 +42,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Stale/cross-account data flashes on Home right after switching accounts on the same device
-  (item 84, 2026-09-26, reported by the user while testing item 76 with their alternate/test
-  account): signed out of the real account, signed back in with a passkey as the alt account, and
-  the Home screen's progress strip showed the *real* account's actual workout data, while History
-  and Templates (visited right after) were correctly empty for the alt account. Two candidate
-  causes, not yet distinguished — whoever picks this up needs to reproduce with logging/network
-  inspection to tell which (or both) it is before fixing:
-  1. **Stale Pinia state, never cleared on sign-out.** `AuthGate.vue`'s sign-out watcher only calls
-     `workout.resetActiveWorkoutState()` (`stores/workouts.ts`) — it doesn't touch that store's
-     `history`, `workoutsThisWeek`, `workoutDaysThisWeek`, `recentPr`, `exerciseHistory`,
-     `volumeHistory`, `recentlyLoggedExerciseIds`, or the in-memory `bestMarkerCache`, nor
-     `exercises.ts`'s `exercises` or `templates.ts`'s `templates`/`exercisesByTemplate`. Since
-     Pinia stores are app-lifetime singletons and this is an SPA (no full page reload on sign-out),
-     whatever the previous account last fetched stays in memory until something overwrites it.
-     This alone doesn't fully explain the report, though: `WorkoutLogger.vue`'s `onMounted` calls
-     `workout.fetchProgressStats()` unconditionally (not guarded by an empty-check like the
-     exercises/templates fetches next to it), so Home's progress strip should have been
-     overwritten by a fresh, correctly-RLS-scoped (and so correctly empty) fetch for the alt
-     account on remount — unless remount itself didn't happen (worth confirming whether
-     `AuthGate.vue`'s `v-if`/`v-else` swap actually unmounts/remounts the router-view's tree across
-     a sign-out → sign-in transition, rather than Vue reusing component instances).
-  2. **Session-swap race.** If it does remount and does refetch, but the query still returned the
-     old account's real rows (not just stale cached UI), the Supabase client's session must not
-     have fully switched over yet when that fetch fired — i.e. a real network read still
-     authenticated as the old account for a brief window after `signInWithPasskey()` resolves but
-     before `onAuthStateChange` (or the client's internal token swap) has settled. That's a
-     different, more subtle fix (e.g. don't fire any data fetch until the new session is confirmed
-     current) than "just clear the caches."
-  Low real-world impact (the two pilot users don't share a device), but it's the kind of gap
-  `docs/architecture.md`'s "secure by default" constraint and its hostile-read RLS test exist to
-  catch, and it's actively getting in the way of using the alt/test account for manual QA on the
-  same device. [Effort: 3, Value: 5, ROI: 1.67]
 
 - [ ] Let a set be added to a past workout on the History screen, not just edited/deleted (item 71,
   2026-09-26): `WorkoutHistory.vue`'s per-set actions (`:252-264`) only offer Edit/Delete on an

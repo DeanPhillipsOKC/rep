@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
+import { useAuthStore } from './auth'
 import { beatsBest, findRecentPr, ZERO_MARKER, type RecentPr, type SetMarker } from '../lib/progress'
 import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
 import type { ExerciseHistoryWorkout } from '../lib/exerciseHistory'
@@ -161,6 +162,13 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   const workoutDaysThisWeek = ref<boolean[]>([false, false, false, false, false, false, false])
 
   async function fetchProgressStats() {
+    // Item 84: this call can still be in flight when the user signs out and
+    // back in as a different account before it resolves (see sessionEpoch's
+    // doc in stores/auth.ts) — captured up front so both write points below
+    // can tell a late response apart from a current one.
+    const auth = useAuthStore()
+    const epoch = auth.sessionEpoch
+
     const startOfWeek = new Date()
     startOfWeek.setHours(0, 0, 0, 0)
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7))
@@ -181,6 +189,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
         .order('performed_at', { ascending: false })
         .limit(1),
     ])
+    if (auth.sessionEpoch !== epoch) return
     workoutsThisWeek.value = weekCount ?? 0
 
     const days = [false, false, false, false, false, false, false]
@@ -202,6 +211,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       .select('exercise_id, reps, weight, level')
       .in('exercise_id', exerciseIds)
       .neq('workout_id', recentWorkout.id)
+
+    if (auth.sessionEpoch !== epoch) return
 
     // Historical sets aren't fetched with their exercise embedded (the query
     // above only needs exercise_id to group by) — load type can't change
@@ -319,6 +330,14 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // offer to "resume" a workout that belongs to a different account entirely
   // (checkForRecoverableWorkout's RLS-backed fetch would just fail for it,
   // but there's no reason to even try).
+  // Item 84: also clears every other account-scoped read cache this store
+  // holds. Pinia stores are app-lifetime singletons in this SPA (no full
+  // page reload on sign-out), so without this a second account signing in
+  // on the same device would see the first account's last-fetched progress
+  // stats/history/exercise history until something happened to overwrite
+  // each one individually — sessionEpoch (stores/auth.ts) covers a fetch
+  // that's still in flight when this runs, this covers everything already
+  // sitting in memory from before.
   function resetActiveWorkoutState() {
     activeWorkoutId.value = null
     activeTemplateId.value = null
@@ -330,6 +349,17 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     justFinishedWorkoutId.value = null
     justFinishedWorkout.value = null
     persistActiveWorkoutId(null)
+
+    history.value = []
+    workoutsThisWeek.value = 0
+    workoutDaysThisWeek.value = [false, false, false, false, false, false, false]
+    recentPr.value = null
+    exerciseHistory.value = []
+    exerciseHistoryError.value = ''
+    volumeHistory.value = []
+    volumeHistoryError.value = ''
+    recentlyLoggedExerciseIds.value = []
+    bestMarkerCache.clear()
   }
 
   // Backlog item 4: per-user, per-exercise all-time best set, across every
