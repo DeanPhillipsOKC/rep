@@ -109,6 +109,10 @@ async function main() {
       [storageKey, JSON.stringify(session)]
     )
     await page.goto(BASE_URL)
+    // Auth resolution briefly shows AuthGate's loading spinner even for an
+    // already-signed-in session; wait for the real shell before shooting so
+    // 'home' captures the home screen instead of a mid-boot loading frame.
+    await page.locator('nav[aria-label="Primary"]').waitFor({ state: 'visible' })
     await shot(page, 'home')
 
     const ex1 = `E2E UX Review Bench ${stamp}`
@@ -178,7 +182,6 @@ async function main() {
 
     await page.getByLabel('Reps').fill('8')
     await page.getByLabel('Weight').fill('135')
-    await page.locator('.rpe-toggle').click()
     await page.getByLabel('RPE (optional)').fill('8')
     await page.getByRole('button', { name: 'Add set' }).click()
     await dismissOverlaysIfShown(page)

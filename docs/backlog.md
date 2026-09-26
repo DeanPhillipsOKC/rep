@@ -24,9 +24,13 @@ it makes (excluding blocked/needs-review/human items), so it can't drift out of 
 scores by hand, recompute this line to match:
 
 1. Item 69 — mismatched button sizing on "Resume your workout?" cards (ROI 2)
-2. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
-3. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
-4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+2. Item 72 — app version rendered twice on the onboarding screen (ROI 2)
+3. Item 74 — confirm-row warning text squeezed into a wrapped column (ROI 2)
+4. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
+5. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
+6. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
+7. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+8. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -86,6 +90,56 @@ implemented and were dropped rather than logged.
   finished) plus an "Add set" affordance per expanded history card with an exercise picker (the
   existing flat set list has no exercise-scoped entry point today) and the same reps/weight/unit/RPE
   fields the edit form already uses. [Effort: 3, Value: 3, ROI: 1]
+
+- [ ] App version renders twice on the onboarding screen (item 72, 2026-09-26 — ux-review,
+  `01-onboarding-welcome.png`): `App.vue:45` renders a `<footer class="app-version">{{ appVersion
+  }}</footer>` unconditionally as a sibling of `<AuthGate>`, regardless of what AuthGate shows.
+  `OnboardingScreen.vue:32` *also* renders its own `<p class="version">{{ appVersion }}</p>` inside
+  the onboarding card. A first-time visitor sees the same `v<version>` string twice: once under the
+  "Let's hop in" button, once again further down where the outer footer lands. Neither the loading
+  spinner (`AuthGate.vue`) nor `LoginForm.vue` has this problem since they don't render their own
+  copy — only onboarding does. Delete `OnboardingScreen.vue`'s own version line; the outer footer
+  already covers every auth state. [Effort: 1, Value: 2, ROI: 2]
+
+- [ ] Confirm-row warning text gets squeezed into an awkward wrapped column next to its
+  buttons (item 74, 2026-09-26 — ux-review, `06-exercise-delete-confirm.png` and
+  `08-template-archive-confirm.png`): `ExerciseList.vue`'s delete-confirm row (`:206-210`, `.row
+  confirm-delete`) and `TemplateManager.vue`'s archive-confirm row (`:266-268`, `.row
+  confirm-archive`) both lay the `.row-sub` warning text out horizontally next to `.confirm-actions`
+  in a flex row that never wraps to a new line as a whole (`ExerciseList.vue`'s `.confirm-delete`
+  sets `flex-wrap: nowrap` explicitly; `TemplateManager.vue`'s plain `.row` doesn't set `flex-wrap`
+  at all, which defaults to the same `nowrap`) — with `.confirm-actions` pinned at `flex-shrink: 0`,
+  the text gets all the squeezing and line-wraps mid-phrase into a narrow ~35% column ("Archive this
+  / template? This / can't be undone." split across three short lines). `WorkoutHistory.vue`'s own
+  two confirm rows (`:258-260` delete-set, `:321-323` delete-workout) already avoid this — its
+  `.confirm-delete` is `flex-direction: column` (`:577-582`), stacking the warning text full-width
+  above the button row instead of squeezing beside it. Apply that same column layout to the other
+  two files' confirm rows. [Effort: 1, Value: 2, ROI: 2]
+
+- [ ] Bare unstyled "Loading…" placeholder text, inconsistent with the app's branded loading
+  screen (item 73, 2026-09-26 — ux-review, `04-exercises-list.png` and `19-history-list.png`):
+  `ExerciseList.vue:162`, `TemplateManager.vue:203`, `WorkoutHistory.vue:156`, and
+  `ExerciseHistoryDetail.vue:90` each render a plain `<p>Loading…</p>` with no styling while their
+  store's `loading` flag is true — on the shared test account (hundreds of accumulated workouts)
+  this sits on screen long enough to read clearly, not just flash by. `AuthGate.vue`'s own loading
+  state (`:63-94`, the animated bunny badge with pulsing rings and rotating captions) shows this app
+  already has a polished, on-brand loading treatment; these four list screens fall back to
+  default-browser-text instead. Give them a shared, lightweight loading treatment (a small spinner
+  or skeleton rows, reusing `--accent`/existing motion tokens) instead of the bare placeholder text.
+  [Effort: 2, Value: 3, ROI: 1.5]
+
+- [ ] Template's "N exercises" count goes stale after adding or removing an exercise in the same
+  session (item 75, 2026-09-26 — ux-review, `07-template-detail.png`, shows "0 exercises" directly
+  above a list of the 2 exercises just added): `TemplateManager.vue`'s `exerciseCount()` (`:140-142`)
+  reads `template.workout_template_exercises?.[0]?.count`, a cached aggregate fetched once by
+  `fetchTemplates()` (`stores/templates.ts:32-45`) when the templates list loads. `addExerciseToTemplate`
+  and `removeExerciseFromTemplate` (`stores/templates.ts:87-102`, `:120-128`) both update
+  `exercisesByTemplate` (the expanded per-template list, which *does* show correctly) but never touch
+  the `templates` array's cached count, so the header subtext stays wrong — stuck at whatever it was
+  when the page first loaded — until a full reload re-fetches it. Update the matching `templates.value`
+  entry's cached count (or derive the header count from `exercisesByTemplate[templateId]?.length` when
+  that template's exercises have been fetched this session) in both mutation functions.
+  [Effort: 2, Value: 3, ROI: 1.5]
 
 ## Testing / tooling
 
