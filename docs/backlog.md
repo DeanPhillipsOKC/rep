@@ -23,10 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Remove JSON training data export (ROI 1.50)
-2. Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check (ROI 1.33)
-3. Show exercise-by-exercise history (ROI 1.00)
-4. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
+1. Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check (ROI 1.33)
+2. Show exercise-by-exercise history (ROI 1.00)
+3. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
+4. Flaky click on "Start workout" in `volume-chart.spec.ts` (ROI 1.00)
 
 ## Features
 
@@ -39,17 +39,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Remove JSON training data export — remove the "Your data" card and download action from
-  Exercises, the export helper, and its export-specific Playwright spec. There is no in-app import
-  path or current user need for a raw JSON backup; a file that cannot be restored or readily read
-  adds UI and maintenance cost without a clear pilot benefit. Update `docs/architecture.md` and
-  `docs/product-roadmap.md` to remove export as a planned capability or launch gate, while keeping
-  any distinct account-data portability or deletion decisions for a future public release.
-  If users later want to share workouts with friends, scope template sharing and import around
-  that concrete flow rather than reviving the full-account JSON export by default. Verify the
-  Exercises screen no longer offers export and run the normal build and e2e gates.
-  [Effort: 2, Value: 3, ROI: 1.50]
 
 - [ ] Show exercise-by-exercise history — from the Exercises tab and the active logger, open a
   focused detail view for one exercise with the latest workouts and sets in set order, including
@@ -101,6 +90,20 @@ implemented and were dropped rather than logged.
   flips the start screen back to its unselected state. Investigate and make the click robust (wait
   for the reset to settle, or find and fix the actual re-render race) so this stops intermittently
   failing the full e2e gate.
+  [Effort: 3, Value: 3, ROI: 1.00]
+
+- [ ] Flaky click on "Start workout" in `volume-chart.spec.ts` — found while shipping the JSON
+  training-data export removal (item 60, `docs/backlog-archive.md`): a full `npm run test:e2e` run
+  failed `volume chart: under-completed exercise carries forward its last complete volume` with
+  `Test timeout of 30000ms exceeded` clicking `Start workout`, Playwright's action log reporting
+  `element was detached from the DOM, retrying` before giving up — the same symptom already tracked
+  for `template-or-freeform-choice.spec.ts` above, but in a different spec, so logged separately per
+  that item's own scope. Unrelated to the export-removal change (different feature area — start
+  screen template selection, not Exercises/export) and passed cleanly on an immediate rerun in
+  isolation, so treated as a pre-existing flake per `docs/backlog-archive.md` items 56/57's
+  documented pattern rather than blocking that ship. Likely the same root cause as the sibling item
+  above (a re-render racing the "Start workout" click); fix both together once diagnosed, or confirm
+  they're actually the same bug and merge the items.
   [Effort: 3, Value: 3, ROI: 1.00]
 
 ## Human setup / device verification

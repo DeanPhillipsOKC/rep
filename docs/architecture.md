@@ -233,7 +233,6 @@ See `supabase/schema.sql` and `supabase/policies.sql` for the runnable versions 
 - **Offline writes:** queue mutations in IndexedDB and sync when connectivity returns. This is the single most valuable feature for real gym use. Build it early rather than retrofitting.
 - Android Chrome fires `beforeinstallprompt`; use it to show a native-feeling install button instead of an in-app hint.
 - iOS gives no install prompt at all. Add a one-time in-app hint explaining the Share → Add to Home Screen flow. (iPhone-only concern.)
-- Add a data export (JSON or CSV download). Cheap insurance against storage eviction or a Supabase project pause.
 
 ## Push notifications (rest timer alerts)
 
@@ -307,7 +306,6 @@ via the Supabase CLI or dashboard.
 4. Core logging: create workout, add sets, view history.
 5. PWA manifest, icons, service worker, install hint.
 6. Offline queue and sync.
-7. Data export.
 
 Ship after step 4 if it is usable. The remaining steps improve it but are not blockers to real use.
 
@@ -315,3 +313,4 @@ Ship after step 4 if it is usable. The remaining steps improve it but are not bl
 
 - Whether exercise history needs charting, or whether a simple list of previous sets per exercise is enough. **Start with the list.**
 - Whether users should ever share workouts. **Default to no**; RLS above enforces private records. Any future sharing must be opt-in and designed separately from basic account expansion.
+- Whether account data portability (export) is needed. **Removed 2026-09-26** (see `docs/backlog-archive.md`): the in-app JSON training-data export had no import path or clear pilot need, so it added UI/maintenance cost without benefit. Revisit only around a concrete need (e.g. template sharing, per `docs/backlog.md`) rather than reviving a full-account dump by default; keep this decision distinct from account deletion, which a future public release still needs regardless.
