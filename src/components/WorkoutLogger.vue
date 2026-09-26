@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
@@ -304,6 +304,29 @@ function adjustWeight(row: DraftRow, delta: number) {
   const step = rowWeightUnit.value === 'kg' ? 5 : 10
   const current = typeof row.weight === 'number' && Number.isFinite(row.weight) ? row.weight : 0
   row.weight = Math.max(0, current + delta * step)
+}
+
+// Backlog item 1: the +RPE toggle used to only reveal the input, leaving it
+// unfocused (a visible label flicker with no keyboard yet) so entering a
+// value took two taps. Keyed by row so a fast tap on one row's toggle can't
+// grab focus meant for another.
+const rpeInputRefs = new Map<string, HTMLInputElement>()
+
+function setRpeInputRef(key: string, el: Element | null) {
+  if (el) rpeInputRefs.set(key, el as HTMLInputElement)
+  else rpeInputRefs.delete(key)
+}
+
+function openRpeInput(row: DraftRow) {
+  row.rpeOpen = true
+  nextTick(() => rpeInputRefs.get(row.key)?.focus())
+}
+
+// Also covers RPE carryover (applyPrefillToRow) landing a value in an
+// already-open input: selecting it on focus makes it a one-keystroke
+// overwrite instead of requiring manual cursor repositioning.
+function selectRpeInputText(event: FocusEvent) {
+  ;(event.target as HTMLInputElement).select()
 }
 
 // Backlog item 1: the numbered grid shows every row for the selected
@@ -857,13 +880,14 @@ function dismissVolumeChart() {
                       />
                       <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving" @click="adjustWeight(entry.row, 1)">+</button>
                     </span>
-                    <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" :disabled="entry.row.saving" @click="entry.row.rpeOpen = true">
+                    <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" :disabled="entry.row.saving" @click="openRpeInput(entry.row)">
                       +RPE
                     </button>
                     <span v-else class="rpe-inline">
                       <label class="sr-only" :for="`row-rpe-${entry.row.key}`">RPE (optional)</label>
                       <input
                         :id="`row-rpe-${entry.row.key}`"
+                        :ref="(el) => setRpeInputRef(entry.row.key, el as Element | null)"
                         v-model.number="entry.row.rpe"
                         :disabled="entry.row.saving"
                         type="number"
@@ -873,6 +897,7 @@ function dismissVolumeChart() {
                         step="0.5"
                         placeholder="RPE"
                         class="set-input set-input-rpe"
+                        @focus="selectRpeInputText"
                       />
                     </span>
                   </div>

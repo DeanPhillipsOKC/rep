@@ -23,14 +23,13 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
-2. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
-3. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
-4. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-5. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
-6. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
-7. Remove JSON training data export (ROI 1.50)
-8. Show exercise-by-exercise history (ROI 1.00)
+1. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
+2. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
+3. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
+4. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
+5. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
+6. Remove JSON training data export (ROI 1.50)
+7. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -43,21 +42,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Fix RPE quick-entry requiring two taps with a flickering label — in the active workout
-  logger's set row (`WorkoutLogger.vue`), RPE starts as a `+RPE` toggle button; tapping it swaps in
-  a separate input (placeholder `RPE`) that isn't focused yet, so a second tap is needed to actually
-  open the keyboard and type a value. The label visibly changes from `+RPE` to `RPE` on that first
-  tap, which reads as a flicker/inconsistency rather than an intentional state change. Auto-focus
-  the revealed input when the toggle is clicked so one tap both reveals and opens it for entry, and
-  make the toggle-to-placeholder transition read as one continuous control rather than two different
-  labels. Since RPE carryover from the previous set (item 1, shipped 2026-09-25,
-  `docs/backlog-archive.md`) now pre-fills this input with a value, also select the pre-filled value
-  on focus (or otherwise make it a one-keystroke overwrite) so the user doesn't have to manually
-  reposition the cursor to replace it — same select-on-focus behavior called for on the reps/weight
-  fields in the set-row redesign item below, applied here to RPE. Cover the one-tap-to-focus and
-  select-on-focus-overwrite behavior in Playwright.
-  [Effort: 1, Value: 2, ROI: 2.00]
 
 - [ ] Require a conscious template-or-freeform choice before starting a workout — reported from
   real use: the start screen's `templateId` ref (`WorkoutLogger.vue`) defaults to `''`, and the
