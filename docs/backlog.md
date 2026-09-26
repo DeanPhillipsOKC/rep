@@ -28,9 +28,10 @@ scores by hand, recompute this line to match:
 3. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
 4. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
 5. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-6. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
-7. Remove JSON training data export (ROI 1.50)
-8. Show exercise-by-exercise history (ROI 1.00)
+6. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
+7. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
+8. Remove JSON training data export (ROI 1.50)
+9. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -155,6 +156,28 @@ implemented and were dropped rather than logged.
   size and generous hit targets over density. Verify against the visual-refresh mockup referenced
   above for consistency with the rest of the app, and cover the select-on-focus behavior in
   Playwright.
+  [Effort: 3, Value: 5, ROI: 1.67]
+
+## Testing / tooling
+
+- [ ] E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (item 57,
+  `docs/backlog-archive.md`) — measured today, same day the shared test account was last wiped to
+  zero (item 56 follow-up): `npm run check:e2e-leaks` currently reports 176 leftover `exercises`,
+  61 `workout_templates`, and 7 `workouts` rows, all `E2E <thing> <stamp>`-named. This is the exact
+  row-cap flakiness mechanism item 56 root-caused before (Supabase/PostgREST's 1000-row default
+  page size silently truncating an unbounded `.select()`), regrowing. Ruled out: every spec that
+  creates stamped data already imports `./fixtures/cleanup` (checked all 30 specs directly), so
+  this isn't a spec that skipped the fixture. Leading hypothesis, not yet confirmed: the cleanup
+  fixture's teardown only runs when a test finishes normally (pass or fail) — it can't run if the
+  whole `npm run test:e2e` process is killed or times out mid-run, which is plausible given how
+  many `next-item`/`Run-Backlog.ps1` gate iterations ran today (a hung or interrupted gate check
+  would permanently leak that run's rows). Confirm the hypothesis (e.g. forcibly kill a
+  `playwright test` run mid-spec and check whether its stamped rows survive), then add a
+  structural fix that doesn't depend on graceful teardown — e.g. a standalone sweep (reusing
+  `scripts/lib/mint-test-session.mjs`'s admin client) that deletes any `E2E`-stamped row older than
+  some threshold (an hour+, well past any single test run), run periodically or as a
+  `next-item`/`Run-Backlog.ps1` precondition. `npm run wipe:account` remains the human-run full
+  reset for existing bloat in the meantime.
   [Effort: 3, Value: 5, ROI: 1.67]
 
 ## Human setup / device verification
