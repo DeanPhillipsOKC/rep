@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
-import { findRecentPr, type RecentPr } from '../lib/progress'
+import { beatsBest, findRecentPr, ZERO_MARKER, type RecentPr, type SetMarker } from '../lib/progress'
 import { computeVolumeHistory, type TemplateExerciseTarget, type VolumeChartPoint } from '../lib/volume'
 import type { ExerciseHistoryWorkout } from '../lib/exerciseHistory'
 import type { SetEntry, WeightUnit, WorkoutWithSets } from '../lib/types'
@@ -85,7 +85,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     reps: number
     weight: number
     weightUnit: WeightUnit
-    previousBest: number
+    level: number | null
+    previousBest: SetMarker
   } | null>(null)
 
   // Backlog item 3: most recent past workout logged against this template
@@ -105,7 +106,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
     let query = supabase
       .from('workouts')
-      .select('*, sets!inner(*, exercises(name)), workout_templates(name)')
+      .select('*, sets!inner(*, exercises(name, load_type)), workout_templates(name)')
       .eq('template_id', templateId)
       .order('performed_at', { ascending: false })
       .order('set_index', { foreignTable: 'sets', ascending: true })
@@ -129,7 +130,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     volumeHistoryError.value = ''
     const { data, error } = await supabase
       .from('workouts')
-      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .select('*, sets(*, exercises(name, load_type)), workout_templates(name)')
       .eq('template_id', templateId)
       .order('performed_at', { ascending: true })
       .order('set_index', { foreignTable: 'sets', ascending: true })
@@ -176,7 +177,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
         .gte('performed_at', startOfWeek.toISOString()),
       supabase
         .from('workouts')
-        .select('id, sets(exercise_id, reps, weight, weight_unit, exercises(name))')
+        .select('id, sets(exercise_id, reps, weight, weight_unit, level, exercises(name, load_type))')
         .order('performed_at', { ascending: false })
         .limit(1),
     ])
@@ -198,9 +199,15 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     const exerciseIds = [...new Set(recentWorkout.sets.map((s) => s.exercise_id))]
     const { data: historicalSets } = await supabase
       .from('sets')
-      .select('exercise_id, reps, weight')
+      .select('exercise_id, reps, weight, level')
       .in('exercise_id', exerciseIds)
       .neq('workout_id', recentWorkout.id)
+
+    // Historical sets aren't fetched with their exercise embedded (the query
+    // above only needs exercise_id to group by) — load type can't change
+    // once an exercise has logged sets, so this workout's own sets for the
+    // same exercise are a reliable stand-in.
+    const loadTypeByExerciseId = new Map(recentWorkout.sets.map((s) => [s.exercise_id, s.exercises?.load_type ?? 'weight']))
 
     recentPr.value = findRecentPr(
       recentWorkout.sets.map((s) => ({
@@ -209,8 +216,16 @@ export const useWorkoutsStore = defineStore('workouts', () => {
         reps: s.reps,
         weight: s.weight,
         weightUnit: s.weight_unit,
+        loadType: s.exercises?.load_type ?? 'weight',
+        level: s.level,
       })),
-      (historicalSets ?? []).map((s) => ({ exerciseId: s.exercise_id, reps: s.reps, weight: s.weight }))
+      (historicalSets ?? []).map((s) => ({
+        exerciseId: s.exercise_id,
+        reps: s.reps,
+        weight: s.weight,
+        loadType: loadTypeByExerciseId.get(s.exercise_id) ?? 'weight',
+        level: s.level,
+      }))
     )
   }
 
@@ -255,7 +270,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
     const { data, error } = await supabase
       .from('workouts')
-      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .select('*, sets(*, exercises(name, load_type)), workout_templates(name)')
       .eq('id', id)
       .order('set_index', { foreignTable: 'sets', ascending: true })
       .maybeSingle()
@@ -317,29 +332,41 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     persistActiveWorkoutId(null)
   }
 
-  // Backlog item 4: per-user, per-exercise all-time max of reps * weight,
-  // across every past set for that exercise regardless of workout/template.
-  // Session-local cache: once an exercise's history has been read, later
-  // sets for it are compared in memory and only update the cache, never
-  // re-reading the DB. This keeps addSet's own critical path (below) free
-  // of any lookup — the record check runs after the insert, in the
-  // background, so it never delays the add itself.
-  const bestVolumeCache = new Map<string, number>()
+  // Backlog item 4: per-user, per-exercise all-time best set, across every
+  // past set for that exercise regardless of workout/template. Session-local
+  // cache: once an exercise's history has been read, later sets for it are
+  // compared in memory and only update the cache, never re-reading the DB.
+  // This keeps addSet's own critical path (below) free of any lookup — the
+  // record check runs after the insert, in the background, so it never
+  // delays the add itself.
+  // Backlog item 76: "best" used to mean the highest reps*weight volume, but
+  // a level exercise's weight is always 0 (see SetEntry.level) so that rule
+  // would never register a level PR. `level !== null` on the candidate set
+  // is enough to tell which comparison applies — an exercise's load type
+  // can't change once it has logged sets, so a level exercise's sets are
+  // always level, never a mix.
+  const bestMarkerCache = new Map<string, SetMarker>()
 
   // excludeSetId matters only on a cache miss — this runs after the insert
   // (see checkForRecord), so a first-ever read of this exercise's history
   // would otherwise see the just-inserted row and compare it against itself.
-  async function getBestVolume(exerciseId: string, excludeSetId: string): Promise<number> {
-    const cached = bestVolumeCache.get(exerciseId)
+  async function getBestMarker(exerciseId: string, excludeSetId: string): Promise<SetMarker> {
+    const cached = bestMarkerCache.get(exerciseId)
     if (cached !== undefined) return cached
 
     const { data, error } = await supabase
       .from('sets')
-      .select('reps, weight')
+      .select('reps, weight, level')
       .eq('exercise_id', exerciseId)
       .neq('id', excludeSetId)
-    const best = !error && data ? data.reduce((max, s) => Math.max(max, s.reps * s.weight), 0) : 0
-    bestVolumeCache.set(exerciseId, best)
+    let best: SetMarker = ZERO_MARKER
+    if (!error && data) {
+      for (const s of data as { reps: number; weight: number; level: number | null }[]) {
+        const marker: SetMarker = { loadType: s.level !== null ? 'level' : 'weight', level: s.level, reps: s.reps, weight: s.weight }
+        if (beatsBest(marker, best)) best = marker
+      }
+    }
+    bestMarkerCache.set(exerciseId, best)
     return best
   }
 
@@ -348,12 +375,14 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     setId: string,
     reps: number,
     weight: number,
-    weightUnit: WeightUnit
+    weightUnit: WeightUnit,
+    level: number | null
   ) {
-    const previousBest = await getBestVolume(exerciseId, setId)
-    if (reps * weight > previousBest) {
-      bestVolumeCache.set(exerciseId, reps * weight)
-      newRecord.value = { exerciseId, reps, weight, weightUnit, previousBest }
+    const previousBest = await getBestMarker(exerciseId, setId)
+    const candidate: SetMarker = { loadType: level !== null ? 'level' : 'weight', level, reps, weight }
+    if (beatsBest(candidate, previousBest)) {
+      bestMarkerCache.set(exerciseId, candidate)
+      newRecord.value = { exerciseId, reps, weight, weightUnit, level, previousBest }
     }
   }
 
@@ -363,6 +392,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     weight: number,
     weightUnit: WeightUnit,
     rpe: number | null,
+    level: number | null = null,
     setId: string = crypto.randomUUID(),
     retry = false
   ) {
@@ -389,7 +419,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       if (activeWorkoutId.value === workoutId && !activeSets.value.some((set) => set.id === data.id)) {
         activeSets.value.push(data)
       }
-      checkForRecord(data.exercise_id, data.id, data.reps, data.weight, data.weight_unit)
+      checkForRecord(data.exercise_id, data.id, data.reps, data.weight, data.weight_unit, data.level)
     }
 
     if (retry) {
@@ -418,6 +448,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
         weight,
         weight_unit: weightUnit,
         rpe,
+        level,
       })
       .select()
       .single()
@@ -464,11 +495,12 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     reps: number,
     weight: number,
     weightUnit: WeightUnit,
-    rpe: number | null
+    rpe: number | null,
+    level: number | null = null
   ) {
     const { error } = await supabase
       .from('sets')
-      .update({ reps, weight, weight_unit: weightUnit, rpe })
+      .update({ reps, weight, weight_unit: weightUnit, rpe, level })
       .eq('id', id)
     if (!error) {
       const set = activeSets.value.find((s) => s.id === id)
@@ -477,6 +509,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
         set.weight = weight
         set.weight_unit = weightUnit
         set.rpe = rpe
+        set.level = level
       }
     }
     return { error }
@@ -526,7 +559,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
     const { data, error } = await supabase
       .from('workouts')
-      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .select('*, sets(*, exercises(name, load_type)), workout_templates(name)')
       .eq('id', id)
       .order('set_index', { foreignTable: 'sets', ascending: true })
       .maybeSingle()
@@ -591,11 +624,12 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     reps: number,
     weight: number,
     weightUnit: WeightUnit,
-    rpe: number | null
+    rpe: number | null,
+    level: number | null = null
   ) {
     const { error } = await supabase
       .from('sets')
-      .update({ reps, weight, weight_unit: weightUnit, rpe })
+      .update({ reps, weight, weight_unit: weightUnit, rpe, level })
       .eq('id', id)
     if (!error) {
       for (const entry of history.value) {
@@ -605,6 +639,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
           set.weight = weight
           set.weight_unit = weightUnit
           set.rpe = rpe
+          set.level = level
           break
         }
       }
@@ -655,7 +690,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
 
     const { data, error } = await supabase
       .from('workouts')
-      .select('id, performed_at, sets!inner(id, reps, weight, weight_unit, rpe)')
+      .select('id, performed_at, sets!inner(id, reps, weight, weight_unit, rpe, level)')
       .eq('sets.exercise_id', exerciseId)
       .order('performed_at', { ascending: false })
       .order('set_index', { foreignTable: 'sets', ascending: true })
@@ -669,7 +704,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     type Row = {
       id: string
       performed_at: string
-      sets: { id: string; reps: number; weight: number; weight_unit: WeightUnit; rpe: number | null }[]
+      sets: { id: string; reps: number; weight: number; weight_unit: WeightUnit; rpe: number | null; level: number | null }[]
     }
 
     exerciseHistory.value = ((data ?? []) as unknown as Row[]).map((row) => ({
@@ -716,7 +751,7 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     errorMessage.value = ''
     const { data, error } = await supabase
       .from('workouts')
-      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .select('*, sets(*, exercises(name, load_type)), workout_templates(name)')
       .order('performed_at', { ascending: false })
       .order('set_index', { foreignTable: 'sets', ascending: true })
 

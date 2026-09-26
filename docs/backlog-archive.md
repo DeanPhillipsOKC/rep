@@ -254,3 +254,28 @@ on something already shipped. New entries get appended here when an item is remo
   session. Files: `src/components/TemplateManager.vue`, `e2e/templates.spec.ts` (asserts the header
   goes from "0 exercises" to "1 exercise" after adding one, in the same session, with no reload).
   Verified via `npm run build` and a full `npm run test:e2e` run (57/57).
+- Exercise load type + "Level" type (item 76, 2026-09-26): added a "Load type" picker (Weight
+  default, Level; Bodyweight/Assisted stay off the picker until items 78/79) to `ExerciseList.vue`'s
+  create and edit forms, locked on edit once `exercises.hasLoggedSets()` finds any sets (a short
+  explanatory line points at archive+recreate instead). `src/lib/types.ts` gained `LoadType` and
+  `Exercise.load_type`/`SetEntry.level`. A level set's `WorkoutLogger.vue` form swaps weight+unit
+  for a whole-number Level field (same substitution in its active-workout edit form and
+  `WorkoutHistory.vue`'s), and every place a set renders now goes through a new shared helper,
+  `src/lib/setLabel.ts`'s `formatSetLabel`, producing "12 × Level 3" instead of "12 × 0lb".
+  `src/lib/volume.ts`'s `computeVolumeHistory` excludes level sets from both the `actual` sum and
+  the per-template-exercise carry-forward (a level-typed template exercise is skipped outright in
+  the projection loop, never treated as short/skipped). PR comparison (`src/lib/progress.ts`'s new
+  `beatsBest`/`SetMarker`/`ZERO_MARKER`, shared by `checkForRecord` in `stores/workouts.ts`,
+  `findRecentPr`, and `findPrWorkoutIds`) branches on load type: a level set beats the previous best
+  at a higher level, or the same level with more reps, instead of the reps*weight volume rule (which
+  would never fire for a level set, since its weight is always 0). `RecordCelebration.vue` and
+  `ExerciseHistoryDetail.vue` (new "Best level" summary card, via `exerciseHistory.ts`'s
+  `bestLevelSet`, replacing "Heaviest completed set" for a level exercise) got the same treatment.
+  Files: `src/lib/types.ts`, `src/lib/setLabel.ts` (new), `src/lib/volume.ts`, `src/lib/progress.ts`,
+  `src/lib/exerciseHistory.ts`, `src/stores/exercises.ts`, `src/stores/templates.ts`,
+  `src/stores/workouts.ts`, `src/components/ExerciseList.vue`, `src/components/WorkoutLogger.vue`,
+  `src/components/WorkoutHistory.vue`, `src/components/ExerciseHistoryDetail.vue`,
+  `src/components/RecordCelebration.vue`, `e2e/exercise-load-type-level.spec.ts` (new). Verified via
+  `npm run build` and a full `npm run test:e2e` run (59/59; one spec unrelated to this change needed
+  its already-configured retry once, matching the documented worker-contention flake pattern, not a
+  new one).

@@ -2,8 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useWorkoutsStore } from '../stores/workouts'
 import { findPrWorkoutIds } from '../lib/progress'
+import { formatSetLabel } from '../lib/setLabel'
 import SkeletonRows from './SkeletonRows.vue'
-import type { SetWithExercise, WeightUnit, WorkoutWithSets } from '../lib/types'
+import type { LoadType, SetWithExercise, WeightUnit, WorkoutWithSets } from '../lib/types'
 
 const workout = useWorkoutsStore()
 const errorMessage = ref('')
@@ -23,6 +24,7 @@ const editReps = ref<number | null>(null)
 const editWeight = ref<number | null>(null)
 const editWeightUnit = ref<WeightUnit>('lb')
 const editRpe = ref<number | null>(null)
+const editLevel = ref<number | null>(null)
 
 const editingNotesId = ref<string | null>(null)
 const notesDraft = ref('')
@@ -96,6 +98,7 @@ function startEditingSet(set: SetWithExercise) {
   editWeight.value = set.weight
   editWeightUnit.value = set.weight_unit
   editRpe.value = set.rpe
+  editLevel.value = set.level
 }
 
 // RPE is optional — v-model.number leaves an emptied field as '' rather
@@ -104,15 +107,19 @@ function normalizeRpe(value: number | null): number | null {
   return (value as unknown) === '' ? null : value
 }
 
-async function saveSetEdit(id: string) {
+async function saveSetEdit(id: string, loadType: LoadType) {
   errorMessage.value = ''
-  if (editReps.value === null || editWeight.value === null) return
+  const isLevel = loadType === 'level'
+  if (editReps.value === null) return
+  if (isLevel && editLevel.value === null) return
+  if (!isLevel && editWeight.value === null) return
   const { error } = await workout.updateHistorySet(
     id,
     editReps.value,
-    editWeight.value,
+    isLevel ? 0 : editWeight.value!,
     editWeightUnit.value,
     normalizeRpe(editRpe.value),
+    isLevel ? editLevel.value : null,
   )
   if (error) {
     errorMessage.value = error.message
@@ -246,7 +253,7 @@ async function saveNotes(id: string) {
                   <span class="row-body">
                     <span class="row-title">{{ set.exercises?.name ?? 'Unknown' }}</span>
                     <span class="row-sub">
-                      {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
+                      {{ formatSetLabel(set.exercises?.load_type ?? 'weight', set.reps, set.weight, set.weight_unit, set.level) }}
                       <template v-if="set.rpe !== null"> · RPE {{ set.rpe }}</template>
                     </span>
                   </span>
@@ -264,7 +271,11 @@ async function saveNotes(id: string) {
                   </div>
                 </div>
 
-                <form v-if="editingSetId === set.id" class="set-edit-form" @submit.prevent="saveSetEdit(set.id)">
+                <form
+                  v-if="editingSetId === set.id"
+                  class="set-edit-form"
+                  @submit.prevent="saveSetEdit(set.id, set.exercises?.load_type ?? 'weight')"
+                >
                   <div class="grid-2">
                     <div>
                       <label :for="`history-edit-reps-${set.id}`">Reps</label>
@@ -277,7 +288,19 @@ async function saveNotes(id: string) {
                         required
                       />
                     </div>
-                    <div>
+                    <div v-if="set.exercises?.load_type === 'level'">
+                      <label :for="`history-edit-level-${set.id}`">Level</label>
+                      <input
+                        :id="`history-edit-level-${set.id}`"
+                        v-model.number="editLevel"
+                        type="number"
+                        inputmode="numeric"
+                        min="1"
+                        step="1"
+                        required
+                      />
+                    </div>
+                    <div v-else>
                       <label :for="`history-edit-weight-${set.id}`">Weight</label>
                       <input
                         :id="`history-edit-weight-${set.id}`"
@@ -291,7 +314,7 @@ async function saveNotes(id: string) {
                     </div>
                   </div>
                   <div class="grid-2">
-                    <div>
+                    <div v-if="set.exercises?.load_type !== 'level'">
                       <label :for="`history-edit-unit-${set.id}`">Unit</label>
                       <select :id="`history-edit-unit-${set.id}`" v-model="editWeightUnit">
                         <option value="lb">lb</option>

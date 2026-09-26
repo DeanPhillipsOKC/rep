@@ -23,14 +23,13 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 76 — exercise load type + "Level" type (ROI 1)
-2. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
-3. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
-4. Item 78 — "Bodyweight" load type (ROI 1)
-5. Item 79 — "Assisted" load type (ROI 1)
-6. Item 80 — periodic "update your weight" reminder (ROI 1)
-7. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
-8. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
+1. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
+2. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+3. Item 78 — "Bodyweight" load type (ROI 1)
+4. Item 79 — "Assisted" load type (ROI 1)
+5. Item 80 — periodic "update your weight" reminder (ROI 1)
+6. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
+7. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
 
 ## Features
 
@@ -80,24 +79,6 @@ otherwise. Decisions already made with the user, don't relitigate:
 - Five bottom-nav tabs is fine (icons are small); if it ever looks cluttered, that's a separate
   UX pass, not a reason to drop the tab.
 - Timed/cardio exercises (treadmill speed × time, planks) are out of scope for now.
-
-- [ ] Exercise load type + "Level" type (item 76, 2026-09-26): add a load-type picker to exercise
-  create/edit in `ExerciseList.vue` (Weight default; Level, Bodyweight, Assisted listed but
-  Bodyweight/Assisted can stay hidden until items 78/79 ship). Extend the types in
-  `src/lib/types.ts` for the already-live `exercises.load_type` and `sets.level` columns. For a `level` exercise, `WorkoutLogger.vue`'s set form shows a
-  whole-number "Level" stepper instead of weight + lb/kg; the set saves `level = N`, `weight = 0`
-  (the existing `weight not null` constraint stays). Same substitution in the set edit forms (active
-  workout and `WorkoutHistory.vue`) and anywhere a set is rendered ("12 × Level 3", not
-  "12 × 0lb"). Volume: `src/lib/volume.ts` (`computeVolumeHistory`, both the `actual` sum and the
-  per-template-exercise carry-forward) and `src/lib/progress.ts` must skip level sets entirely,
-  not count them as 0 (a 0 would make a level-only workout look like a volume collapse, and a
-  template exercise that's level-typed must not be treated as "skipped" for projection). PRs
-  (`progress.ts`, `RecordCelebration.vue`, `exerciseHistory.ts`): for a level exercise, a set beats
-  the previous best if it's at a higher level, or the same level with more reps. Changing an
-  exercise's load type once it has any logged sets is blocked in the UI with a short explanation
-  (its history would be misread); archive + recreate is the escape hatch. Extend the e2e specs to
-  create a level exercise, log a set, and check it renders as a level and doesn't move the volume
-  chart. [Effort: 5, Value: 5, ROI: 1]
 
 - [ ] "Body" tab: body-weight and height tracking (item 77, 2026-09-26): prerequisite for items
   78/79's volume math (assisted machines are counterweighted, so the work done depends on what the

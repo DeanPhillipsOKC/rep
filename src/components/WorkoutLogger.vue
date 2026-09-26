@@ -11,6 +11,8 @@ import FirstWorkoutCelebration from './FirstWorkoutCelebration.vue'
 import RecordCelebration from './RecordCelebration.vue'
 import RestTimer from './RestTimer.vue'
 import VolumeChart from './VolumeChart.vue'
+import { formatSetLabel } from '../lib/setLabel'
+import type { SetMarker } from '../lib/progress'
 import type { SetEntry, SetWithExercise, WeightUnit } from '../lib/types'
 
 const exercises = useExercisesStore()
@@ -44,7 +46,8 @@ const recordCelebration = ref<{
   reps: number
   weight: number
   weightUnit: WeightUnit
-  previousBest: number
+  level: number | null
+  previousBest: SetMarker
 } | null>(null)
 
 // addSet's record check runs in the background (see workouts.ts) so it
@@ -437,6 +440,7 @@ interface DraftRow {
   key: string
   reps: number | null
   weight: number | null
+  level: number | null
   rpe: number | null
   saving: boolean
   attempted: boolean
@@ -444,7 +448,16 @@ interface DraftRow {
 }
 
 function makeDraftRow(): DraftRow {
-  return { key: crypto.randomUUID(), reps: null, weight: null, rpe: null, saving: false, attempted: false, error: '' }
+  return {
+    key: crypto.randomUUID(),
+    reps: null,
+    weight: null,
+    level: null,
+    rpe: null,
+    saving: false,
+    attempted: false,
+    error: '',
+  }
 }
 
 // Shared across rows rather than per-row — a full-width unit selector on
@@ -479,11 +492,13 @@ function applyPrefillToRow(row: DraftRow, id: string, position: number) {
   if (!matchingSet) {
     row.reps = null
     row.weight = null
+    row.level = null
     row.rpe = null
     return
   }
   row.reps = matchingSet.reps
   row.weight = matchingSet.weight
+  row.level = matchingSet.level
   row.rpe = matchingSet.rpe
 }
 
@@ -678,13 +693,22 @@ function startRestIfConfigured(id: string) {
 // row could race over the network and land in the opposite order from how
 // they were tapped.
 async function completeRow(id: string, row: DraftRow) {
-  if (row.reps === null || row.weight === null || row.saving) return
+  const isLevel = loadTypeFor(id) === 'level'
+  if (row.reps === null || row.saving) return
+  if (isLevel ? row.level === null : row.weight === null) return
   row.saving = true
   row.error = ''
   const retry = row.attempted
   row.attempted = true
   const { error, reconciled } = await workout.addSet(
-    id, row.reps, row.weight, rowWeightUnit.value, normalizeRpe(row.rpe), row.key, retry
+    id,
+    row.reps,
+    isLevel ? 0 : row.weight!,
+    rowWeightUnit.value,
+    normalizeRpe(row.rpe),
+    isLevel ? row.level : null,
+    row.key,
+    retry
   )
   row.saving = false
   if (error) {
@@ -720,6 +744,7 @@ const editReps = ref<number | null>(null)
 const editWeight = ref<number | null>(null)
 const editWeightUnit = ref<WeightUnit>('lb')
 const editRpe = ref<number | null>(null)
+const editLevel = ref<number | null>(null)
 
 function startEditingSet(set: SetEntry) {
   editingSetId.value = set.id
@@ -727,17 +752,22 @@ function startEditingSet(set: SetEntry) {
   editWeight.value = set.weight
   editWeightUnit.value = set.weight_unit
   editRpe.value = set.rpe
+  editLevel.value = set.level
 }
 
-async function saveSetEdit(id: string) {
+async function saveSetEdit(id: string, exerciseId: string) {
   errorMessage.value = ''
-  if (editReps.value === null || editWeight.value === null) return
+  const isLevel = loadTypeFor(exerciseId) === 'level'
+  if (editReps.value === null) return
+  if (isLevel && editLevel.value === null) return
+  if (!isLevel && editWeight.value === null) return
   const { error } = await workout.updateSet(
     id,
     editReps.value,
-    editWeight.value,
+    isLevel ? 0 : editWeight.value!,
     editWeightUnit.value,
     normalizeRpe(editRpe.value),
+    isLevel ? editLevel.value : null,
   )
   if (error) {
     errorMessage.value = error.message
@@ -762,6 +792,16 @@ async function handleDeleteSet(id: string) {
 function exerciseName(id: string): string {
   return exercises.exercises.find((e) => e.id === id)?.name ?? 'Unknown'
 }
+
+// Backlog item 76: a level exercise's set form/rendering swaps weight+unit
+// for a whole-number level field — this is looked up by exercise id rather
+// than carried on the set itself since draft rows aren't saved yet.
+function loadTypeFor(id: string) {
+  return exercises.exercises.find((e) => e.id === id)?.load_type ?? 'weight'
+}
+
+const selectedExerciseLoadType = computed(() => (exerciseId.value ? loadTypeFor(exerciseId.value) : 'weight'))
+const isSelectedExerciseLevel = computed(() => selectedExerciseLoadType.value === 'level')
 
 // Backlog item 8: surface setup notes (machine seat height, etc.) right
 // where a set gets logged, not just in the Exercises tab.
@@ -962,9 +1002,11 @@ async function handleResumeJustFinished() {
           </div>
           <div v-if="workout.recentPr" class="stat-tile stat-tile-pr">
             <span class="pr-badge">NEW</span>
-            <span class="stat-value">Volume PR!</span>
+            <span class="stat-value">{{ workout.recentPr.loadType === 'level' ? 'Level PR!' : 'Volume PR!' }}</span>
             <span class="stat-label">{{ workout.recentPr.exerciseName }}</span>
-            <span class="pr-detail">{{ workout.recentPr.reps }} × {{ workout.recentPr.weight }}{{ workout.recentPr.weightUnit }}</span>
+            <span class="pr-detail">
+              {{ formatSetLabel(workout.recentPr.loadType, workout.recentPr.reps, workout.recentPr.weight, workout.recentPr.weightUnit, workout.recentPr.level) }}
+            </span>
           </div>
         </div>
 
@@ -1104,7 +1146,8 @@ async function handleResumeJustFinished() {
         <div v-if="exerciseId" class="card">
           <div class="set-header-row">
             <span class="set-header-number" aria-hidden="true">Set</span>
-            <span class="set-header-weight">
+            <span v-if="isSelectedExerciseLevel" class="set-header-weight" aria-hidden="true">Level</span>
+            <span v-else class="set-header-weight">
               <span aria-hidden="true">Weight</span>
               <span class="unit-toggle" role="group" aria-label="Units">
                 <button
@@ -1151,14 +1194,29 @@ async function handleResumeJustFinished() {
               <span class="set-row-number" aria-hidden="true">{{ entry.number }}</span>
 
               <span v-if="entry.type === 'logged'" class="set-row-done">
-                {{ entry.set.reps }} × {{ entry.set.weight }}{{ entry.set.weight_unit }}
+                {{ formatSetLabel(selectedExerciseLoadType, entry.set.reps, entry.set.weight, entry.set.weight_unit, entry.set.level) }}
                 <template v-if="entry.set.rpe !== null"> · RPE {{ entry.set.rpe }}</template>
               </span>
 
               <template v-else>
                 <div class="set-row-body">
                 <div class="set-row-line">
-                  <label class="set-field set-field-weight">
+                  <label v-if="isSelectedExerciseLevel" class="set-field set-field-weight">
+                    <span class="sr-only">Level</span>
+                    <input
+                      :id="`row-level-${entry.row.key}`"
+                      v-model.number="entry.row.level"
+                      :disabled="entry.row.saving"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      step="1"
+                      placeholder="0"
+                      class="set-input-compact"
+                      @focus="selectInputText"
+                    />
+                  </label>
+                  <label v-else class="set-field set-field-weight">
                     <span class="sr-only">Weight</span>
                     <input
                       :id="`row-weight-${entry.row.key}`"
@@ -1219,7 +1277,7 @@ async function handleResumeJustFinished() {
                       class="log-btn-compact"
                       :class="{ 'log-btn-compact-retry': entry.row.error }"
                       :aria-label="entry.row.saving ? 'Saving…' : entry.row.error ? 'Retry' : 'Add set'"
-                      :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
+                      :disabled="entry.row.reps === null || (isSelectedExerciseLevel ? entry.row.level === null : entry.row.weight === null) || entry.row.saving"
                       @click="completeRow(exerciseId, entry.row)"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1246,7 +1304,7 @@ async function handleResumeJustFinished() {
             <span class="row-body">
               <span class="row-title">{{ exerciseName(set.exercise_id) }}</span>
               <span class="row-sub">
-                {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
+                {{ formatSetLabel(loadTypeFor(set.exercise_id), set.reps, set.weight, set.weight_unit, set.level) }}
                 <template v-if="set.rpe !== null"> · RPE {{ set.rpe }}</template>
               </span>
             </span>
@@ -1264,7 +1322,11 @@ async function handleResumeJustFinished() {
             </div>
           </div>
 
-          <form v-if="editingSetId === set.id" class="set-edit-form" @submit.prevent="saveSetEdit(set.id)">
+          <form
+            v-if="editingSetId === set.id"
+            class="set-edit-form"
+            @submit.prevent="saveSetEdit(set.id, set.exercise_id)"
+          >
             <div class="grid-2">
               <div>
                 <label :for="`edit-reps-${set.id}`">Reps</label>
@@ -1277,7 +1339,19 @@ async function handleResumeJustFinished() {
                   required
                 />
               </div>
-              <div>
+              <div v-if="loadTypeFor(set.exercise_id) === 'level'">
+                <label :for="`edit-level-${set.id}`">Level</label>
+                <input
+                  :id="`edit-level-${set.id}`"
+                  v-model.number="editLevel"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  step="1"
+                  required
+                />
+              </div>
+              <div v-else>
                 <label :for="`edit-weight-${set.id}`">Weight</label>
                 <input
                   :id="`edit-weight-${set.id}`"
@@ -1291,7 +1365,7 @@ async function handleResumeJustFinished() {
               </div>
             </div>
             <div class="grid-2">
-              <div>
+              <div v-if="loadTypeFor(set.exercise_id) !== 'level'">
                 <label :for="`edit-unit-${set.id}`">Unit</label>
                 <select :id="`edit-unit-${set.id}`" v-model="editWeightUnit">
                   <option value="lb">lb</option>
@@ -1339,6 +1413,7 @@ async function handleResumeJustFinished() {
       :reps="recordCelebration.reps"
       :weight="recordCelebration.weight"
       :weight-unit="recordCelebration.weightUnit"
+      :level="recordCelebration.level"
       :previous-best="recordCelebration.previousBest"
       @dismiss="recordCelebration = null"
     />

@@ -2,7 +2,8 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useWorkoutsStore } from '../stores/workouts'
-import { heaviestSetByUnit } from '../lib/exerciseHistory'
+import { bestLevelSet, heaviestSetByUnit } from '../lib/exerciseHistory'
+import { formatSetLabel } from '../lib/setLabel'
 import SkeletonRows from './SkeletonRows.vue'
 
 // Backlog item 1: focused per-exercise history, opened from the Exercises
@@ -26,10 +27,17 @@ const workout = useWorkoutsStore()
 // just because logging new ones against it is no longer offered.
 const exercise = computed(() => exercises.exercises.find((e) => e.id === props.exerciseId) ?? null)
 
+const isLevelExercise = computed(() => exercise.value?.load_type === 'level')
+
 const heaviestSummary = computed(() => {
   const heaviest = heaviestSetByUnit(workout.exerciseHistory)
   return (Object.entries(heaviest) as [string, number][]).sort(([a], [b]) => a.localeCompare(b))
 })
+
+// Backlog item 76: a level exercise's weight is always 0, so the "heaviest
+// completed set" card above is meaningless for one — show its best level
+// instead.
+const bestLevel = computed(() => bestLevelSet(workout.exerciseHistory))
 
 onMounted(() => {
   if (exercises.exercises.length === 0) exercises.fetchExercises()
@@ -79,7 +87,13 @@ function formatDate(iso: string): string {
         </button>
       </div>
 
-      <div v-if="heaviestSummary.length > 0" class="card summary-card">
+      <div v-if="isLevelExercise" class="card summary-card">
+        <span class="summary-label">Best level</span>
+        <div v-if="bestLevel" class="summary-values">
+          <span class="summary-value">Level {{ bestLevel.level }} × {{ bestLevel.reps }}</span>
+        </div>
+      </div>
+      <div v-else-if="heaviestSummary.length > 0" class="card summary-card">
         <span class="summary-label">Heaviest completed set</span>
         <div class="summary-values">
           <span v-for="[unit, weight] in heaviestSummary" :key="unit" class="summary-value">
@@ -101,7 +115,7 @@ function formatDate(iso: string): string {
             <li v-for="(set, index) in entry.sets" :key="set.id" class="set-row">
               <span class="set-number">{{ index + 1 }}</span>
               <span class="set-detail">
-                {{ set.reps }} × {{ set.weight }}{{ set.weight_unit }}
+                {{ formatSetLabel(exercise?.load_type ?? 'weight', set.reps, set.weight, set.weight_unit, set.level) }}
                 <template v-if="set.rpe !== null"> · RPE {{ set.rpe }}</template>
               </span>
             </li>

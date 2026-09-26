@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { pickCelebration } from '../lib/celebration'
+import type { SetMarker } from '../lib/progress'
 import type { WeightUnit } from '../lib/types'
 
 // Backlog item 38: full-screen takeover replacing the old bottom-of-screen
@@ -15,7 +16,8 @@ const props = defineProps<{
   reps: number
   weight: number
   weightUnit: WeightUnit
-  previousBest: number
+  level: number | null
+  previousBest: SetMarker
 }>()
 
 const emit = defineEmits<{
@@ -27,9 +29,27 @@ const emit = defineEmits<{
 // once-per-mount encouragement pick.
 const variant = pickCelebration()
 
+// Backlog item 76: a level exercise's record is "higher level, or same
+// level with more reps" — not a volume delta, since its weight is always 0.
+const isLevel = props.level !== null
+const isFirstEver = props.previousBest.level === null && props.previousBest.reps === 0 && props.previousBest.weight === 0
+
 const volume = props.reps * props.weight
-const isFirstEver = props.previousBest === 0
-const delta = Math.round(volume - props.previousBest)
+const delta = Math.round(volume - props.previousBest.reps * props.previousBest.weight)
+
+const celebrationNumbers = isLevel
+  ? `${props.reps} × Level ${props.level}`
+  : `${props.weight} ${props.weightUnit} × ${props.reps}`
+
+const deltaMessage = (() => {
+  if (isFirstEver) return 'First one logged for this exercise'
+  if (isLevel) {
+    const previousLevel = props.previousBest.level ?? 0
+    if (props.level! > previousLevel) return `Up from Level ${previousLevel}`
+    return `+${props.reps - props.previousBest.reps} reps at Level ${props.level}`
+  }
+  return `+${delta} ${props.weightUnit}-reps of volume over your last best`
+})()
 
 const dismissButton = ref<HTMLButtonElement | null>(null)
 
@@ -93,11 +113,8 @@ onUnmounted(() => {
 
       <div class="celebration-stat-card">
         <div class="celebration-exercise">{{ exerciseName }}</div>
-        <div class="celebration-numbers">{{ weight }} {{ weightUnit }} &times; {{ reps }}</div>
-        <div class="celebration-delta">
-          <template v-if="isFirstEver">First one logged for this exercise</template>
-          <template v-else>+{{ delta }} {{ weightUnit }}-reps of volume over your last best</template>
-        </div>
+        <div class="celebration-numbers">{{ celebrationNumbers }}</div>
+        <div class="celebration-delta">{{ deltaMessage }}</div>
       </div>
 
       <button ref="dismissButton" type="button" class="celebration-dismiss" @click.stop="emit('dismiss')">

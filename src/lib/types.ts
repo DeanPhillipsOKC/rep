@@ -1,5 +1,7 @@
 // Mirrors supabase/schema.sql. See docs/architecture.md#data-model.
 
+export type LoadType = 'weight' | 'level' | 'bodyweight' | 'assisted'
+
 export interface Exercise {
   id: string
   user_id: string
@@ -7,6 +9,7 @@ export interface Exercise {
   is_archived: boolean
   setup_notes: string | null
   rest_seconds: number | null
+  load_type: LoadType
 }
 
 export interface WorkoutTemplate {
@@ -29,9 +32,11 @@ export interface WorkoutTemplateExercise {
 }
 
 // Shape returned by the nested select in templates.ts (template exercise +
-// its exercise name), used to render a template's exercise list.
+// its exercise name), used to render a template's exercise list. Carries
+// load_type too so volume.ts can tell a level-typed template exercise apart
+// from one that was genuinely skipped (docs/backlog.md item 76).
 export interface TemplateExerciseWithName extends WorkoutTemplateExercise {
-  exercises: { name: string } | null
+  exercises: { name: string; load_type: LoadType } | null
 }
 
 export interface Workout {
@@ -53,12 +58,13 @@ export interface SetEntry {
   weight: number
   weight_unit: WeightUnit
   rpe: number | null
+  level: number | null
 }
 
 // Shape returned by the nested select in workouts.ts (workout + its sets +
-// each set's exercise name), used for the history view.
+// each set's exercise name/load_type), used for the history view.
 export interface SetWithExercise extends SetEntry {
-  exercises: { name: string } | null
+  exercises: { name: string; load_type: LoadType } | null
 }
 
 export interface WorkoutWithSets extends Workout {

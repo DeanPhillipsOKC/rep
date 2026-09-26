@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
-import type { Exercise } from '../lib/types'
+import type { Exercise, LoadType } from '../lib/types'
 
 // Per-user exercise catalog. See docs/architecture.md#data-model for why
 // exercises aren't shared between the two users.
@@ -28,6 +28,7 @@ export const useExercisesStore = defineStore('exercises', () => {
     name: string,
     setupNotes: string | null = null,
     restSeconds: number | null = null,
+    loadType: LoadType = 'weight',
   ) {
     const { data: userData } = await supabase.auth.getUser()
     const userId = userData.user?.id
@@ -35,7 +36,7 @@ export const useExercisesStore = defineStore('exercises', () => {
 
     const { data, error } = await supabase
       .from('exercises')
-      .insert({ user_id: userId, name, setup_notes: setupNotes, rest_seconds: restSeconds })
+      .insert({ user_id: userId, name, setup_notes: setupNotes, rest_seconds: restSeconds, load_type: loadType })
       .select()
       .single()
 
@@ -63,10 +64,11 @@ export const useExercisesStore = defineStore('exercises', () => {
     name: string,
     setupNotes: string | null,
     restSeconds: number | null,
+    loadType: LoadType,
   ) {
     const { error } = await supabase
       .from('exercises')
-      .update({ name, setup_notes: setupNotes, rest_seconds: restSeconds })
+      .update({ name, setup_notes: setupNotes, rest_seconds: restSeconds, load_type: loadType })
       .eq('id', id)
     if (!error) {
       const exercise = exercises.value.find((e) => e.id === id)
@@ -74,9 +76,22 @@ export const useExercisesStore = defineStore('exercises', () => {
         exercise.name = name
         exercise.setup_notes = setupNotes
         exercise.rest_seconds = restSeconds
+        exercise.load_type = loadType
       }
     }
     return { error }
+  }
+
+  // Backlog item 76: changing load type once an exercise has logged sets
+  // would make its past sets misread (a level's weight is always 0, so a
+  // switch to 'weight' would look like every past set was unloaded) — the
+  // edit form checks this before letting the load-type field be touched.
+  async function hasLoggedSets(exerciseId: string): Promise<boolean> {
+    const { count, error } = await supabase
+      .from('sets')
+      .select('id', { count: 'exact', head: true })
+      .eq('exercise_id', exerciseId)
+    return !error && (count ?? 0) > 0
   }
 
   return {
@@ -88,5 +103,6 @@ export const useExercisesStore = defineStore('exercises', () => {
     createExercise,
     archiveExercise,
     updateExercise,
+    hasLoggedSets,
   }
 })

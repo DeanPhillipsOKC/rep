@@ -9,6 +9,7 @@ export interface ExerciseHistorySet {
   weight: number
   weight_unit: WeightUnit
   rpe: number | null
+  level: number | null
 }
 
 export interface ExerciseHistoryWorkout {
@@ -33,4 +34,23 @@ export function heaviestSetByUnit(workouts: ExerciseHistoryWorkout[]): Partial<R
     }
   }
   return heaviest
+}
+
+// Backlog item 76: a level exercise's weight is always 0 (see SetEntry.level),
+// so heaviestSetByUnit above is meaningless for one — ExerciseHistoryDetail.vue
+// shows this summary instead. Same "higher level, or same level with more
+// reps" comparison as progress.ts's beatsBest, applied here since this file
+// only ever sees one exercise's own sets at a time (not the per-exercise Map
+// that comparison normally keys off).
+export function bestLevelSet(workouts: ExerciseHistoryWorkout[]): { level: number; reps: number } | null {
+  let best: { level: number; reps: number } | null = null
+  for (const w of workouts) {
+    for (const s of w.sets) {
+      if (s.level === null) continue
+      if (!best || s.level > best.level || (s.level === best.level && s.reps > best.reps)) {
+        best = { level: s.level, reps: s.reps }
+      }
+    }
+  }
+  return best
 }

@@ -4,7 +4,7 @@ import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import ExerciseHistoryDetail from './ExerciseHistoryDetail.vue'
 import SkeletonRows from './SkeletonRows.vue'
-import type { Exercise } from '../lib/types'
+import type { Exercise, LoadType } from '../lib/types'
 
 const exercises = useExercisesStore()
 const push = usePushSubscriptionStore()
@@ -15,6 +15,9 @@ const viewingHistoryFor = ref<string | null>(null)
 const name = ref('')
 const setupNotes = ref('')
 const restSeconds = ref<number | null>(null)
+// Backlog item 76: Bodyweight/Assisted exist in the type/schema already but
+// stay off this picker until items 78/79 give them somewhere to go.
+const loadType = ref<LoadType>('weight')
 const errorMessage = ref('')
 const enablingPush = ref(false)
 
@@ -26,6 +29,11 @@ const editingId = ref<string | null>(null)
 const nameDraft = ref('')
 const notesDraft = ref('')
 const restDraft = ref<number | null>(null)
+const loadTypeDraft = ref<LoadType>('weight')
+// Backlog item 76: changing load type once an exercise has logged sets would
+// make its past sets misread (e.g. a level's weight is always 0), so the
+// field is locked once this comes back true for the row being edited.
+const editingHasLoggedSets = ref(false)
 
 // Backlog item 24 decision (docs/backlog-archive.md, 2026-09-24): "Archive"
 // had no restore path anywhere in the UI, so it behaved exactly like a
@@ -58,6 +66,7 @@ async function handleCreate() {
     name.value,
     setupNotes.value.trim() || null,
     seconds,
+    loadType.value,
   )
   if (error) {
     errorMessage.value = error.message
@@ -65,14 +74,17 @@ async function handleCreate() {
     name.value = ''
     setupNotes.value = ''
     restSeconds.value = null
+    loadType.value = 'weight'
   }
 }
 
-function startEditing(exercise: Exercise) {
+async function startEditing(exercise: Exercise) {
   editingId.value = exercise.id
   nameDraft.value = exercise.name
   notesDraft.value = exercise.setup_notes ?? ''
   restDraft.value = exercise.rest_seconds
+  loadTypeDraft.value = exercise.load_type
+  editingHasLoggedSets.value = await exercises.hasLoggedSets(exercise.id)
 }
 
 async function saveEdit(id: string) {
@@ -84,7 +96,13 @@ async function saveEdit(id: string) {
   }
   // v-model.number leaves an emptied input as '' rather than null/NaN.
   const seconds = restDraft.value && restDraft.value > 0 ? restDraft.value : null
-  const { error } = await exercises.updateExercise(id, trimmedName, notesDraft.value.trim() || null, seconds)
+  const { error } = await exercises.updateExercise(
+    id,
+    trimmedName,
+    notesDraft.value.trim() || null,
+    seconds,
+    loadTypeDraft.value,
+  )
   if (error) {
     errorMessage.value = error.message
   } else {
@@ -155,6 +173,12 @@ async function confirmDelete(id: string) {
         min="1"
         placeholder="e.g. 90"
       />
+
+      <label for="exercise-load-type">Load type</label>
+      <select id="exercise-load-type" v-model="loadType">
+        <option value="weight">Weight</option>
+        <option value="level">Level</option>
+      </select>
 
       <button type="submit">Add exercise</button>
     </form>
@@ -233,6 +257,15 @@ async function confirmDelete(id: string) {
             min="1"
             placeholder="e.g. 90"
           />
+
+          <label :for="`edit-load-type-${exercise.id}`">Load type</label>
+          <select :id="`edit-load-type-${exercise.id}`" v-model="loadTypeDraft" :disabled="editingHasLoggedSets">
+            <option value="weight">Weight</option>
+            <option value="level">Level</option>
+          </select>
+          <p v-if="editingHasLoggedSets" class="row-sub">
+            Load type can't be changed once sets have been logged for this exercise. Archive and recreate it instead.
+          </p>
 
           <div class="notes-actions">
             <button type="submit">Save</button>

@@ -1,7 +1,7 @@
 // Backlog item 6: post-workout volume chart. Pure computation, kept separate
 // from the store so the projection rule (docs/backlog.md#6) is testable/
 // readable on its own.
-import type { WeightUnit, WorkoutWithSets } from './types'
+import type { LoadType, WeightUnit, WorkoutWithSets } from './types'
 
 export interface VolumeChartPoint {
   performedAt: string
@@ -25,6 +25,15 @@ function modeWeightUnit(sets: { weight_unit: WeightUnit }[]): WeightUnit {
 export interface TemplateExerciseTarget {
   exercise_id: string
   target_sets: number | null
+  exercises?: { load_type: LoadType } | null
+}
+
+// Backlog item 76: level exercises are excluded from volume entirely
+// (difficulty levels aren't linear, so there's no "each level ≈ X lb" scale
+// factor) — not counted as 0, which would make a level-only set look like a
+// volume collapse.
+function isVolumeEligible(s: { exercises?: { load_type: LoadType } | null }): boolean {
+  return s.exercises?.load_type !== 'level'
 }
 
 // `workouts` must be ascending by performed_at (oldest first) so carry-
@@ -42,7 +51,7 @@ export function computeVolumeHistory(
   const lastKnownVolume = new Map<string, number>()
 
   return workouts.map((w) => {
-    const actual = w.sets.reduce((sum, s) => sum + s.reps * s.weight, 0)
+    const actual = w.sets.filter(isVolumeEligible).reduce((sum, s) => sum + s.reps * s.weight, 0)
 
     // Start from the same literal total as `actual`, then swap in the
     // carried-forward volume only for exercises that were skipped or fell
@@ -50,6 +59,11 @@ export function computeVolumeHistory(
     // exercise's actual contribution untouched.
     let projected = actual
     for (const te of templateExercises) {
+      // A level-typed template exercise always contributes 0 either way, but
+      // skip it outright rather than let it flow through the "skipped/short"
+      // branch below — it was never really skipped, levels just don't count.
+      if (te.exercises?.load_type === 'level') continue
+
       const setsForExercise = w.sets.filter((s) => s.exercise_id === te.exercise_id)
       const exerciseVolume = setsForExercise.reduce((sum, s) => sum + s.reps * s.weight, 0)
 
