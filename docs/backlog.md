@@ -79,11 +79,102 @@ implemented and were dropped rather than logged.
   that template's exercises have been fetched this session) in both mutation functions.
   [Effort: 2, Value: 3, ROI: 1.5]
 
+Items 76-79 (2026-09-26, design discussion with the user): not every exercise is "reps × plate
+weight." Each exercise gets a **load type** (`weight` | `level` | `bodyweight` | `assisted`) chosen
+when it's created, which decides what the logger asks for and how (or whether) a set counts toward
+volume. All four need the SQL in the **[human]** "Apply load-type / body-weight SQL" item under
+*Human setup* applied to the live DB first, hence `Status: blocked` on each; once the user has run
+it, remove the Status from all four. Document order below is also dependency order (76 and 77
+before 78 and 79), and equal ROI/tie-break on Value/document order makes the runner take them in
+that order. Decisions already made with the user, don't relitigate:
+- Level exercises are **excluded from volume entirely** (difficulty levels aren't linear, so no
+  "each level ≈ X lb" scale factor). They still get per-exercise progress and PRs.
+- Levels are whole numbers (every machine the user has seen); revisit only if one turns up that isn't.
+- Body weight is tracked as a dated log, not a single profile field, so old sets keep the body
+  weight the user had at the time instead of shifting whenever it's updated.
+- Timed/cardio exercises (treadmill speed × time, planks) are out of scope for now.
+
+- [ ] Exercise load type + "Level" type (item 76, 2026-09-26): add a load-type picker to exercise
+  create/edit in `ExerciseList.vue` (Weight default; Level, Bodyweight, Assisted listed but
+  Bodyweight/Assisted can stay hidden until items 78/79 ship). Mirror the human SQL item's DDL into
+  `supabase/schema.sql` and the `exercises`/`sets` data model in `docs/architecture.md`, and extend
+  the types in `src/lib/types.ts`. For a `level` exercise, `WorkoutLogger.vue`'s set form shows a
+  whole-number "Level" stepper instead of weight + lb/kg; the set saves `level = N`, `weight = 0`
+  (the existing `weight not null` constraint stays). Same substitution in the set edit forms (active
+  workout and `WorkoutHistory.vue`) and anywhere a set is rendered ("12 reps · Level 3", not
+  "12 × 0 lb"). Volume: `src/lib/volume.ts` (`computeVolumeHistory`, both the `actual` sum and the
+  per-template-exercise carry-forward) and `src/lib/progress.ts` must skip level sets entirely,
+  not count them as 0 (a 0 would make a level-only workout look like a volume collapse, and a
+  template exercise that's level-typed must not be treated as "skipped" for projection). PRs
+  (`progress.ts`, `RecordCelebration.vue`, `exerciseHistory.ts`): for a level exercise, a set beats
+  the previous best if it's at a higher level, or the same level with more reps. Changing an
+  exercise's load type once it has any logged sets is blocked in the UI with a short explanation
+  (its history would be misread); archive + recreate is the escape hatch. Extend the e2e specs to
+  create a level exercise, log a set, and check it renders as a level and doesn't move the volume
+  chart. [Effort: 5, Value: 5, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+
+- [ ] Body-weight tracking (item 77, 2026-09-26): prerequisite for items 78/79's volume math
+  (assisted machines are counterweighted, so the work done depends on what the lifter weighs). New
+  `body_weight_entries` table (DDL in the human SQL item; mirror into `supabase/schema.sql`,
+  `supabase/policies.sql`, and `docs/architecture.md`, owner-only RLS like `push_subscriptions`)
+  plus a small store. UI: a "Body weight" entry on whatever screen holds account/profile settings
+  today (number + lb/kg, saves a new dated entry; show the current value and when it was last
+  set). Expose one pure helper, e.g. `bodyWeightAt(entries, performedAt, unit)`: the latest entry
+  recorded at or before `performedAt`, falling back to the earliest entry if none is that old (so
+  entering a body weight today still covers sets logged last week), converted to `unit` (1 kg =
+  2.20462 lb), or `null` if there are no entries at all. Unit-test it. No logger prompts here;
+  items 78/79 own nudging the user when a body weight is missing. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+
+- [ ] "Bodyweight" load type (item 78, 2026-09-26, depends on items 76 and 77): push-ups, pull-ups,
+  dips. Logger shows reps plus an optional "Added weight" field (vest/dip belt; defaults to 0,
+  stored in `weight`/`weight_unit` as today). Effective load per set = body weight at the workout's
+  `performed_at` (item 77's helper, in the set's unit) + added weight; volume = reps × effective
+  load, so these do count toward the volume chart. If no body weight has been entered, the set is
+  excluded from volume (same "skip, not zero" rule as item 76's level sets) and the logger shows a
+  one-line nudge linking to the body-weight setting the first time a bodyweight exercise is logged
+  without one. PRs use effective-load volume when body weight is known, otherwise most reps (with
+  added weight as tiebreak). Set rendering: "12 reps · bodyweight" or "8 reps · BW + 25 lb". Unhide
+  the Bodyweight option in item 76's picker. Extend e2e. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+
+- [ ] "Assisted" load type (item 79, 2026-09-26, depends on items 76 and 77): counterweighted
+  assisted pull-up/dip machines, where a bigger number means an easier set. Logger field is labeled
+  "Assist" (stored in `weight`/`weight_unit`). Effective load = max(body weight − assist, 0); volume
+  = reps × effective load, with the same "excluded, plus nudge" behavior as item 78 when no body
+  weight is on file. PRs run **inverted** when body weight is unknown: less assist beats more, ties
+  broken by more reps; with body weight known, compare effective-load volume. Progress/history
+  views must not show a rising assist number as improvement: check `ExerciseHistoryDetail.vue` and
+  `exerciseHistory.ts` for any "heavier is better" assumptions. Set rendering: "10 reps · 40 lb
+  assist". Unhide the Assisted option in item 76's picker. Extend e2e.
+  [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+
 ## Testing / tooling
 
 (none open)
 
 ## Human setup / device verification
+
+- [ ] **[human]** Apply load-type / body-weight SQL (2026-09-26, prerequisite for items 76-79):
+  run this in the Supabase SQL editor, then remove the `Status: blocked` from items 76-79 so the
+  runner picks them up. Additive only; existing exercises default to `weight` and behave exactly
+  as today.
+  ```sql
+  alter table exercises add column load_type text not null default 'weight'
+    check (load_type in ('weight', 'level', 'bodyweight', 'assisted'));
+  alter table sets add column level int null check (level is null or level > 0);
+
+  create table body_weight_entries (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references profiles(id),
+    weight      numeric not null check (weight > 0),
+    weight_unit text not null check (weight_unit in ('lb', 'kg')),
+    recorded_at timestamptz not null default now()
+  );
+  alter table body_weight_entries enable row level security;
+  create policy "own rows only" on body_weight_entries
+    for all
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+  ```
 
 - [ ] **[human]** After interrupted-workout recovery and safe set retry ship, exercise the
   installed app during a real workout on Android and iPhone: reload/relaunch mid-session, briefly
