@@ -23,10 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check (ROI 1.33)
-2. Show exercise-by-exercise history (ROI 1.00)
-3. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
-4. Flaky click on "Start workout" in `volume-chart.spec.ts` (ROI 1.00)
+1. Show exercise-by-exercise history (ROI 1.00)
+2. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
+3. Flaky click on "Start workout" in `volume-chart.spec.ts` (ROI 1.00)
+4. Flaky "exercise-row not visible" in `resume-after-finish.spec.ts` (ROI 1.00)
 
 ## Features
 
@@ -53,29 +53,6 @@ implemented and were dropped rather than logged.
   [Effort: 5, Value: 5, ROI: 1.00]
 
 ## Testing / tooling
-
-- [ ] Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check —
-  found while confirming a since-shipped fix's kill-mid-run hypothesis (e2e-stamped-row cleanup
-  resilience, `docs/backlog-archive.md`): a query for `workouts` with no `notes`, no `template_id`,
-  and no `sets` turned up 116 rows on the shared test account spanning the entire day (13:09
-  through the current run), well before this session started. Root cause: some specs (confirmed:
-  `exercise-notes.spec.ts`) start a freeform workout via the UI to reach a later assertion (e.g.
-  checking setup notes render while logging) but never call Finish or Discard, so the `workouts`
-  row — created with `notes: null`, no template — persists forever. Neither
-  `scripts/check-e2e-leaks.mjs` nor `scripts/sweep-stale-e2e-rows.mjs` (both from that same fix)
-  can see these: both key off an `E2E`-tagged `name`/`notes` string, and these rows have neither.
-  Not urgent (116 rows in a day is nowhere near PostgREST's 1000-row truncation point, and they
-  don't affect any current test's assertions — verified while fixing 5 unrelated specs that broke
-  when the *other* leak category was swept to zero for the first time), but the same
-  silent-accumulation mechanism given enough time. Fix options: (a) audit specs that start a
-  workout and add a Finish+Discard/Finish+set at the end, mirroring `docs/backlog-archive.md` item
-  56's fix to `archived-template-exercise.spec.ts` for the same pattern; or (b) extend the sweep
-  script with a *second*, narrowly-scoped pass that deletes `workouts` with no notes/template/sets,
-  older than the same threshold, filtered to the test account's own `user_id` specifically (never a
-  blanket `notes IS NULL` sweep — that shape of row is exactly what a real pilot user's
-  abandoned-mid-workout freeform session looks like too, and must never be touched). Left uncleaned
-  for now rather than bulk-deleting 116 rows via an ad hoc script outside reviewable tooling.
-  [Effort: 3, Value: 4, ROI: 1.33]
 
 - [ ] Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run — found
   while shipping the mid-workout suggested-chip sizing fix (`docs/backlog-archive.md`): a full
@@ -104,6 +81,22 @@ implemented and were dropped rather than logged.
   documented pattern rather than blocking that ship. Likely the same root cause as the sibling item
   above (a re-render racing the "Start workout" click); fix both together once diagnosed, or confirm
   they're actually the same bug and merge the items.
+  [Effort: 3, Value: 3, ROI: 1.00]
+
+- [ ] Flaky "exercise-row not visible" in `resume-after-finish.spec.ts`'s templated-workout resume
+  test — found while shipping the orphaned-freeform-workout sweep-script fix (item 62): a full
+  `npm run test:e2e` run failed `resume after finish: templated workout offers resume after the
+  volume chart, and Start a new workout dismisses it` waiting on `.exercise-row` containing the
+  newly-added exercise name to become visible (5000ms timeout, element never found) right after
+  clicking "Add" to attach the exercise to the template. Unrelated to the sweep-script change
+  (different feature area — template exercise attachment, not e2e cleanup tooling) and passed
+  cleanly on an immediate rerun in isolation (`npx playwright test e2e/resume-after-finish.spec.ts`,
+  3/3 passed), so treated as a pre-existing flake per `docs/backlog-archive.md` items 56/57's
+  documented pattern rather than blocking that ship. Root cause not yet diagnosed — likely a
+  re-render race between the template detail view refetching its exercise list and the "Add"
+  click's response, similar in shape to the two already-tracked "Start workout" flakes above but in
+  a different UI area. Investigate and make the assertion/click robust so this stops intermittently
+  failing the full e2e gate.
   [Effort: 3, Value: 3, ROI: 1.00]
 
 ## Human setup / device verification

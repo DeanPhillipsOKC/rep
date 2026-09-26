@@ -19,7 +19,7 @@
 // cascade-safe deletion (workouts, then templates, then exercises) so a
 // stamp swept here is deleted exactly the way the fixture itself would have
 // deleted it.
-import { getAdminClient } from './lib/mint-test-session.mjs'
+import { getAdminClient, mintTestSession } from './lib/mint-test-session.mjs'
 import { cleanupStamp } from './lib/cleanup-e2e-stamp.mjs'
 
 const DEFAULT_THRESHOLD_MINUTES = 60
@@ -68,6 +68,32 @@ async function collectStamps(admin) {
   return stamps
 }
 
+// Backlog item 62 (docs/backlog-archive.md): some specs start a freeform
+// workout via the UI to reach a later assertion (e.g. checking setup notes
+// render while logging) but never call Finish or Discard, leaving a
+// `workouts` row with no notes, no template_id, and no sets — invisible to
+// collectStamps above since it carries neither a stamped name/notes nor a
+// template. Scoped to the test account's own user_id specifically: this
+// exact shape (no notes/template/sets) is also what a real pilot user's
+// abandoned-mid-workout freeform session looks like, and must never be swept
+// for anyone else.
+async function collectOrphanedFreeformWorkouts(admin, testUserId) {
+  const { data: candidates } = await admin
+    .from('workouts')
+    .select('id, performed_at')
+    .eq('user_id', testUserId)
+    .is('notes', null)
+    .is('template_id', null)
+
+  if (!candidates?.length) return []
+
+  const ids = candidates.map((w) => w.id)
+  const { data: setRows } = await admin.from('sets').select('workout_id').in('workout_id', ids)
+  const withSets = new Set((setRows ?? []).map((r) => r.workout_id))
+
+  return candidates.filter((w) => !withSets.has(w.id))
+}
+
 async function sweep() {
   const thresholdMinutes = parseThresholdMinutes(process.argv.slice(2))
   const thresholdMs = thresholdMinutes * 60_000
@@ -94,7 +120,29 @@ async function sweep() {
     swept++
   }
 
-  console.log(`sweep-stale-e2e-rows: done, swept ${swept} stale stamp(s).`)
+  const { session } = await mintTestSession()
+  const orphaned = await collectOrphanedFreeformWorkouts(admin, session.user.id)
+  const staleOrphaned = orphaned.filter((w) => now - new Date(w.performed_at).getTime() > thresholdMs)
+
+  console.log(
+    `sweep-stale-e2e-rows: ${orphaned.length} orphaned freeform workout(s) found on the test account ` +
+      `(no notes/template/sets), ${staleOrphaned.length} older than ${thresholdMinutes}m.`
+  )
+
+  if (staleOrphaned.length) {
+    await admin.from('workouts').delete().in(
+      'id',
+      staleOrphaned.map((w) => w.id)
+    )
+    for (const w of staleOrphaned) {
+      const ageMinutes = Math.round((now - new Date(w.performed_at).getTime()) / 60_000)
+      console.log(`  swept orphaned workout ${w.id} (${ageMinutes}m old)`)
+    }
+  }
+
+  console.log(
+    `sweep-stale-e2e-rows: done, swept ${swept} stale stamp(s) and ${staleOrphaned.length} orphaned workout(s).`
+  )
 }
 
 try {
