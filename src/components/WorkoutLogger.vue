@@ -877,8 +877,8 @@ async function handleResumeJustFinished() {
         </template>
       </p>
       <div v-if="!confirmingDiscardRecovered" class="confirm-actions">
-        <button type="button" class="btn-accent" @click="handleResume">Resume workout</button>
-        <button type="button" class="ghost" @click="confirmingDiscardRecovered = true">Discard workout</button>
+        <button type="button" class="btn-accent small" @click="handleResume">Resume workout</button>
+        <button type="button" class="ghost small" @click="confirmingDiscardRecovered = true">Discard workout</button>
       </div>
       <div v-else class="confirm-delete">
         <span class="row-sub">
@@ -905,8 +905,8 @@ async function handleResumeJustFinished() {
         · {{ workout.justFinishedWorkout.sets.length }} set{{ workout.justFinishedWorkout.sets.length === 1 ? '' : 's' }} logged
       </p>
       <div class="confirm-actions">
-        <button type="button" class="btn-accent" @click="handleResumeJustFinished">Resume workout</button>
-        <button type="button" class="ghost" @click="workout.dismissJustFinishedWorkout()">Start a new workout</button>
+        <button type="button" class="btn-accent small" @click="handleResumeJustFinished">Resume workout</button>
+        <button type="button" class="ghost small" @click="workout.dismissJustFinishedWorkout()">Start a new workout</button>
       </div>
     </div>
 
@@ -1760,6 +1760,15 @@ async function handleResumeJustFinished() {
   background: var(--danger);
   border-color: var(--danger);
   color: white;
+}
+
+.btn-accent.small {
+  width: auto;
+  margin-top: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .danger.small {

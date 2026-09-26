@@ -23,14 +23,13 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 69 — mismatched button sizing on "Resume your workout?" cards (ROI 2)
-2. Item 72 — app version rendered twice on the onboarding screen (ROI 2)
-3. Item 74 — confirm-row warning text squeezed into a wrapped column (ROI 2)
-4. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
-5. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
-6. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
-7. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-8. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+1. Item 72 — app version rendered twice on the onboarding screen (ROI 2)
+2. Item 74 — confirm-row warning text squeezed into a wrapped column (ROI 2)
+3. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
+4. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
+5. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
+6. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+7. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -55,16 +54,6 @@ implemented and were dropped rather than logged.
   workout" — so tapping "Log another workout" goes straight to the start screen with no second gate.
   Freeform workouts (no volume chart) already show the offer immediately on finish; leave that path
   alone. [Effort: 2, Value: 3, ROI: 1.5]
-
-- [ ] Mismatched button sizing on the "Resume your workout?" cards (item 69, 2026-09-26): both the
-  crash-recovery card (`WorkoutLogger.vue:879-882`) and the just-finished card (`:907-910`) pair a
-  `btn-accent` primary button (`width: 100%` per `style.css`) with a plain `ghost` secondary button
-  (no width, sizes to its own text) inside a `.confirm-actions` flex row — the accent button eats
-  most of the row's width and squeezes "Discard workout"/"Start a new workout" down to a cramped,
-  wrapped label. Every other confirm/cancel pair in this file (delete-set at `:1238-1241`,
-  empty-finish at `:1301-1304`) already avoids this by giving both buttons matching `... small`
-  classes. Not asking for the same color, just the same size — apply the same `small`-class (or
-  equivalent equal-width) pattern to these two cards' button pairs. [Effort: 1, Value: 2, ROI: 2]
 
 - [ ] Replace the volume chart with a first-workout celebration card when there's only one point
   (item 70, 2026-09-26): `handleFinish` (`WorkoutLogger.vue:826-830`) sets `showingVolumeChart =
