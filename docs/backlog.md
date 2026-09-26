@@ -23,8 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Flaky "exercise-row not visible" in `resume-after-finish.spec.ts`'s templated-workout resume test (ROI 1.00)
-2. Flaky "exercise-row not visible" after adding an exercise to a template in `template-or-freeform-choice.spec.ts` (ROI 1.00)
+(none — no eligible open items)
 
 ## Features
 
@@ -40,37 +39,7 @@ implemented and were dropped rather than logged.
 
 ## Testing / tooling
 
-- [ ] Flaky "exercise-row not visible" in `resume-after-finish.spec.ts`'s templated-workout resume
-  test — found while shipping the orphaned-freeform-workout sweep-script fix (item 62): a full
-  `npm run test:e2e` run failed `resume after finish: templated workout offers resume after the
-  volume chart, and Start a new workout dismisses it` waiting on `.exercise-row` containing the
-  newly-added exercise name to become visible (5000ms timeout, element never found) right after
-  clicking "Add" to attach the exercise to the template. Unrelated to the sweep-script change
-  (different feature area — template exercise attachment, not e2e cleanup tooling) and passed
-  cleanly on an immediate rerun in isolation (`npx playwright test e2e/resume-after-finish.spec.ts`,
-  3/3 passed), so treated as a pre-existing flake per `docs/backlog-archive.md` items 56/57's
-  documented pattern rather than blocking that ship. Root cause not yet diagnosed — likely a
-  re-render race between the template detail view refetching its exercise list and the "Add"
-  click's response. Investigate and make the assertion/click robust so this stops intermittently
-  failing the full e2e gate.
-  [Effort: 3, Value: 3, ROI: 1.00]
-
-- [ ] Flaky "exercise-row not visible" after adding an exercise to a template in
-  `template-or-freeform-choice.spec.ts` — found while shipping item 65 (the `justFinishedWorkout`
-  race fix, `docs/backlog-archive.md`): a full `npm run test:e2e` run failed this spec with
-  `expect(locator).toBeVisible() failed` waiting on `.exercise-row` containing the newly-added
-  exercise name (5000ms timeout, element never found) right after clicking "Add" to attach the
-  exercise to the template — same symptom, same UI location (`TemplateManager.vue`'s post-Add
-  exercise-row render), and quite possibly the same root cause as the already-tracked item above in
-  `resume-after-finish.spec.ts`, just surfacing in a different spec; logged separately per that
-  item's own precedent for the "Start workout" duplicates rather than assumed identical without
-  confirming. Unrelated to item 65's change (different feature area — template exercise attachment,
-  not the post-finish resume-offer flow) and passed cleanly on two immediate reruns in isolation
-  (`npx playwright test e2e/template-or-freeform-choice.spec.ts`, 1/1 passed each time), so treated
-  as a pre-existing flake per `docs/backlog-archive.md` items 56/57's documented pattern rather than
-  blocking that ship. Investigate alongside the sibling item above — fix both together once
-  diagnosed, or confirm they're the same bug and merge the items.
-  [Effort: 3, Value: 3, ROI: 1.00]
+(none open)
 
 ## Human setup / device verification
 

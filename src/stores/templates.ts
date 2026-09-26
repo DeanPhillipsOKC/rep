@@ -11,6 +11,22 @@ export const useTemplatesStore = defineStore('templates', () => {
   const loading = ref(false)
   const errorMessage = ref('')
 
+  // Backlog item 63: fetchTemplateExercises (kicked off by toggleExpand) and
+  // addExerciseToTemplate (kicked off by the "Add" form right after expand)
+  // both write to exercisesByTemplate[templateId] and can be in flight at
+  // the same time. If the fetch's SELECT started before the add's INSERT
+  // committed, it resolves with a stale, exercise-missing list and
+  // overwrites the add's own optimistic update with it, briefly (or
+  // permanently) hiding the just-added `.exercise-row`. Bumped by every
+  // mutation below; fetchTemplateExercises only applies its result if
+  // nothing else touched this template's list while it was in flight.
+  const exercisesVersion = ref<Record<string, number>>({})
+  function bumpExercisesVersion(templateId: string): number {
+    const next = (exercisesVersion.value[templateId] ?? 0) + 1
+    exercisesVersion.value[templateId] = next
+    return next
+  }
+
   const activeTemplates = computed(() => templates.value.filter((t) => !t.is_archived))
 
   async function fetchTemplates() {
@@ -55,13 +71,14 @@ export const useTemplatesStore = defineStore('templates', () => {
   }
 
   async function fetchTemplateExercises(templateId: string) {
+    const requestVersion = bumpExercisesVersion(templateId)
     const { data, error } = await supabase
       .from('workout_template_exercises')
       .select('*, exercises(name)')
       .eq('template_id', templateId)
       .order('position')
 
-    if (!error) {
+    if (!error && exercisesVersion.value[templateId] === requestVersion) {
       exercisesByTemplate.value[templateId] = (data ?? []) as unknown as TemplateExerciseWithName[]
     }
     return { error }
@@ -79,6 +96,7 @@ export const useTemplatesStore = defineStore('templates', () => {
 
     if (!error && data) {
       exercisesByTemplate.value[templateId] = [...list, data as unknown as TemplateExerciseWithName]
+      bumpExercisesVersion(templateId)
     }
     return { data, error }
   }
@@ -94,6 +112,7 @@ export const useTemplatesStore = defineStore('templates', () => {
       const list = exercisesByTemplate.value[templateId] ?? []
       const te = list.find((e) => e.id === templateExerciseId)
       if (te) te.target_sets = targetSets
+      bumpExercisesVersion(templateId)
     }
     return { error }
   }
@@ -103,6 +122,7 @@ export const useTemplatesStore = defineStore('templates', () => {
     if (!error) {
       const list = exercisesByTemplate.value[templateId] ?? []
       exercisesByTemplate.value[templateId] = list.filter((e) => e.id !== templateExerciseId)
+      bumpExercisesVersion(templateId)
     }
     return { error }
   }
@@ -131,6 +151,7 @@ export const useTemplatesStore = defineStore('templates', () => {
       b.position = bPos
       list.sort((x, y) => x.position - y.position)
       exercisesByTemplate.value[templateId] = [...list]
+      bumpExercisesVersion(templateId)
     }
     return { error }
   }
