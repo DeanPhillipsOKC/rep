@@ -140,9 +140,14 @@ implemented and were dropped rather than logged.
 - [ ] Redesign the set-row entry UI for size, alignment, and low-vision accessibility — the
   active workout logger's set row (`WorkoutLogger.vue`, `.set-row`/`.set-stepper` inputs) is
   cramped: touch targets and number inputs read small and the row's elements don't align cleanly
-  to a grid, giving a jagged, unpolished look. Increase input and stepper-button size and spacing
-  for a comfortable tap target, and tighten column alignment across rows so reps/weight/RPE line up
-  visually. Also fix a focus-usability bug: tapping into a reps or weight field that already holds
+  to a grid, giving a jagged, unpolished look. Root cause confirmed in the CSS: `.set-row` and
+  `.set-row-fields` both use `flex-wrap: wrap` with no actual grid/column structure, so at phone
+  widths the stepper/input/RPE controls within a row wrap onto extra lines unpredictably — rows
+  end up spilling over and not lining up with each other rather than presenting a clean aligned
+  grid. Replace the ad hoc flex-wrap with an explicit fixed-column layout (e.g. CSS grid with
+  defined column widths for number/reps/weight/RPE/actions) so rows can't reflow at typical phone
+  widths, alongside increasing input and stepper-button size and spacing for a comfortable tap
+  target. Also fix a focus-usability bug: tapping into a reps or weight field that already holds
   a value from a prior set requires manually repositioning the cursor before typing, which is
   fiddly and easy to mis-tap. On focus, select the existing value (or otherwise make it trivial to
   overwrite in one keystroke) rather than requiring manual cursor placement. Larger text and
