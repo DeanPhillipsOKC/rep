@@ -124,9 +124,12 @@ implemented and were dropped rather than logged.
   this sits on screen long enough to read clearly, not just flash by. `AuthGate.vue`'s own loading
   state (`:63-94`, the animated bunny badge with pulsing rings and rotating captions) shows this app
   already has a polished, on-brand loading treatment; these four list screens fall back to
-  default-browser-text instead. Give them a shared, lightweight loading treatment (a small spinner
-  or skeleton rows, reusing `--accent`/existing motion tokens) instead of the bare placeholder text.
-  [Effort: 2, Value: 3, ROI: 1.5]
+  default-browser-text instead. **Decided (2026-09-26, mockup review — `https://claude.ai/artifact/9igCfxNKwXohf4FfzzVRRU`):
+  skeleton rows**, not a spinner — a shared component rendering 2-3 placeholder cards matching the
+  real `row-wrap` card shape (a wide bar for the title line, a narrower one below for subtext),
+  filled with a shimmering gradient (`background-size: 200% 100%` sliding via `@keyframes`, tinted
+  off `--surface-2`/`--border`) so the list doesn't jump in height once data arrives. Swap in for
+  all four `<p>Loading…</p>` usages. [Effort: 2, Value: 3, ROI: 1.5]
 
 - [ ] Template's "N exercises" count goes stale after adding or removing an exercise in the same
   session (item 75, 2026-09-26 — ux-review, `07-template-detail.png`, shows "0 exercises" directly
