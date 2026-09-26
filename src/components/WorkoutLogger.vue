@@ -7,6 +7,7 @@ import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
 import AddExerciseSheet from './AddExerciseSheet.vue'
 import ExerciseHistoryDetail from './ExerciseHistoryDetail.vue'
+import FirstWorkoutCelebration from './FirstWorkoutCelebration.vue'
 import RecordCelebration from './RecordCelebration.vue'
 import RestTimer from './RestTimer.vue'
 import VolumeChart from './VolumeChart.vue'
@@ -903,9 +904,12 @@ async function handleResumeJustFinished() {
     </div>
 
     <template v-else>
-    <div v-if="showingVolumeChart" class="card">
-      <h3>Volume over time</h3>
-      <VolumeChart :points="workout.volumeHistory" />
+    <div v-if="showingVolumeChart" class="card" data-testid="post-finish-card">
+      <FirstWorkoutCelebration v-if="workout.volumeHistory.length <= 1" />
+      <template v-else>
+        <h3>Volume over time</h3>
+        <VolumeChart :points="workout.volumeHistory" />
+      </template>
       <button type="button" class="btn-accent finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
       <button
         v-if="workout.justFinishedWorkout"

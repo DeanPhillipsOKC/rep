@@ -173,3 +173,16 @@ on something already shipped. New entries get appended here when an item is remo
   card immediately. Files: `src/components/WorkoutLogger.vue`, `e2e/resume-after-finish.spec.ts`,
   `e2e/volume-chart.spec.ts`, `e2e/template-or-freeform-choice.spec.ts`. Verified via `npm run build`
   and a full `npm run test:e2e` run (55/55).
+- Replace the single-point volume chart with a first-workout celebration card (item 70,
+  2026-09-26): a template's first-ever completion produced a `workout.volumeHistory` with exactly
+  one point — a dot with nothing to show "over time," reading as a rendering glitch. New
+  `FirstWorkoutCelebration.vue` reuses the mascot pool `RecordCelebration.vue` already draws from
+  (`src/lib/celebration.ts`'s `pickCelebration()`) with a headline congratulating the user on their
+  first workout plus "Track your volume over time as you complete more workouts." `WorkoutLogger.vue`
+  now shows it in the post-finish card's slot instead of `VolumeChart` whenever
+  `workout.volumeHistory.length <= 1`, still dismissed by the same "Log another workout" button and
+  still hosting the "Finished too early? Resume" link (item 68) unchanged. Added
+  `data-testid="post-finish-card"` to that wrapper div so tests can target it regardless of which
+  variant renders inside. Files: `src/components/FirstWorkoutCelebration.vue`,
+  `src/components/WorkoutLogger.vue`, `e2e/volume-chart.spec.ts`, `e2e/resume-after-finish.spec.ts`.
+  Verified via `npm run build` and a full `npm run test:e2e` run (55/55).

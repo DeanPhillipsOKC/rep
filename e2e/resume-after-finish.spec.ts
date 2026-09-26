@@ -101,10 +101,12 @@ test('resume after finish: templated workout offers resume inside the volume cha
 
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  // Item 68: a templated workout with sets shows the volume chart, and the
-  // just-finished resume offer now lives inside that same card as a
+  // Item 68: a templated workout with sets shows the post-finish card, and
+  // the just-finished resume offer lives inside that same card as a
   // secondary affordance, not as a second card gating "Log another workout".
-  const chart = page.locator('.card', { hasText: 'Volume over time' })
+  // This is the template's first-ever completion (item 70's single-point
+  // case), so the card holds the first-workout celebration, not the chart.
+  const chart = page.getByTestId('post-finish-card')
   await expect(chart).toBeVisible()
   const resumeLink = chart.getByRole('button', { name: 'Finished too early? Resume' })
   await expect(resumeLink).toBeVisible()
@@ -156,15 +158,17 @@ test('resume after finish: "Finished too early? Resume" on the volume chart rest
   await expect(page.locator('li.row-wrap', { hasText: '5 × 185lb' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Finish workout' }).click()
-  await expect(page.getByRole('heading', { name: 'Volume over time' })).toBeVisible()
+  // This template's first-ever completion (item 70's single-point case), so
+  // the post-finish card holds the first-workout celebration, not the chart.
+  await expect(page.getByTestId('post-finish-card')).toBeVisible()
 
   await page.getByRole('button', { name: 'Finished too early? Resume' }).click()
 
-  // Genuinely resumed, not left stuck on the chart: the workout is active
+  // Genuinely resumed, not left stuck on the card: the workout is active
   // again under its template name with the prior set still there.
   await expect(page.getByRole('heading', { name: templateName, exact: true })).toBeVisible()
   await expect(page.locator('li.row-wrap', { hasText: '5 × 185lb' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Volume over time' })).toHaveCount(0)
+  await expect(page.getByTestId('post-finish-card')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Finish workout' }).click()
 })

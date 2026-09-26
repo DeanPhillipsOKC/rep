@@ -71,19 +71,13 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(page.locator('.row', { hasText: trackedName })).toHaveCount(2)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  // Chart shows after every finished templated workout, not only when a gap
-  // exists. First-ever point: complete, actual == projected.
-  let points = page.locator('[data-testid="volume-point"]')
-  await expect(points).toHaveCount(1)
-  await expect(points.nth(0)).toContainText('2000 actual')
-  await expect(points.nth(0)).not.toContainText('projected')
-
-  // Item 53: the chart explains what "Projected" means and labels the axis
-  // with a unit — both sets in this spec are logged in the default 'lb'
-  // unit (WorkoutLogger.vue's weightUnit ref).
-  await expect(page.getByText(/Projected volume \(lb\) carries forward/)).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Volume over time, in lb' })).toBeVisible()
-  await expect(page.getByText('2000 lb', { exact: true })).toBeVisible()
+  // Item 70: the first time a template is ever completed, volumeHistory has
+  // only one point — nothing to show "over time" — so a congratulatory card
+  // shows in the chart's slot instead of a single-dot chart.
+  await expect(page.getByText('First workout logged.')).toBeVisible()
+  await expect(page.getByText('Track your volume over time as you complete more workouts.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Volume over time' })).not.toBeVisible()
+  await expect(page.locator('[data-testid="volume-point"]')).toHaveCount(0)
 
   // Item 68: "Log another workout" goes straight to the normal start screen
   // now, no second "Resume your workout?" gate in the way.
@@ -109,7 +103,9 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(page.locator('.row', { hasText: otherName })).toHaveCount(1)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  points = page.locator('[data-testid="volume-point"]')
+  // Two points now, so the real chart shows instead of the item 70 card.
+  await expect(page.getByRole('heading', { name: 'Volume over time' })).toBeVisible()
+  const points = page.locator('[data-testid="volume-point"]')
   await expect(points).toHaveCount(2)
   // Workout 2: actual is the literal (partial) volume logged; projected
   // carries forward the tracked exercise's complete volume from workout 1
@@ -117,6 +113,12 @@ test('volume chart: under-completed exercise carries forward its last complete v
   // 200 both ways (it's complete, so it isn't carried): 200 + 2000 = 2200.
   await expect(points.nth(1)).toContainText('700 actual')
   await expect(points.nth(1)).toContainText('2200 projected')
+
+  // Item 53: the chart explains what "Projected" means and labels the axis
+  // with a unit — both sets in this spec are logged in the default 'lb'
+  // unit (WorkoutLogger.vue's weightUnit ref).
+  await expect(page.getByText(/Projected volume \(lb\) carries forward/)).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Volume over time, in lb' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Log another workout' }).click()
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()

@@ -23,10 +23,9 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
-2. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
-3. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+1. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
+2. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+3. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -39,19 +38,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Replace the volume chart with a first-workout celebration card when there's only one point
-  (item 70, 2026-09-26): `handleFinish` (`WorkoutLogger.vue:826-830`) sets `showingVolumeChart =
-  true` whenever a templated workout finishes with at least one set, regardless of how many points
-  `workout.volumeHistory` ends up with — the first time a given template is ever completed, that's
-  a single dot with nothing to show "over time," which reads as a rendering glitch rather than a
-  chart. When `workout.volumeHistory.length <= 1` after `fetchTemplateVolumeHistory` resolves, show
-  a congratulatory card in the same slot instead of `VolumeChart`: reuse the existing mascot pool
-  (`src/lib/celebration.ts`'s `pickCelebration()`, the same bunny/bear art `RecordCelebration.vue`
-  already uses) with a headline congratulating them on finishing their first workout, plus a smaller
-  line of the form "Track your volume over time as you complete more workouts." Still dismissed by
-  the same "Log another workout" button/`dismissVolumeChart` handler as today, so it doesn't change
-  the resume-offer sequencing item 68 addresses. [Effort: 2, Value: 3, ROI: 1.5]
 
 - [ ] Let a set be added to a past workout on the History screen, not just edited/deleted (item 71,
   2026-09-26): `WorkoutHistory.vue`'s per-set actions (`:252-264`) only offer Edit/Delete on an
