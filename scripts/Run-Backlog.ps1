@@ -25,9 +25,10 @@
 
 .NOTES
     Optional email notifications: set GMAIL_SENDER_ADDRESS, GMAIL_APP_PASSWORD, and
-    NOTIFY_EMAIL_RECIPIENTS in .env.local (see docs/backlog-runner.md) to get an email each time
-    an item ships or gets blocked, plus one when the run finishes. Unset means notifications are
-    silently skipped — this is opt-in and never blocks a run.
+    NOTIFY_EMAIL_RECIPIENTS in .env.local (see docs/backlog-runner.md) to get an email when the
+    run finishes. Per-item ship/block emails come from the next-item skill itself (fires on any
+    invocation, not just this loop) — see scripts/Send-Notification.ps1. Unset env vars mean
+    notifications are silently skipped — this is opt-in and never blocks a run.
 #>
 
 param(
@@ -53,31 +54,10 @@ if (Test-Path $envLocalPath) {
     }
 }
 
+$sendNotificationScript = Join-Path $PSScriptRoot 'Send-Notification.ps1'
 function Send-EmailNotification {
     param([string]$Subject, [string]$Body)
-
-    if (-not $env:GMAIL_SENDER_ADDRESS -or -not $env:GMAIL_APP_PASSWORD -or -not $env:NOTIFY_EMAIL_RECIPIENTS) {
-        return
-    }
-    $recipients = $env:NOTIFY_EMAIL_RECIPIENTS -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
-    if (-not $recipients) {
-        return
-    }
-
-    try {
-        $smtp = New-Object System.Net.Mail.SmtpClient('smtp.gmail.com', 587)
-        $smtp.EnableSsl = $true
-        $smtp.Credentials = New-Object System.Net.NetworkCredential($env:GMAIL_SENDER_ADDRESS, $env:GMAIL_APP_PASSWORD)
-        $mail = New-Object System.Net.Mail.MailMessage
-        $mail.From = $env:GMAIL_SENDER_ADDRESS
-        foreach ($recipient in $recipients) { $mail.To.Add($recipient) }
-        $mail.Subject = $Subject
-        $mail.Body = $Body
-        $smtp.Send($mail)
-        $mail.Dispose()
-    } catch {
-        Write-Host "Run-Backlog.ps1: email notification failed: $_"
-    }
+    & $sendNotificationScript -Subject $Subject -Body $Body
 }
 
 $agentCommand = $Agent.ToLowerInvariant()
@@ -180,18 +160,9 @@ while ($iteration -lt $MaxIterations) {
         if ($subject -match '^Block item') {
             $blocked++
             Write-Host "Run-Backlog.ps1: iteration $iteration blocked an item: $subject"
-            $backlogDiff = (& git @gitArgs diff "$lastCommit" "$newCommit" -- docs/backlog.md) -join "`n"
-            $reasonLine = ($backlogDiff -split "`n" | Where-Object { $_ -match '^\+.*Status: blocked:' } | Select-Object -First 1)
-            $reasonText = if ($reasonLine) { ($reasonLine -replace '^\+', '').Trim() } else { 'see logs/backlog-runner.log for detail.' }
-            Send-EmailNotification -Subject "Backlog item blocked: $subject" -Body "$subject`n`n$reasonText"
         } else {
             $completed++
             Write-Host "Run-Backlog.ps1: iteration $iteration completed: $subject"
-            $archiveDiff = (& git @gitArgs diff "$lastCommit" "$newCommit" -- docs/backlog-archive.md) -join "`n"
-            $addedLines = ($archiveDiff -split "`n" | Where-Object { $_ -match '^\+[^+]' }) -join "`n"
-            $description = ($addedLines -replace '^\+\s?', '').Trim()
-            if (-not $description) { $description = $subject }
-            Send-EmailNotification -Subject "Shipped: $subject" -Body $description
         }
         $lastCommit = $newCommit
     }

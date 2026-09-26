@@ -1,6 +1,6 @@
 ---
 name: next-item
-description: Pick the single highest-ROI open item in docs/backlog.md, implement it, gate on npm run build + npm run test:e2e, and on green commit and push straight to main. Works exactly one item per invocation, then stops. Outputs exactly BACKLOG_EMPTY if nothing is eligible.
+description: Pick the single highest-ROI open item in docs/backlog.md, implement it, gate on npm run build + npm run test:e2e, and on green commit and push straight to main. Reports a concise change summary (and emails it, if configured) whether shipped or blocked. Works exactly one item per invocation, then stops. Outputs exactly BACKLOG_EMPTY if nothing is eligible.
 ---
 
 # next-item
@@ -105,7 +105,8 @@ Only after 4 genuine attempts still fail:
 3. Regenerate the Priority order line (step 8) to exclude it.
 4. Commit only `docs/backlog.md` with a subject that identifies the item.
 5. `git push`.
-6. Stop. Do not select another item in this invocation.
+6. Report it (step 9).
+7. Stop. Do not select another item in this invocation.
 
 ## 7. On green (including a confirmed unrelated flake): ship it
 
@@ -119,6 +120,7 @@ Only after 4 genuine attempts still fail:
 5. One commit. Use the repo's imperative subject style; include `(item <N>)` only if numbered.
 6. `git push` immediately. This is what closes the loop: green gate leads to a pushed commit leads
    to Cloudflare Pages deploying it, with no human step in between.
+7. Report it (step 9).
 
 ## 8. Regenerating the Priority order line
 
@@ -126,6 +128,41 @@ Recompute from scratch: take every currently-eligible item (per step 1's rule, a
 edit you just made), sort by ROI descending, then Value descending, then document order. Replace
 the numbered list under "Priority order (highest ROI first)" with one numbered entry per item,
 using its title and ROI as the current backlog does. Leave the list empty when no items qualify.
+
+## 9. Report the result
+
+Runs whether the item was shipped (step 7) or blocked (step 6) — never for `BACKLOG_EMPTY` or
+`UNSAFE_STATE`, since nothing changed in those cases. Two things, always both:
+
+1. **Print a concise summary as your own final response**, formatted exactly as below, so it's
+   visible whether this invocation is interactive or headless — this is the fallback that works
+   with no setup at all.
+2. **Also try to email it**, by running:
+   ```
+   powershell -File scripts/Send-Notification.ps1 -Subject "<subject>" -Body "<body>"
+   ```
+   using the same subject/body as the printed summary. The script silently no-ops (exit 0, no
+   output) if `GMAIL_SENDER_ADDRESS`/`GMAIL_APP_PASSWORD`/`NOTIFY_EMAIL_RECIPIENTS` aren't set in
+   `.env.local` (see `docs/backlog-runner.md#email-notifications-optional` for setup) — treat any
+   outcome from this call, success, no-op, or failure, as non-blocking. Never retry it, never let
+   it affect step 6/7's own git operations (which have already completed by this point), and never
+   report its failure as this invocation's failure.
+
+**Shipped** (subject: `Shipped: <commit subject line>`):
+```
+### Shipped — <Title> (item <N>)
+Files: <comma-separated files touched>
+What changed: <1-2 sentence summary — same substance as the docs/backlog-archive.md entry>
+Verified: npm run build passed; npm run test:e2e <passed>/<total> passed[, excluded <spec>, tracked as item <M>]
+Commit: <subject>
+```
+
+**Blocked** (subject: `Backlog item blocked: <item title>`):
+```
+### Blocked — <Title> (item <N>)
+Reason: <the one-line reason from the Status: blocked tag just added>
+Attempts: <number of fix/retry cycles tried, up to 4>
+```
 
 ## Hard rules
 

@@ -1,0 +1,62 @@
+<#
+.SYNOPSIS
+    Sends an optional email notification via Gmail SMTP. Silently does nothing if not configured.
+
+.DESCRIPTION
+    Shared by the next-item skill (one email per shipped/blocked backlog item, from whichever
+    invocation ran it — interactive, headless, or via Run-Backlog.ps1's loop) and
+    Run-Backlog.ps1 itself (one summary email when a run finishes). See
+    docs/backlog-runner.md#email-notifications-optional for setup.
+
+    Reads GMAIL_SENDER_ADDRESS, GMAIL_APP_PASSWORD, and NOTIFY_EMAIL_RECIPIENTS from .env.local
+    if they aren't already in the environment. If any of the three end up unset, this is a no-op
+    (exit 0) — notifications are opt-in and must never fail a run that didn't ask for them.
+
+.PARAMETER Subject
+    Email subject line.
+
+.PARAMETER Body
+    Plain-text email body.
+#>
+
+param(
+    [Parameter(Mandatory = $true)][string]$Subject,
+    [Parameter(Mandatory = $true)][string]$Body
+)
+
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+
+$envLocalPath = Join-Path $RepoRoot '.env.local'
+if (Test-Path $envLocalPath) {
+    Get-Content $envLocalPath | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$') {
+            $name, $value = $matches[1], $matches[2]
+            if (-not (Test-Path "Env:$name")) {
+                Set-Item -Path "Env:$name" -Value $value
+            }
+        }
+    }
+}
+
+if (-not $env:GMAIL_SENDER_ADDRESS -or -not $env:GMAIL_APP_PASSWORD -or -not $env:NOTIFY_EMAIL_RECIPIENTS) {
+    exit 0
+}
+$recipients = $env:NOTIFY_EMAIL_RECIPIENTS -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+if (-not $recipients) {
+    exit 0
+}
+
+try {
+    $smtp = New-Object System.Net.Mail.SmtpClient('smtp.gmail.com', 587)
+    $smtp.EnableSsl = $true
+    $smtp.Credentials = New-Object System.Net.NetworkCredential($env:GMAIL_SENDER_ADDRESS, $env:GMAIL_APP_PASSWORD)
+    $mail = New-Object System.Net.Mail.MailMessage
+    $mail.From = $env:GMAIL_SENDER_ADDRESS
+    foreach ($recipient in $recipients) { $mail.To.Add($recipient) }
+    $mail.Subject = $Subject
+    $mail.Body = $Body
+    $smtp.Send($mail)
+    $mail.Dispose()
+} catch {
+    Write-Host "Send-Notification.ps1: email notification failed: $_"
+}

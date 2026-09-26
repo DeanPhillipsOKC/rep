@@ -48,9 +48,13 @@ why it stopped.
 
 ## Email notifications (optional)
 
-`scripts\Run-Backlog.ps1` can email a description of each shipped or blocked item as it happens,
-plus a summary when the run finishes, via Gmail SMTP. It's opt-in: if the env vars below aren't
-set, notifications are silently skipped and the run behaves exactly as before.
+Every `next-item` run — interactive (`/next-item`), headless (`claude -p '/next-item'` or the
+Codex equivalent), or looped via `scripts\Run-Backlog.ps1` — emails a concise summary of what it
+shipped or blocked, via Gmail SMTP (`scripts\Send-Notification.ps1`). `Run-Backlog.ps1` separately
+emails one summary when the whole run finishes. It's opt-in: if the env vars below aren't set,
+`Send-Notification.ps1` silently no-ops and every run behaves exactly as before — the same
+concise summary still prints in the skill's own output either way, so nothing is lost by skipping
+email setup.
 
 Set these in `.env.local` (never in Cloudflare Pages — this only runs locally):
 
@@ -71,9 +75,11 @@ login); generate a dedicated one:
 3. Paste that into `GMAIL_APP_PASSWORD`. It only works for SMTP login, not for signing into the
    account normally, and can be revoked independently at any time from the same page.
 
-Shipped-item emails reuse the `docs/backlog-archive.md` entry the run just wrote, the same source
-the `run-backlog` skill's summary draws from. Blocked-item emails reuse the `Status: blocked:
-<reason>` tag added to `docs/backlog.md`.
+Shipped-item notifications summarize the same substance as the `docs/backlog-archive.md` entry the
+run just wrote: files touched, what changed, and the build/e2e verification result. Blocked-item
+notifications reuse the `Status: blocked: <reason>` tag added to `docs/backlog.md`, plus how many
+fix/retry cycles were tried. See each `next-item` skill's "Report the result" step for the exact
+format.
 
 ## Getting a release-notes-style summary
 
