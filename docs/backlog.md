@@ -25,9 +25,10 @@ scores by hand, recompute this line to match:
 
 1. Carry over RPE from the previous set when pre-filling a new set (ROI 3.00)
 2. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
-3. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-4. Remove JSON training data export (ROI 1.50)
-5. Show exercise-by-exercise history (ROI 1.00)
+3. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
+4. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
+5. Remove JSON training data export (ROI 1.50)
+6. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -61,6 +62,26 @@ implemented and were dropped rather than logged.
   (closed, `null`) when the previous set had no RPE recorded. Cover both cases — carried-over
   value shown open, and no-prior-RPE staying closed — in Playwright.
   [Effort: 1, Value: 3, ROI: 3.00]
+
+- [ ] Let an accidentally-finished workout be resumed instead of only starting a new one —
+  reported from real use: tapping "Finish workout" (`WorkoutLogger.vue`'s `handleFinishClick`)
+  when meaning to switch to the next exercise (e.g. via the template exercise chips) is an easy
+  mistake, and today there's no way back — `finishWorkout()` (`stores/workouts.ts`) only confirms
+  before finishing when zero sets were logged (backlog-archive item 51); once any set exists it
+  finishes immediately with no undo. The finished workout's row and sets aren't actually deleted
+  server-side in that case (`finishWorkout` only deletes on the zero-sets path), so the data needed
+  to resume already exists — the gap is purely that the client clears `activeWorkoutId` and never
+  offers to re-attach to it. Add a short-lived "Resume workout" option, offered right after finishing
+  alongside "start a new workout," that re-attaches `activeWorkoutId` to the just-finished workout
+  and restores `activeTemplateId`/`activeSets` from the server — reusing the same restore shape as
+  the existing crash-recovery `resumeRecoverableWorkout` flow and its "Resume your workout?" card
+  (`WorkoutLogger.vue`), rather than only appearing inside the template-gated post-finish volume
+  chart (`showingVolumeChart`, which never shows for a freeform/no-template workout). Scope the
+  window so it only offers the single most-recently-finished workout and clears once a new workout
+  is started, so it can't be confused with editing older sessions from History (item 32,
+  `docs/backlog-archive.md`). Cover resume-after-finish (template and freeform) and the window
+  clearing on next-workout-start in Playwright.
+  [Effort: 3, Value: 5, ROI: 1.67]
 
 - [ ] Remove JSON training data export — remove the "Your data" card and download action from
   Exercises, the export helper, and its export-specific Playwright spec. There is no in-app import
