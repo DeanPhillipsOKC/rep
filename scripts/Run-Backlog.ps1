@@ -56,8 +56,14 @@ if (Test-Path $envLocalPath) {
 
 $sendNotificationScript = Join-Path $PSScriptRoot 'Send-Notification.ps1'
 function Send-EmailNotification {
-    param([string]$Subject, [string]$Body)
-    & $sendNotificationScript -Subject $Subject -Body $Body
+    param([string]$Subject, [string]$HtmlBody)
+    $tmpHtml = Join-Path $env:TEMP "backlog-run-summary-$PID.html"
+    Set-Content -Path $tmpHtml -Value $HtmlBody -Encoding utf8
+    try {
+        & $sendNotificationScript -Subject $Subject -BodyFile $tmpHtml -IsHtml
+    } finally {
+        Remove-Item -Path $tmpHtml -Force -ErrorAction SilentlyContinue
+    }
 }
 
 $agentCommand = $Agent.ToLowerInvariant()
@@ -188,11 +194,26 @@ Write-Host "Items blocked: $blocked"
 Write-Host "Stopped because: $stopReason"
 Write-Host "Log: $logFile"
 
-Send-EmailNotification -Subject "Backlog run finished ($completed shipped, $blocked blocked)" -Body @"
-Iterations run: $iteration
-Items completed: $completed
-Items blocked: $blocked
-Stopped because: $stopReason
+$summaryHtml = @"
+<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+      <div style="background:#1f2937;padding:12px 20px;">
+        <span style="color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Backlog run finished</span>
+      </div>
+      <div style="padding:20px;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;">Iterations run</td><td style="padding:4px 0;">$iteration</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;">Shipped</td><td style="padding:4px 0;">$completed</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;">Blocked</td><td style="padding:4px 0;">$blocked</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">Stopped because</td><td style="padding:4px 0;">$stopReason</td></tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
 "@
+Send-EmailNotification -Subject "Backlog run finished ($completed shipped, $blocked blocked)" -HtmlBody $summaryHtml
 
 exit $exitCode

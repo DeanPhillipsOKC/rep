@@ -49,12 +49,12 @@ why it stopped.
 ## Email notifications (optional)
 
 Every `next-item` run — interactive (`/next-item`), headless (`claude -p '/next-item'` or the
-Codex equivalent), or looped via `scripts\Run-Backlog.ps1` — emails a concise summary of what it
-shipped or blocked, via Gmail SMTP (`scripts\Send-Notification.ps1`). `Run-Backlog.ps1` separately
-emails one summary when the whole run finishes. It's opt-in: if the env vars below aren't set,
-`Send-Notification.ps1` silently no-ops and every run behaves exactly as before — the same
-concise summary still prints in the skill's own output either way, so nothing is lost by skipping
-email setup.
+Codex equivalent), or looped via `scripts\Run-Backlog.ps1` — emails a short HTML summary card of
+what it shipped or blocked, via Gmail SMTP (`scripts\Send-Notification.ps1`). `Run-Backlog.ps1`
+separately emails one summary card when the whole run finishes. It's opt-in: if the env vars below
+aren't set, `Send-Notification.ps1` silently no-ops and every run behaves exactly as before — the
+same concise summary still prints as plain text in the skill's own output either way, so nothing
+is lost by skipping email setup.
 
 Set these in `.env.local` (never in Cloudflare Pages — this only runs locally):
 

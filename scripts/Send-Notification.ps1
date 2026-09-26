@@ -16,13 +16,35 @@
     Email subject line.
 
 .PARAMETER Body
-    Plain-text email body.
+    Email body. Plain text unless -IsHtml is set.
+
+.PARAMETER BodyFile
+    Path to a file holding the email body, read as UTF-8. Use this instead of -Body for HTML
+    content, since HTML markup (quotes, angle brackets) is painful to pass as a CLI argument.
+    Exactly one of -Body / -BodyFile must be given.
+
+.PARAMETER IsHtml
+    Render Body/BodyFile as HTML instead of plain text.
 #>
 
 param(
     [Parameter(Mandatory = $true)][string]$Subject,
-    [Parameter(Mandatory = $true)][string]$Body
+    [string]$Body,
+    [string]$BodyFile,
+    [switch]$IsHtml
 )
+
+if ([string]::IsNullOrEmpty($Body) -eq [string]::IsNullOrEmpty($BodyFile)) {
+    Write-Error 'Send-Notification.ps1: pass exactly one of -Body or -BodyFile.'
+    exit 1
+}
+if ($BodyFile) {
+    if (-not (Test-Path $BodyFile)) {
+        Write-Error "Send-Notification.ps1: -BodyFile not found: $BodyFile"
+        exit 1
+    }
+    $Body = Get-Content -Path $BodyFile -Raw -Encoding UTF8
+}
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
@@ -55,6 +77,7 @@ try {
     foreach ($recipient in $recipients) { $mail.To.Add($recipient) }
     $mail.Subject = $Subject
     $mail.Body = $Body
+    $mail.IsBodyHtml = $IsHtml.IsPresent
     $smtp.Send($mail)
     $mail.Dispose()
 } catch {

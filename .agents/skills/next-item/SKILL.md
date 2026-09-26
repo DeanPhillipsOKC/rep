@@ -134,34 +134,90 @@ using its title and ROI as the current backlog does. Leave the list empty when n
 Runs whether the item was shipped (step 7) or blocked (step 6) — never for `BACKLOG_EMPTY` or
 `UNSAFE_STATE`, since nothing changed in those cases. Two things, always both:
 
-1. **Print a concise summary as your own final response**, formatted exactly as below, so it's
-   visible whether this invocation is interactive or headless — this is the fallback that works
-   with no setup at all.
-2. **Also try to email it**, by running:
+1. **Print a concise plain-text summary as your own final response**, formatted exactly as below,
+   so it's visible whether this invocation is interactive or headless — this is the fallback that
+   works with no setup at all.
+2. **Also try to email it as a short HTML card** (not a plain-text dump of the printed summary —
+   see templates below). Write the filled-in HTML to a temp file, then run:
    ```
-   powershell -File scripts/Send-Notification.ps1 -Subject "<subject>" -Body "<body>"
+   powershell -File scripts/Send-Notification.ps1 -Subject "<subject>" -BodyFile "<path-to-html-file>" -IsHtml
    ```
-   using the same subject/body as the printed summary. The script silently no-ops (exit 0, no
-   output) if `GMAIL_SENDER_ADDRESS`/`GMAIL_APP_PASSWORD`/`NOTIFY_EMAIL_RECIPIENTS` aren't set in
-   `.env.local` (see `docs/backlog-runner.md#email-notifications-optional` for setup) — treat any
-   outcome from this call, success, no-op, or failure, as non-blocking. Never retry it, never let
-   it affect step 6/7's own git operations (which have already completed by this point), and never
-   report its failure as this invocation's failure.
+   The script silently no-ops (exit 0, no output) if `GMAIL_SENDER_ADDRESS`/`GMAIL_APP_PASSWORD`/
+   `NOTIFY_EMAIL_RECIPIENTS` aren't set in `.env.local` (see
+   `docs/backlog-runner.md#email-notifications-optional` for setup) — treat any outcome from this
+   call, success, no-op, or failure, as non-blocking. Never retry it, never let it affect step
+   6/7's own git operations (which have already completed by this point), and never report its
+   failure as this invocation's failure.
 
-**Shipped** (subject: `Shipped: <commit subject line>`):
+### Terminal summary (plain text)
+
+**Shipped:**
 ```
-### Shipped — <Title> (item <N>)
+Shipped — <Title> (item <N>)
 Files: <comma-separated files touched>
 What changed: <1-2 sentence summary — same substance as the docs/backlog-archive.md entry>
 Verified: npm run build passed; npm run test:e2e <passed>/<total> passed[, excluded <spec>, tracked as item <M>]
 Commit: <subject>
 ```
 
-**Blocked** (subject: `Backlog item blocked: <item title>`):
+**Blocked:**
 ```
-### Blocked — <Title> (item <N>)
+Blocked — <Title> (item <N>)
 Reason: <the one-line reason from the Status: blocked tag just added>
 Attempts: <number of fix/retry cycles tried, up to 4>
+```
+
+### Email (HTML card)
+
+Keep the copy in each field as short as the terminal summary — the point is a cleaner layout, not
+more words. Use inline styles only (email clients strip `<style>` blocks and external CSS). Fill
+the placeholders (ALL-CAPS tokens) and send exactly this markup, changing nothing else about the
+structure:
+
+**Shipped** (subject: `Shipped: <commit subject line>`):
+```html
+<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+      <div style="background:#15803d;padding:12px 20px;">
+        <span style="color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Shipped</span>
+      </div>
+      <div style="padding:20px;">
+        <h2 style="margin:0 0 2px;font-size:17px;color:#111827;">TITLE</h2>
+        <p style="margin:0 0 16px;font-size:12px;color:#6b7280;">Item N</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">What changed</td><td style="padding:4px 0;">SUMMARY</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">Files</td><td style="padding:4px 0;font-family:Consolas,monospace;font-size:12.5px;">FILES</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">Verified</td><td style="padding:4px 0;">VERIFIED</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">Commit</td><td style="padding:4px 0;font-family:Consolas,monospace;font-size:12.5px;">COMMIT</td></tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
+```
+
+**Blocked** (subject: `Backlog item blocked: <item title>`) — same shape, red banner, two rows:
+```html
+<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+      <div style="background:#b91c1c;padding:12px 20px;">
+        <span style="color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Blocked</span>
+      </div>
+      <div style="padding:20px;">
+        <h2 style="margin:0 0 2px;font-size:17px;color:#111827;">TITLE</h2>
+        <p style="margin:0 0 16px;font-size:12px;color:#6b7280;">Item N</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">Reason</td><td style="padding:4px 0;">REASON</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">Attempts</td><td style="padding:4px 0;">ATTEMPTS</td></tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
 ```
 
 ## Hard rules
