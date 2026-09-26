@@ -253,6 +253,11 @@ clipped the overflow instead of wrapping it. Keep all three in place if you ever
 
 ## Hard rules
 
+- Do every step yourself in the current session. Never spawn a sub-agent for any part of this:
+  reading the backlog, searching the codebase, implementing, or diagnosing a red gate. A fresh
+  sub-agent re-derives context this session already has, and that re-derivation burns far more
+  tokens than just doing the work inline — the opposite of what a token-conscious unattended run
+  needs.
 - Never touch a `[human]`-tagged item or anything under `## Human setup / device verification`.
 - Never run `npm run wipe:account` or any other destructive/admin script. (There's precedent in
   `docs/backlog-archive.md` for an unattended session correctly getting blocked from exactly this;
