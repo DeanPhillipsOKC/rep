@@ -23,9 +23,8 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
-2. Flaky click on "Start workout" in `volume-chart.spec.ts` (ROI 1.00)
-3. Flaky "exercise-row not visible" in `resume-after-finish.spec.ts` (ROI 1.00)
+1. Flaky "exercise-row not visible" in `resume-after-finish.spec.ts`'s templated-workout resume test (ROI 1.00)
+2. Flaky "exercise-row not visible" after adding an exercise to a template in `template-or-freeform-choice.spec.ts` (ROI 1.00)
 
 ## Features
 
@@ -41,35 +40,6 @@ implemented and were dropped rather than logged.
 
 ## Testing / tooling
 
-- [ ] Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run — found
-  while shipping the mid-workout suggested-chip sizing fix (`docs/backlog-archive.md`): a full
-  `npm run test:e2e` run failed this spec with `Test timeout of 30000ms exceeded` clicking
-  `Start workout` for the follow-up freeform start (after "Log another workout" resets the start
-  screen back to unselected), with Playwright's action log reporting `element was detached from
-  the DOM, retrying` before giving up. Unrelated to the chip-sizing change (different feature area
-  — start-screen template/freeform chips, not the mid-workout `.suggested` exercise chips) and
-  passed cleanly on an immediate rerun in isolation, so treated as a pre-existing flake per
-  `docs/backlog-archive.md` items 56/57's documented pattern rather than blocking that ship. Root
-  cause not yet diagnosed — likely a re-render racing the click right as the post-finish reset
-  flips the start screen back to its unselected state. Investigate and make the click robust (wait
-  for the reset to settle, or find and fix the actual re-render race) so this stops intermittently
-  failing the full e2e gate.
-  [Effort: 3, Value: 3, ROI: 1.00]
-
-- [ ] Flaky click on "Start workout" in `volume-chart.spec.ts` — found while shipping the JSON
-  training-data export removal (item 60, `docs/backlog-archive.md`): a full `npm run test:e2e` run
-  failed `volume chart: under-completed exercise carries forward its last complete volume` with
-  `Test timeout of 30000ms exceeded` clicking `Start workout`, Playwright's action log reporting
-  `element was detached from the DOM, retrying` before giving up — the same symptom already tracked
-  for `template-or-freeform-choice.spec.ts` above, but in a different spec, so logged separately per
-  that item's own scope. Unrelated to the export-removal change (different feature area — start
-  screen template selection, not Exercises/export) and passed cleanly on an immediate rerun in
-  isolation, so treated as a pre-existing flake per `docs/backlog-archive.md` items 56/57's
-  documented pattern rather than blocking that ship. Likely the same root cause as the sibling item
-  above (a re-render racing the "Start workout" click); fix both together once diagnosed, or confirm
-  they're actually the same bug and merge the items.
-  [Effort: 3, Value: 3, ROI: 1.00]
-
 - [ ] Flaky "exercise-row not visible" in `resume-after-finish.spec.ts`'s templated-workout resume
   test — found while shipping the orphaned-freeform-workout sweep-script fix (item 62): a full
   `npm run test:e2e` run failed `resume after finish: templated workout offers resume after the
@@ -81,9 +51,25 @@ implemented and were dropped rather than logged.
   3/3 passed), so treated as a pre-existing flake per `docs/backlog-archive.md` items 56/57's
   documented pattern rather than blocking that ship. Root cause not yet diagnosed — likely a
   re-render race between the template detail view refetching its exercise list and the "Add"
-  click's response, similar in shape to the two already-tracked "Start workout" flakes above but in
-  a different UI area. Investigate and make the assertion/click robust so this stops intermittently
+  click's response. Investigate and make the assertion/click robust so this stops intermittently
   failing the full e2e gate.
+  [Effort: 3, Value: 3, ROI: 1.00]
+
+- [ ] Flaky "exercise-row not visible" after adding an exercise to a template in
+  `template-or-freeform-choice.spec.ts` — found while shipping item 65 (the `justFinishedWorkout`
+  race fix, `docs/backlog-archive.md`): a full `npm run test:e2e` run failed this spec with
+  `expect(locator).toBeVisible() failed` waiting on `.exercise-row` containing the newly-added
+  exercise name (5000ms timeout, element never found) right after clicking "Add" to attach the
+  exercise to the template — same symptom, same UI location (`TemplateManager.vue`'s post-Add
+  exercise-row render), and quite possibly the same root cause as the already-tracked item above in
+  `resume-after-finish.spec.ts`, just surfacing in a different spec; logged separately per that
+  item's own precedent for the "Start workout" duplicates rather than assumed identical without
+  confirming. Unrelated to item 65's change (different feature area — template exercise attachment,
+  not the post-finish resume-offer flow) and passed cleanly on two immediate reruns in isolation
+  (`npx playwright test e2e/template-or-freeform-choice.spec.ts`, 1/1 passed each time), so treated
+  as a pre-existing flake per `docs/backlog-archive.md` items 56/57's documented pattern rather than
+  blocking that ship. Investigate alongside the sibling item above — fix both together once
+  diagnosed, or confirm they're the same bug and merge the items.
   [Effort: 3, Value: 3, ROI: 1.00]
 
 ## Human setup / device verification

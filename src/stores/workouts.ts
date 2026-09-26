@@ -531,6 +531,15 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       .order('set_index', { foreignTable: 'sets', ascending: true })
       .maybeSingle()
 
+    // Stale-response guard: this fetch is fired without the caller waiting
+    // on it (handleFinish in WorkoutLogger.vue isn't itself awaited from its
+    // click handler), so a fast-enough next action — starting a new workout
+    // (which clears these two refs itself) or dismissing the offer — can
+    // land before this resolves. Applying a response after that would
+    // resurrect a stale "Resume your workout?" card over an unrelated
+    // session that's already moved on.
+    if (justFinishedWorkoutId.value !== id) return
+
     if (error || !data) {
       justFinishedWorkoutId.value = null
       return

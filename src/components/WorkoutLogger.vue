@@ -628,16 +628,23 @@ async function handleFinish() {
   draftRowsByExercise.value = {}
   recordCelebration.value = null
 
+  // Resume-after-finish item: fetch the offer's data up front (rather than
+  // lazily on tap) so the "Resume workout?" card can show the template name
+  // and set count immediately once it's reached, whether that's right away
+  // (freeform) or after the volume chart is dismissed (templated). This has
+  // to finish before showingVolumeChart flips true, not just before
+  // handleFinish returns — otherwise the fetch can still be in flight when
+  // the volume chart's own dismiss button is clicked, and its late arrival
+  // switches the just-shown home screen straight to the resume card mid-
+  // interaction (surfaced as a flaky "element was detached from the DOM"
+  // failure on the next click in template-or-freeform-choice.spec.ts).
+  if (hadSets) await workout.fetchJustFinishedWorkout()
+
   if (finishedTemplateId && hadSets) {
     const templateExercises = templates.exercisesByTemplate[finishedTemplateId] ?? []
     await workout.fetchTemplateVolumeHistory(finishedTemplateId, templateExercises)
     showingVolumeChart.value = true
   }
-  // Resume-after-finish item: fetch the offer's data up front (rather than
-  // lazily on tap) so the "Resume workout?" card can show the template name
-  // and set count immediately once it's reached, whether that's right away
-  // (freeform) or after the volume chart is dismissed (templated).
-  if (hadSets) await workout.fetchJustFinishedWorkout()
   workout.fetchProgressStats()
 }
 

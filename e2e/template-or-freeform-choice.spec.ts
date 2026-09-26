@@ -64,9 +64,11 @@ test('start screen requires an explicit template-or-freeform pick before Start w
   await dismissCelebrationIfShown(page)
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  // A templated finish with sets logged shows the volume-chart card before
-  // returning to the start screen.
+  // A templated finish with sets logged shows the volume-chart card, then
+  // the "Resume your workout?" just-finished offer (docs/backlog-archive.md's
+  // resume-after-finish item), before returning to the start screen.
   await page.getByRole('button', { name: 'Log another workout' }).click()
+  await page.getByRole('button', { name: 'Start a new workout' }).click()
 
   // Reached fresh after finishing: unselected again, not carried over from
   // the just-finished (templated) workout.

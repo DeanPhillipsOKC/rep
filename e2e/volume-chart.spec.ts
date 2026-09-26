@@ -84,7 +84,11 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(page.getByRole('img', { name: 'Volume over time, in lb' })).toBeVisible()
   await expect(page.getByText('2000 lb', { exact: true })).toBeVisible()
 
+  // Templated finish with sets logged also offers to resume it
+  // (docs/backlog-archive.md's resume-after-finish item) right after the
+  // volume chart; dismiss it to reach the normal start screen.
   await page.getByRole('button', { name: 'Log another workout' }).click()
+  await page.getByRole('button', { name: 'Start a new workout' }).click()
 
   // Workout 2: only one set of the tracked exercise (under target_sets: 2),
   // volume 500 — plus one set of `otherName` (no target_sets, so it's
@@ -116,5 +120,6 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await expect(points.nth(1)).toContainText('2200 projected')
 
   await page.getByRole('button', { name: 'Log another workout' }).click()
+  await page.getByRole('button', { name: 'Start a new workout' }).click()
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeVisible()
 })
