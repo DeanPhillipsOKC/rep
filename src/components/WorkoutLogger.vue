@@ -626,12 +626,38 @@ async function handleFinish() {
     await workout.fetchTemplateVolumeHistory(finishedTemplateId, templateExercises)
     showingVolumeChart.value = true
   }
+  // Resume-after-finish item: fetch the offer's data up front (rather than
+  // lazily on tap) so the "Resume workout?" card can show the template name
+  // and set count immediately once it's reached, whether that's right away
+  // (freeform) or after the volume chart is dismissed (templated).
+  if (hadSets) await workout.fetchJustFinishedWorkout()
   workout.fetchProgressStats()
 }
 
 function dismissVolumeChart() {
   showingVolumeChart.value = false
   workout.clearVolumeHistory()
+}
+
+// Resume-after-finish item: mirrors handleResume above, but restores from
+// justFinishedWorkout (the workout finishWorkout() just completed) instead
+// of a crash-recovered one.
+const justFinishedTemplateName = computed(
+  () => workout.justFinishedWorkout?.workout_templates?.name ?? 'Freeform workout',
+)
+
+async function handleResumeJustFinished() {
+  const justFinished = workout.justFinishedWorkout
+  if (!justFinished) return
+  workout.resumeJustFinishedWorkout()
+  notes.value = justFinished.notes ?? ''
+  templateId.value = justFinished.template_id ?? ''
+  if (justFinished.template_id) {
+    await workout.fetchPreviousWorkout(justFinished.template_id, justFinished.id)
+    if (!templates.exercisesByTemplate[justFinished.template_id]) {
+      await templates.fetchTemplateExercises(justFinished.template_id)
+    }
+  }
 }
 </script>
 
@@ -670,6 +696,18 @@ function dismissVolumeChart() {
       <h3>Volume over time</h3>
       <VolumeChart :points="workout.volumeHistory" />
       <button type="button" class="btn-accent finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
+    </div>
+
+    <div v-else-if="workout.justFinishedWorkout" class="card">
+      <h3>Resume your workout?</h3>
+      <p class="row-sub">
+        Just finished · {{ justFinishedTemplateName }}
+        · {{ workout.justFinishedWorkout.sets.length }} set{{ workout.justFinishedWorkout.sets.length === 1 ? '' : 's' }} logged
+      </p>
+      <div class="confirm-actions">
+        <button type="button" class="btn-accent" @click="handleResumeJustFinished">Resume workout</button>
+        <button type="button" class="ghost" @click="workout.dismissJustFinishedWorkout()">Start a new workout</button>
+      </div>
     </div>
 
     <template v-else-if="!workout.activeWorkoutId">

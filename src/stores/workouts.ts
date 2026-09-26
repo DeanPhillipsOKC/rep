@@ -41,6 +41,20 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   // back into an in-progress session.
   const recoverableWorkout = ref<WorkoutWithSets | null>(null)
 
+  // Resume-after-finish item: the workout finishWorkout() most recently
+  // completed with at least one set, offered back as an undo for an
+  // accidental "Finish workout" tap. Deliberately NOT persisted like
+  // ACTIVE_WORKOUT_STORAGE_KEY above — this is a short-lived, same-session
+  // undo window, not crash recovery, so a reload silently drops the offer
+  // rather than resurrecting it indefinitely. justFinishedWorkoutId is set
+  // synchronously by finishWorkout; justFinishedWorkout is the fresh,
+  // server-fetched copy (same shape/query as checkForRecoverableWorkout)
+  // that fetchJustFinishedWorkout populates before the UI offers to resume,
+  // so resumeJustFinishedWorkout restores from real server state rather than
+  // a possibly-stale in-memory snapshot.
+  const justFinishedWorkoutId = ref<string | null>(null)
+  const justFinishedWorkout = ref<WorkoutWithSets | null>(null)
+
   // Backlog item 6: post-workout volume-over-time chart for the template
   // just finished. Populated by fetchTemplateVolumeHistory, cleared by
   // clearVolumeHistory once the chart has been dismissed.
@@ -218,6 +232,10 @@ export const useWorkoutsStore = defineStore('workouts', () => {
       activeWorkoutStartedAt.value = Date.now()
       activeSets.value = []
       persistActiveWorkoutId(data.id)
+      // Resume-after-finish item: the window only ever covers the single
+      // most-recently-finished workout, so starting any new one closes it.
+      justFinishedWorkoutId.value = null
+      justFinishedWorkout.value = null
     }
     return { data, error }
   }
@@ -293,6 +311,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     previousWorkout.value = null
     newRecord.value = null
     recoverableWorkout.value = null
+    justFinishedWorkoutId.value = null
+    justFinishedWorkout.value = null
     persistActiveWorkoutId(null)
   }
 
@@ -475,6 +495,9 @@ export const useWorkoutsStore = defineStore('workouts', () => {
   async function finishWorkout() {
     await waitForPendingWrites()
 
+    const finishedWorkoutId = activeWorkoutId.value
+    const hadSets = activeSets.value.length > 0
+
     if (activeWorkoutId.value && activeSets.value.length === 0) {
       await supabase.from('workouts').delete().eq('id', activeWorkoutId.value)
     }
@@ -485,6 +508,57 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     previousWorkout.value = null
     newRecord.value = null
     persistActiveWorkoutId(null)
+
+    // Only a workout that actually has sets is worth offering to resume — an
+    // empty one was just deleted above, same as always.
+    justFinishedWorkoutId.value = hadSets ? finishedWorkoutId : null
+    justFinishedWorkout.value = null
+  }
+
+  // Resume-after-finish item: re-fetches the just-finished workout through
+  // the normal signed-in client, same query shape as
+  // checkForRecoverableWorkout, so the offer is backed by real server state
+  // (not a stale in-memory copy) by the time resumeJustFinishedWorkout runs.
+  async function fetchJustFinishedWorkout() {
+    const id = justFinishedWorkoutId.value
+    if (!id) return
+
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('*, sets(*, exercises(name)), workout_templates(name)')
+      .eq('id', id)
+      .order('set_index', { foreignTable: 'sets', ascending: true })
+      .maybeSingle()
+
+    if (error || !data) {
+      justFinishedWorkoutId.value = null
+      return
+    }
+    justFinishedWorkout.value = data as unknown as WorkoutWithSets
+  }
+
+  // Re-attaches activeWorkoutId to the just-finished workout and restores
+  // activeTemplateId/activeSets from the server, same restore shape as
+  // resumeRecoverableWorkout below.
+  function resumeJustFinishedWorkout() {
+    const justFinished = justFinishedWorkout.value
+    if (!justFinished) return
+    activeWorkoutId.value = justFinished.id
+    activeTemplateId.value = justFinished.template_id
+    activeWorkoutStartedAt.value = new Date(justFinished.performed_at).getTime()
+    activeSets.value = justFinished.sets
+    justFinishedWorkout.value = null
+    justFinishedWorkoutId.value = null
+    persistActiveWorkoutId(justFinished.id)
+  }
+
+  // Called when the user opts to start a new workout instead of resuming the
+  // one they just finished — a non-destructive dismissal, unlike
+  // discardRecoverableWorkout below (the just-finished workout stays exactly
+  // as finished; only the resume offer goes away).
+  function dismissJustFinishedWorkout() {
+    justFinishedWorkoutId.value = null
+    justFinishedWorkout.value = null
   }
 
   // Backlog item 31: remove a finished workout logged in error (duplicate,
@@ -579,6 +653,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     activeSets,
     previousWorkout,
     recoverableWorkout,
+    justFinishedWorkoutId,
+    justFinishedWorkout,
     volumeHistory,
     volumeHistoryError,
     newRecord,
@@ -589,6 +665,9 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     checkForRecoverableWorkout,
     resumeRecoverableWorkout,
     discardRecoverableWorkout,
+    fetchJustFinishedWorkout,
+    resumeJustFinishedWorkout,
+    dismissJustFinishedWorkout,
     resetActiveWorkoutState,
     addSet,
     updateSet,
