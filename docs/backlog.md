@@ -23,7 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-(none — no eligible open items)
+1. Item 69 — mismatched button sizing on "Resume your workout?" cards (ROI 2)
+2. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
+3. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
+4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -36,6 +39,53 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
+
+- [ ] Move the "resume accidentally-finished workout" offer off the "Log another workout" path
+  (item 68, 2026-09-26 — from discussion, not a UX-review find): today, finishing a templated
+  workout shows the volume chart, and tapping "Log another workout" there (`dismissVolumeChart` in
+  `WorkoutLogger.vue`) immediately shows a second "Resume your workout?" card because
+  `justFinishedWorkout` (item 124/item 1, `docs/backlog-archive.md`) is still set — re-litigating a
+  decision the user just made twice (finish, then explicitly "log another"). The undo-for-accidental-
+  finish value is real, it's just surfaced at the wrong moment. Move it onto the volume chart screen
+  itself instead — a secondary "Finished too early? Resume" affordance next to "Log another
+  workout" — so tapping "Log another workout" goes straight to the start screen with no second gate.
+  Freeform workouts (no volume chart) already show the offer immediately on finish; leave that path
+  alone. [Effort: 2, Value: 3, ROI: 1.5]
+
+- [ ] Mismatched button sizing on the "Resume your workout?" cards (item 69, 2026-09-26): both the
+  crash-recovery card (`WorkoutLogger.vue:879-882`) and the just-finished card (`:907-910`) pair a
+  `btn-accent` primary button (`width: 100%` per `style.css`) with a plain `ghost` secondary button
+  (no width, sizes to its own text) inside a `.confirm-actions` flex row — the accent button eats
+  most of the row's width and squeezes "Discard workout"/"Start a new workout" down to a cramped,
+  wrapped label. Every other confirm/cancel pair in this file (delete-set at `:1238-1241`,
+  empty-finish at `:1301-1304`) already avoids this by giving both buttons matching `... small`
+  classes. Not asking for the same color, just the same size — apply the same `small`-class (or
+  equivalent equal-width) pattern to these two cards' button pairs. [Effort: 1, Value: 2, ROI: 2]
+
+- [ ] Replace the volume chart with a first-workout celebration card when there's only one point
+  (item 70, 2026-09-26): `handleFinish` (`WorkoutLogger.vue:826-830`) sets `showingVolumeChart =
+  true` whenever a templated workout finishes with at least one set, regardless of how many points
+  `workout.volumeHistory` ends up with — the first time a given template is ever completed, that's
+  a single dot with nothing to show "over time," which reads as a rendering glitch rather than a
+  chart. When `workout.volumeHistory.length <= 1` after `fetchTemplateVolumeHistory` resolves, show
+  a congratulatory card in the same slot instead of `VolumeChart`: reuse the existing mascot pool
+  (`src/lib/celebration.ts`'s `pickCelebration()`, the same bunny/bear art `RecordCelebration.vue`
+  already uses) with a headline congratulating them on finishing their first workout, plus a smaller
+  line of the form "Track your volume over time as you complete more workouts." Still dismissed by
+  the same "Log another workout" button/`dismissVolumeChart` handler as today, so it doesn't change
+  the resume-offer sequencing item 68 addresses. [Effort: 2, Value: 3, ROI: 1.5]
+
+- [ ] Let a set be added to a past workout on the History screen, not just edited/deleted (item 71,
+  2026-09-26): `WorkoutHistory.vue`'s per-set actions (`:252-264`) only offer Edit/Delete on an
+  already-existing set — adding a brand-new one to a finished workout was explicitly called out as
+  out of scope when that edit/delete flow shipped (see the file's own comment at `:15-19`, item 32).
+  The store has no path for it either: `addSet` (`stores/workouts.ts:360+`) writes against
+  `activeWorkoutId`, the live in-progress session, not an arbitrary past `workout_id`. Needs a new
+  store function (same insert shape as `addSet`, targeting a passed-in `workoutId` instead of
+  `activeWorkoutId`, no rest-timer/record-celebration side effects since the workout is already
+  finished) plus an "Add set" affordance per expanded history card with an exercise picker (the
+  existing flat set list has no exercise-scoped entry point today) and the same reps/weight/unit/RPE
+  fields the edit form already uses. [Effort: 3, Value: 3, ROI: 1]
 
 ## Testing / tooling
 
