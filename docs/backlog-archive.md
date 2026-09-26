@@ -25,6 +25,10 @@ on something already shipped. New entries get appended here when an item is remo
   `http://localhost:5173`.
 - Open sign-ups disabled; confirmed via `/auth/v1/settings` (`disable_signup: true`).
 - Both allowed accounts pre-created manually (Auto Confirm), no `allowed_users` table.
+- Load-type / body-weight schema (prerequisite for backlog items 76-81) applied by the user in the
+  SQL editor 2026-09-26, no errors: `exercises.load_type`, `sets.level`, `profiles.height`/
+  `height_unit`/`missing_weight_prompt_opt_out`/`weight_reminder`, new `body_weight_entries` table
+  with owner-only RLS. Mirrored into `supabase/schema.sql` and `supabase/policies.sql`.
 
 ## Decisions made
 

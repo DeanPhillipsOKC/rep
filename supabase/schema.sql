@@ -18,11 +18,32 @@
 -- notifications added after the initial rollout, backlog item 15): run
 --   alter table exercises add column rest_seconds int null check (rest_seconds > 0);
 -- then the `create table push_subscriptions` statement below.
+--
+-- Applying to an already-provisioned database (exercise load types + body
+-- weight tracking, backlog items 76-80, applied to the live DB 2026-09-26):
+--   alter table exercises add column load_type text not null default 'weight'
+--     check (load_type in ('weight', 'level', 'bodyweight', 'assisted'));
+--   alter table sets add column level int null check (level is null or level > 0);
+--   alter table profiles add column height numeric null check (height is null or height > 0);
+--   alter table profiles add column height_unit text null check (height_unit in ('in', 'cm'));
+--   alter table profiles add column missing_weight_prompt_opt_out boolean not null default false;
+--   alter table profiles add column weight_reminder text not null default 'monthly'
+--     check (weight_reminder in ('weekly', 'monthly', 'off'));
+-- then the `create table body_weight_entries` statement below, and its RLS
+-- lines in policies.sql.
 
 create table profiles (
   id           uuid primary key references auth.users(id),
   display_name text,
-  created_at   timestamptz not null default now()
+  created_at   timestamptz not null default now(),
+  -- Backlog item 77: single value, not a history (it rarely changes).
+  height       numeric null check (height is null or height > 0),
+  height_unit  text null check (height_unit in ('in', 'cm')),
+  -- Backlog items 78/79: "Don't ask again" on the missing-body-weight prompt.
+  missing_weight_prompt_opt_out boolean not null default false,
+  -- Backlog item 80: periodic weigh-in reminder cadence.
+  weight_reminder text not null default 'monthly'
+    check (weight_reminder in ('weekly', 'monthly', 'off'))
 );
 
 create table exercises (
@@ -31,7 +52,11 @@ create table exercises (
   name        text not null,
   is_archived boolean not null default false,
   setup_notes text,                          -- e.g. machine seat height, incline position
-  rest_seconds int null check (rest_seconds > 0)  -- backlog item 15: per-exercise rest timer
+  rest_seconds int null check (rest_seconds > 0),  -- backlog item 15: per-exercise rest timer
+  -- Backlog item 76: decides what the logger asks for and how a set counts
+  -- toward volume. Locked in the UI once the exercise has logged sets.
+  load_type   text not null default 'weight'
+    check (load_type in ('weight', 'level', 'bodyweight', 'assisted'))
 );
 
 create table workout_templates (
@@ -65,7 +90,10 @@ create table sets (
   reps        int not null check (reps > 0),
   weight      numeric not null check (weight >= 0),
   weight_unit text not null check (weight_unit in ('lb', 'kg')),
-  rpe         numeric null
+  rpe         numeric null,
+  -- Backlog item 76: difficulty level for `level` exercises (weight is 0 on
+  -- those rows). For `bodyweight`/`assisted`, `weight` holds added/assist load.
+  level       int null check (level is null or level > 0)
 );
 
 -- Backlog item 10: set_index must not be trusted from the client. Two
@@ -102,4 +130,14 @@ create table push_subscriptions (
   p256dh     text not null,
   auth       text not null,
   created_at timestamptz not null default now()
+);
+
+-- Backlog item 77: dated log rather than a single profile value, so volume
+-- for past bodyweight/assisted sets uses the weight the user had at the time.
+create table body_weight_entries (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references profiles(id),
+  weight      numeric not null check (weight > 0),
+  weight_unit text not null check (weight_unit in ('lb', 'kg')),
+  recorded_at timestamptz not null default now()
 );

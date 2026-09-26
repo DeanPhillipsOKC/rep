@@ -8,6 +8,7 @@ alter table workout_template_exercises  enable row level security;
 alter table workouts                    enable row level security;
 alter table sets                        enable row level security;
 alter table push_subscriptions          enable row level security;
+alter table body_weight_entries         enable row level security;
 
 create policy "own profile only" on profiles
   for all
@@ -67,6 +68,11 @@ create policy "own sets only" on sets
   );
 
 create policy "own rows only" on push_subscriptions
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "own rows only" on body_weight_entries
   for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);

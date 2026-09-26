@@ -25,7 +25,13 @@ scores by hand, recompute this line to match:
 
 1. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
 2. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-3. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+3. Item 76 — exercise load type + "Level" type (ROI 1)
+4. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
+5. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+6. Item 78 — "Bodyweight" load type (ROI 1)
+7. Item 79 — "Assisted" load type (ROI 1)
+8. Item 80 — periodic "update your weight" reminder (ROI 1)
+9. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
 
 ## Features
 
@@ -79,14 +85,13 @@ implemented and were dropped rather than logged.
   that template's exercises have been fetched this session) in both mutation functions.
   [Effort: 2, Value: 3, ROI: 1.5]
 
-Items 76-80 (2026-09-26, design discussion with the user): not every exercise is "reps × plate
+Items 76-81 (2026-09-26, design discussion with the user): not every exercise is "reps × plate
 weight." Each exercise gets a **load type** (`weight` | `level` | `bodyweight` | `assisted`) chosen
 when it's created, which decides what the logger asks for and how (or whether) a set counts toward
-volume. All five need the SQL in the **[human]** "Apply load-type / body-weight SQL" item under
-*Human setup* applied to the live DB first, hence `Status: blocked` on each; once the user has run
-it, remove the Status from all five. Document order below is also dependency order (76 and 77
-before 78-80), and equal ROI/tie-break on Value/document order makes the runner take them in
-that order. **Design source:** private canvas mockup at
+volume. **Schema is already live** (user applied it 2026-09-26) and mirrored into
+`supabase/schema.sql`, `supabase/policies.sql`, and the `docs/architecture.md` data model, so none
+of these items needs DDL. Document order below is also dependency order (76 and 77 before 78-81),
+and equal ROI/tie-break on Value/document order makes the runner take them in that order. **Design source:** private canvas mockup at
 https://claude.ai/artifact/KKgHc6kBSGawfboGGE2TMd (2026-09-26; artboard titles name the item each
 frame belongs to). Match its layout, copy, and set-label formats unless the item text says
 otherwise. Decisions already made with the user, don't relitigate:
@@ -107,9 +112,8 @@ otherwise. Decisions already made with the user, don't relitigate:
 
 - [ ] Exercise load type + "Level" type (item 76, 2026-09-26): add a load-type picker to exercise
   create/edit in `ExerciseList.vue` (Weight default; Level, Bodyweight, Assisted listed but
-  Bodyweight/Assisted can stay hidden until items 78/79 ship). Mirror the human SQL item's DDL into
-  `supabase/schema.sql` and the `exercises`/`sets` data model in `docs/architecture.md`, and extend
-  the types in `src/lib/types.ts`. For a `level` exercise, `WorkoutLogger.vue`'s set form shows a
+  Bodyweight/Assisted can stay hidden until items 78/79 ship). Extend the types in
+  `src/lib/types.ts` for the already-live `exercises.load_type` and `sets.level` columns. For a `level` exercise, `WorkoutLogger.vue`'s set form shows a
   whole-number "Level" stepper instead of weight + lb/kg; the set saves `level = N`, `weight = 0`
   (the existing `weight not null` constraint stays). Same substitution in the set edit forms (active
   workout and `WorkoutHistory.vue`) and anywhere a set is rendered ("12 × Level 3", not
@@ -122,14 +126,14 @@ otherwise. Decisions already made with the user, don't relitigate:
   exercise's load type once it has any logged sets is blocked in the UI with a short explanation
   (its history would be misread); archive + recreate is the escape hatch. Extend the e2e specs to
   create a level exercise, log a set, and check it renders as a level and doesn't move the volume
-  chart. [Effort: 5, Value: 5, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+  chart. [Effort: 5, Value: 5, ROI: 1]
 
 - [ ] "Body" tab: body-weight and height tracking (item 77, 2026-09-26): prerequisite for items
   78/79's volume math (assisted machines are counterweighted, so the work done depends on what the
-  lifter weighs). Data: new `body_weight_entries` table plus `profiles.height`/`height_unit` (DDL
-  in the human SQL item; mirror into `supabase/schema.sql`, `supabase/policies.sql`, and
-  `docs/architecture.md`, owner-only RLS like `push_subscriptions`) and a small store. Height is a
-  single profile value (it rarely changes, so no history); body weight is a dated log.
+  lifter weighs). Data: the already-live `body_weight_entries` table (owner-only RLS) plus
+  `profiles.height`/`height_unit`, `missing_weight_prompt_opt_out`, and `weight_reminder`; add a
+  small store over them. Height is a single profile value (it rarely changes, so no history); body
+  weight is a dated log.
   - **New fifth tab "Body"** in `BottomNav.vue` (after Exercises, same icon/label pattern; a
     simple person/scale glyph) with its own route. Screen shows: current body weight and when it
     was last entered, a button to log a new weight (number + lb/kg, saves a new dated entry),
@@ -151,7 +155,7 @@ otherwise. Decisions already made with the user, don't relitigate:
     entering a body weight today still covers sets logged last week), converted to `unit` (1 kg =
     2.20462 lb), or `null` if there are no entries at all. Unit-test it along with the BMI math.
   - e2e: navigate to Body, enter height + weight, see BMI; log a second weight, see the chart.
-  [Effort: 5, Value: 5, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+  [Effort: 5, Value: 5, ROI: 1]
 
 - [ ] "Bodyweight" load type (item 78, 2026-09-26, depends on items 76 and 77): push-ups, pull-ups,
   dips. Logger shows reps plus an optional "Added weight" field (vest/dip belt; defaults to 0,
@@ -169,7 +173,7 @@ otherwise. Decisions already made with the user, don't relitigate:
   toggle to turn the prompt back on. Share this trigger logic with item 79 (one composable), don't
   duplicate it. PRs use effective-load volume when body weight is known, otherwise most reps (with
   added weight as tiebreak). Set rendering: "10 × BW" or "8 × BW + 25 lb". Unhide
-  the Bodyweight option in item 76's picker. Extend e2e. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+  the Bodyweight option in item 76's picker. Extend e2e. [Effort: 3, Value: 3, ROI: 1]
 
 - [ ] "Assisted" load type (item 79, 2026-09-26, depends on items 76 and 77): counterweighted
   assisted pull-up/dip machines, where a bigger number means an easier set. Logger field is labeled
@@ -181,7 +185,7 @@ otherwise. Decisions already made with the user, don't relitigate:
   views must not show a rising assist number as improvement: check `ExerciseHistoryDetail.vue` and
   `exerciseHistory.ts` for any "heavier is better" assumptions. Set rendering: "10 × 40 lb
   assist". Unhide the Assisted option in item 76's picker. Extend e2e.
-  [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+  [Effort: 3, Value: 3, ROI: 1]
 
 - [ ] Periodic "update your weight" reminder (item 80, 2026-09-26, depends on item 77): once a
   user has **both** a body weight and a height on file, remind them to log a fresh weight when
@@ -195,41 +199,28 @@ otherwise. Decisions already made with the user, don't relitigate:
   asks again sooner). "Don't ask again" sets `weight_reminder = 'off'`. Keep the due/snooze
   decision in a pure, unit-tested function (inputs: latest entry date, cadence, snooze-until, has
   height, now). e2e: seed an old weight entry, open the app, see the prompt, choose "Don't ask
-  again," reload, no prompt. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+  again," reload, no prompt. [Effort: 3, Value: 3, ROI: 1]
+
+- [ ] Weigh-in history: view, fix, and delete body-weight entries (item 81, 2026-09-26, depends on
+  item 77): a mistyped weight (18.5 instead of 185) silently corrupts bodyweight/assisted volume for
+  every workout after it, so entries must be correctable. The Body screen's "See all weigh-ins"
+  link (mockup, "Body tab" artboard, below the Reminders card) opens a list of every
+  `body_weight_entries` row, newest first: weight + unit, date, and the change from the previous
+  entry. Each row gets Edit (weight, unit, and date, same inline-flyout pattern as
+  `ExerciseList.vue`'s edit form) and Delete (inline confirm row, same pattern as the exercise
+  delete). Flag likely typos on save, both here and in item 77's log-weight form and
+  `BodyStatsModal.vue`: if a new value differs from the previous entry by more than 20%, show
+  "That's a big change from 185.4 lb. Save anyway?" instead of saving straight away. Since volume
+  is computed at read time from these entries, a fix corrects past workouts' volume automatically;
+  make sure any cached volume/PR data in the stores is refetched after an edit or delete. Extend
+  item 77's store with update/delete. e2e: log two weights, edit one, delete one, confirm the list
+  and the Body screen's current value update. [Effort: 3, Value: 3, ROI: 1]
 
 ## Testing / tooling
 
 (none open)
 
 ## Human setup / device verification
-
-- [ ] **[human]** Apply load-type / body-weight SQL (2026-09-26, prerequisite for items 76-80):
-  run this in the Supabase SQL editor, then remove the `Status: blocked` from items 76-80 so the
-  runner picks them up. Additive only; existing exercises default to `weight` and behave exactly
-  as today.
-  ```sql
-  alter table exercises add column load_type text not null default 'weight'
-    check (load_type in ('weight', 'level', 'bodyweight', 'assisted'));
-  alter table sets add column level int null check (level is null or level > 0);
-  alter table profiles add column height numeric null check (height is null or height > 0);
-  alter table profiles add column height_unit text null check (height_unit in ('in', 'cm'));
-  alter table profiles add column missing_weight_prompt_opt_out boolean not null default false;
-  alter table profiles add column weight_reminder text not null default 'monthly'
-    check (weight_reminder in ('weekly', 'monthly', 'off'));
-
-  create table body_weight_entries (
-    id          uuid primary key default gen_random_uuid(),
-    user_id     uuid not null references profiles(id),
-    weight      numeric not null check (weight > 0),
-    weight_unit text not null check (weight_unit in ('lb', 'kg')),
-    recorded_at timestamptz not null default now()
-  );
-  alter table body_weight_entries enable row level security;
-  create policy "own rows only" on body_weight_entries
-    for all
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
-  ```
 
 - [ ] **[human]** After interrupted-workout recovery and safe set retry ship, exercise the
   installed app during a real workout on Android and iPhone: reload/relaunch mid-session, briefly

@@ -125,6 +125,10 @@ profiles
   id            uuid  PK, references auth.users(id)
   display_name  text
   created_at    timestamptz
+  height        numeric null    -- single value, no history
+  height_unit   text null       -- 'in' | 'cm'
+  missing_weight_prompt_opt_out  boolean default false  -- "Don't ask again" on the missing-body-weight prompt
+  weight_reminder text default 'monthly'                -- 'weekly' | 'monthly' | 'off'
 
 exercises
   id            uuid  PK
@@ -133,6 +137,14 @@ exercises
   is_archived   boolean default false
   setup_notes   text null       -- machine seat height, incline position, etc.
   rest_seconds  int null        -- per-exercise rest timer duration; null = no alert
+  load_type     text default 'weight'  -- 'weight' | 'level' | 'bodyweight' | 'assisted'
+
+body_weight_entries
+  id            uuid  PK
+  user_id       uuid  FK -> profiles(id)
+  weight        numeric
+  weight_unit   text            -- 'lb' | 'kg'
+  recorded_at   timestamptz
 
 push_subscriptions
   id          uuid  PK
@@ -157,6 +169,7 @@ sets
   weight        numeric
   weight_unit   text            -- 'lb' | 'kg'
   rpe           numeric null
+  level         int null        -- difficulty level, set only for load_type 'level' (weight = 0)
 ```
 
 Notes:
@@ -164,6 +177,15 @@ Notes:
 - `weight_unit` is stored per set rather than as a global setting. Cheap now, avoids a migration later.
 - `exercises` is per-user rather than a shared global catalog. This fits the pilot and keeps RLS uniform. A larger product may add an optional shared catalog without changing ownership of users' custom exercises or workout history.
 - Soft-delete exercises via `is_archived` so historical sets keep resolving to a name.
+- `exercises.load_type` decides what a set's numbers mean: `weight` is plate/stack load (volume =
+  reps × weight); `level` stores the difficulty in `sets.level` and is excluded from volume (levels
+  aren't linear); `bodyweight` stores optional added load in `weight` (effective load = body weight
+  + added); `assisted` stores the counterweight in `weight` (effective load = body weight − assist).
+  Body weight for a set is the latest `body_weight_entries` row at or before the workout's
+  `performed_at` (falling back to the earliest entry); with no entries, bodyweight/assisted sets are
+  excluded from volume, not counted as 0.
+- Body weight is a dated log rather than a profile field so updating it never changes the volume of
+  past workouts. Height is a single profile value.
 - `push_subscriptions` has no `is_archived`/soft-delete — a dead subscription (uninstalled app, revoked permission) just fails to deliver a push; nothing reads this table for anything else, so there's no history to preserve.
 
 ## Row-level security
