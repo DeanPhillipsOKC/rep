@@ -23,13 +23,12 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 72 — app version rendered twice on the onboarding screen (ROI 2)
-2. Item 74 — confirm-row warning text squeezed into a wrapped column (ROI 2)
-3. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
-4. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
-5. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
-6. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-7. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+1. Item 74 — confirm-row warning text squeezed into a wrapped column (ROI 2)
+2. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
+3. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
+4. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
+5. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+6. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -79,16 +78,6 @@ implemented and were dropped rather than logged.
   finished) plus an "Add set" affordance per expanded history card with an exercise picker (the
   existing flat set list has no exercise-scoped entry point today) and the same reps/weight/unit/RPE
   fields the edit form already uses. [Effort: 3, Value: 3, ROI: 1]
-
-- [ ] App version renders twice on the onboarding screen (item 72, 2026-09-26 — ux-review,
-  `01-onboarding-welcome.png`): `App.vue:45` renders a `<footer class="app-version">{{ appVersion
-  }}</footer>` unconditionally as a sibling of `<AuthGate>`, regardless of what AuthGate shows.
-  `OnboardingScreen.vue:32` *also* renders its own `<p class="version">{{ appVersion }}</p>` inside
-  the onboarding card. A first-time visitor sees the same `v<version>` string twice: once under the
-  "Let's hop in" button, once again further down where the outer footer lands. Neither the loading
-  spinner (`AuthGate.vue`) nor `LoginForm.vue` has this problem since they don't render their own
-  copy — only onboarding does. Delete `OnboardingScreen.vue`'s own version line; the outer footer
-  already covers every auth state. [Effort: 1, Value: 2, ROI: 2]
 
 - [ ] Confirm-row warning text gets squeezed into an awkward wrapped column next to its
   buttons (item 74, 2026-09-26 — ux-review, `06-exercise-delete-confirm.png` and

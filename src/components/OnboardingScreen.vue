@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const emit = defineEmits<{ continue: [] }>()
-const appVersion = __APP_VERSION__
 </script>
 
 <template>
@@ -28,8 +27,6 @@ const appVersion = __APP_VERSION__
           />
         </svg>
       </button>
-
-      <p class="version">{{ appVersion }}</p>
     </div>
   </div>
 </template>
@@ -130,10 +127,4 @@ const appVersion = __APP_VERSION__
   background: var(--accent-pressed);
 }
 
-.version {
-  margin: 32px 0 0;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  opacity: 0.6;
-}
 </style>

@@ -141,3 +141,12 @@ on something already shipped. New entries get appended here when an item is remo
   Files: `src/components/WorkoutLogger.vue`. No new e2e spec (pure CSS/class change, no new
   interaction); existing `e2e/resume-workout.spec.ts` and `e2e/resume-after-finish.spec.ts` already
   exercise both cards. Verified via `npm run build` and a full `npm run test:e2e` run (53/53).
+- Stop rendering the app version twice on the onboarding screen (item 72, 2026-09-26 — ux-review):
+  `OnboardingScreen.vue` had its own `<p class="version">{{ appVersion }}</p>` line duplicating
+  `App.vue`'s outer `<footer class="app-version">`, which renders unconditionally as a sibling of
+  `<AuthGate>` regardless of what AuthGate shows. Deleted `OnboardingScreen.vue`'s own version
+  line, `appVersion` local, and its now-unused `.version` style block; the outer footer already
+  covers onboarding. Files: `src/components/OnboardingScreen.vue`. Extended
+  `e2e/onboarding.spec.ts` with a spec asserting the build-version text (`v<count>+<sha>[-dirty]`)
+  appears exactly once on the onboarding screen. Verified via `npm run build` and a full
+  `npm run test:e2e` run (54/54).

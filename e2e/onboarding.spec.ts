@@ -11,6 +11,13 @@ test('shows onboarding on first launch, then the login form after continuing', a
   await expect(page.getByLabel('Email')).toBeVisible()
 })
 
+test('renders the app version exactly once on the onboarding screen', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: /let's hop in/i })).toBeVisible()
+
+  await expect(page.getByText(/^v\d+\+[0-9a-f]+(-dirty)?$/)).toHaveCount(1)
+})
+
 test('does not show onboarding again once it has been seen', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: /let's hop in/i }).click()
