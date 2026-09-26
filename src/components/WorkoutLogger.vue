@@ -176,30 +176,76 @@ function selectExercise(id: string) {
 }
 
 // Redesign item 67 follow-up: the set-rows panel (unit toggle + set rows +
-// "Add row") slides/fades in step with the exercise card so both areas read
-// as one thing moving together, instead of the card animating while this
-// larger area's values just snapped to the next exercise's. A keyed
-// <Transition> (like the exercise card uses) would remount these rows,
-// which briefly leaves no "Reps"/"Weight" field in the DOM for the
-// incoming exercise while the outgoing one plays its leave transition — a
-// real gap where a fast tap/keystroke lands on the wrong (about-to-be-
-// removed) exercise's fields. Instead this replays a plain CSS keyframe
-// animation on the same, never-remounted DOM node: the row list still
-// updates in the same tick as `exerciseId` (ordinary Vue reactivity, no
-// gap), and the animation is purely decorative on top of that. Toggling the
-// class off/on with a forced reflow between is what makes the animation
-// replay on a second swipe in the same direction, since re-adding a class
-// that's already present doesn't restart a CSS animation on its own.
-const setRowsPanelEl = ref<HTMLElement | null>(null)
+// "Add row") now gets the same crossing slide as the exercise card (see
+// handleCardLeaveStart below) instead of animating in place, so both areas
+// read as one thing moving together. A first attempt animated the rows in
+// place without remounting, specifically to avoid a keyed <Transition>
+// briefly mounting two copies of the same live, editable "Reps"/"Weight"
+// fields — but that read as noticeably less connected to the card's own
+// crossing motion once the card got upgraded, so this now takes on the same
+// real-crossing risk the card already handles: `handleSetRowsLeaveStart`
+// neutralizes the outgoing copy the instant its leave starts -- aria-hidden
+// (removes it from getByRole/getByLabel-based queries and screen readers),
+// pointer-events: none (stops a real tap from landing on it), and stripping
+// the two state classes (`.set-row-draft`/`.set-row-logged`) e2e specs
+// query by raw CSS selector.
+//
+// Unlike the card, this panel has no fixed height (row count varies by
+// exercise), so both the outgoing and incoming copies going `position:
+// absolute` for the crossing would otherwise leave the surrounding .card
+// with nothing in-flow to size itself against, collapsing it to zero height
+// for the transition's duration and snapping everything below it (the
+// Finish button, etc.) up and back down. before-enter/before-leave lock the
+// viewport to whichever of the two heights is taller for the transition,
+// and after-enter releases it back to auto once the incoming panel is the
+// only one left.
+const setRowsViewportEl = ref<HTMLElement | null>(null)
 
-watch(exerciseId, () => {
-  const el = setRowsPanelEl.value
-  if (!el) return
-  const animationClass = slideDirection.value >= 0 ? 'set-rows-panel-anim-next' : 'set-rows-panel-anim-prev'
-  el.classList.remove('set-rows-panel-anim-next', 'set-rows-panel-anim-prev')
-  void el.offsetWidth
-  el.classList.add(animationClass)
-})
+function lockSetRowsViewportHeight(el: Element) {
+  const viewport = setRowsViewportEl.value
+  if (!viewport) return
+  const height = (el as HTMLElement).offsetHeight
+  const current = parseFloat(viewport.style.height || '0')
+  viewport.style.height = `${Math.max(height, current)}px`
+}
+
+function handleSetRowsBeforeEnter(el: Element) {
+  lockSetRowsViewportHeight(el)
+}
+
+function handleSetRowsBeforeLeave(el: Element) {
+  lockSetRowsViewportHeight(el)
+}
+
+function handleSetRowsAfterEnter() {
+  const viewport = setRowsViewportEl.value
+  if (viewport) viewport.style.height = ''
+}
+
+function handleSetRowsLeaveStart(el: Element) {
+  el.setAttribute('aria-hidden', 'true')
+  ;(el as HTMLElement).style.pointerEvents = 'none'
+  // aria-hidden alone isn't a reliable-enough guard here: Chromium's
+  // accessibility tree (which getByRole/getByLabel query through) doesn't
+  // necessarily reflect an attribute change synchronously, so a query
+  // issued right after this fires can still resolve the leaving copy's
+  // "Reps"/"Weight"/etc. field alongside the incoming one's (confirmed by
+  // a real strict-mode-violation failure here, not just theoretical).
+  // Directly destroying what each query actually matches on is immediate
+  // and doesn't depend on that timing: clearing the sr-only label text
+  // severs getByLabel's implicit-label association, and removing
+  // aria-label does the same for getByRole's accessible-name lookup on the
+  // remove/log buttons.
+  el.querySelectorAll('.sr-only').forEach((node) => {
+    node.textContent = ''
+  })
+  el.querySelectorAll('[aria-label]').forEach((node) => {
+    node.removeAttribute('aria-label')
+  })
+  el.querySelectorAll('.set-row-draft, .set-row-logged').forEach((node) => {
+    node.classList.remove('set-row-draft', 'set-row-logged')
+  })
+}
 
 function goToDeckOffset(delta: number) {
   const ids = workoutExerciseIds.value
@@ -257,7 +303,16 @@ function handleWorkoutPointerDown(event: PointerEvent) {
 // e2e specs query by CSS selector rather than role/label.
 function handleCardLeaveStart(el: Element) {
   el.setAttribute('aria-hidden', 'true')
+  ;(el as HTMLElement).style.pointerEvents = 'none'
+  // See handleSetRowsLeaveStart's comment: aria-hidden alone isn't
+  // reliably synchronous with Chromium's accessibility tree, so also
+  // directly destroy what a role/text-content query would actually match
+  // -- the class an e2e spec queries by raw CSS selector, and the "View
+  // exercise history" button's text (its accessible name, since it has no
+  // aria-label of its own).
   el.querySelector('.exercise-card-name')?.classList.remove('exercise-card-name')
+  const historyLink = el.querySelector('.history-link')
+  if (historyLink) historyLink.textContent = ''
 }
 
 function handleWorkoutPointerUp(event: PointerEvent) {
@@ -1054,8 +1109,15 @@ async function handleResumeJustFinished() {
             <span class="set-header-spacer" aria-hidden="true"></span>
           </div>
 
-          <div class="set-rows-viewport">
-          <div ref="setRowsPanelEl" class="set-rows-panel">
+          <div ref="setRowsViewportEl" class="set-rows-viewport">
+          <Transition
+            :name="slideDirection >= 0 ? 'slide-next' : 'slide-prev'"
+            @before-enter="handleSetRowsBeforeEnter"
+            @before-leave="handleSetRowsBeforeLeave"
+            @after-enter="handleSetRowsAfterEnter"
+            @leave="handleSetRowsLeaveStart"
+          >
+          <div :key="exerciseId" class="set-rows-panel">
           <ul class="set-rows">
             <li
               v-for="entry in combinedRows"
@@ -1149,6 +1211,7 @@ async function handleResumeJustFinished() {
 
           <button type="button" class="add-row-btn" @click="addDraftRow(exerciseId)">+ Add row</button>
           </div>
+          </Transition>
           </div>
         </div>
       </template>
@@ -2063,43 +2126,23 @@ async function handleResumeJustFinished() {
   font-weight: 700;
 }
 
-/* Redesign item 67 follow-up: the set-rows panel slides/fades in step with
-   the exercise card when swiping between exercises -- without this, only
-   the small card animated while this larger area's values just snapped to
-   the next exercise's, reading as two disconnected things happening at
-   once. A plain keyframe animation (toggled from the script, not a keyed
-   <Transition>) rather than remounting: see setRowsPanelEl's watcher for
-   why a remount here is a real bug, not just style. overflow-x (not
-   overflow, which would also clip vertically) keeps the horizontal slide
-   from spilling past the card's edges while still letting the panel size to
-   however many rows the new exercise has. */
+/* Redesign item 67 follow-up: same crossing slide as .exercise-card-viewport
+   above (reuses its .slide-next/.slide-prev transition classes, so both
+   areas move in step with identical timing) -- position: relative makes
+   this the positioning context for the outgoing/incoming panels, which both
+   go absolute for the transition's duration (see handleSetRowsBeforeEnter/
+   -Leave, which lock this element's own height for that same window --
+   without it, having nothing left in normal flow would collapse it to zero
+   height and snap the Finish button etc. up and back down). overflow
+   (both axes, not just overflow-x) clips both the horizontal slide and any
+   vertical difference between the two panels' natural heights. */
 .set-rows-viewport {
-  overflow-x: hidden;
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes set-rows-slide-in-next {
-  from {
-    transform: translateX(36px);
-    opacity: 0;
-  }
-}
-
-@keyframes set-rows-slide-in-prev {
-  from {
-    transform: translateX(-36px);
-    opacity: 0;
-  }
-}
-
-/* Same duration/easing as the exercise card's crossing slide above, so the
-   two read as one connected motion even though this panel animates in
-   place rather than crossing (see the comment above .set-rows-viewport). */
-.set-rows-panel-anim-next {
-  animation: set-rows-slide-in-next 0.32s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.set-rows-panel-anim-prev {
-  animation: set-rows-slide-in-prev 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+.set-rows-panel {
+  box-sizing: border-box;
 }
 
 .set-rows {
