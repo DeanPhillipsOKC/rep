@@ -183,10 +183,25 @@ function goToNextExercise() {
 
 // Real swipe support (not just the peek buttons/dots) via pointer events,
 // which unify touch/mouse/pen instead of needing separate touch handlers.
+// `setPointerCapture` keeps delivering move/up events to this element even
+// once the finger has moved outside its bounds mid-drag — without it, a
+// real swipe (which almost always drifts off the starting element) never
+// reaches `handleCardPointerUp` and only the on-screen prev/next buttons
+// end up doing anything. `.exercise-card`'s `touch-action: pan-y` (below)
+// is the other half of this: it stops the browser from treating a
+// horizontal drag as a page-scroll/navigation gesture before our own
+// handler ever sees it, while still letting a vertical drag scroll the page
+// normally.
 let dragStartX: number | null = null
 
 function handleCardPointerDown(event: PointerEvent) {
+  // A pointerdown starting on a button/link inside the card (e.g. "View
+  // exercise history") must not be captured here -- setPointerCapture on an
+  // ancestor redirects the browser's click-target hit-testing to the
+  // captured element, which silently swallowed that button's own click.
+  if ((event.target as HTMLElement).closest('button, a')) return
   dragStartX = event.clientX
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
 function handleCardPointerUp(event: PointerEvent) {
@@ -986,7 +1001,7 @@ async function handleResumeJustFinished() {
 
               <template v-else>
                 <div class="set-row-body">
-                <div class="set-row-fields-compact">
+                <div class="set-row-line">
                   <label class="set-field set-field-weight">
                     <span class="sr-only">Weight</span>
                     <input
@@ -1033,25 +1048,27 @@ async function handleResumeJustFinished() {
                       @focus="selectInputText"
                     />
                   </label>
-                </div>
-                <div class="set-row-actions">
-                  <button
-                    type="button"
-                    class="log-btn"
-                    :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
-                    @click="completeRow(exerciseId, entry.row)"
-                  >
-                    {{ entry.row.saving ? 'Saving…' : entry.row.error ? 'Retry' : 'Add set' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="remove-row-btn"
-                    :aria-label="`Remove row ${entry.number}`"
-                    :disabled="entry.row.saving || !!entry.row.error"
-                    @click="removeDraftRow(exerciseId, entry.row)"
-                  >
-                    ✕
-                  </button>
+                  <span class="set-row-actions-compact">
+                    <button
+                      type="button"
+                      class="remove-row-btn-compact"
+                      :aria-label="`Remove row ${entry.number}`"
+                      :disabled="entry.row.saving || !!entry.row.error"
+                      @click="removeDraftRow(exerciseId, entry.row)"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="log-btn-compact"
+                      :class="{ 'log-btn-compact-retry': entry.row.error }"
+                      :aria-label="entry.row.saving ? 'Saving…' : entry.row.error ? 'Retry' : 'Add set'"
+                      :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
+                      @click="completeRow(exerciseId, entry.row)"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                  </span>
                 </div>
                 <p v-if="entry.row.error" class="row-error">{{ entry.row.error }}</p>
                 </div>
@@ -1775,6 +1792,12 @@ async function handleResumeJustFinished() {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* Let a vertical drag still scroll the page, but keep a horizontal one
+     from being hijacked as browser scroll/navigation before our own
+     pointerdown/up swipe handlers (script above) see it. */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .exercise-card-position {
@@ -1861,9 +1884,9 @@ async function handleResumeJustFinished() {
 
 .set-row {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1871,9 +1894,8 @@ async function handleResumeJustFinished() {
 
 .set-row-number {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  margin-top: 2px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1887,36 +1909,34 @@ async function handleResumeJustFinished() {
 .set-row-done {
   flex: 1;
   min-width: 0;
-  padding-top: 4px;
   font-size: 1.05rem;
   font-weight: 600;
 }
 
-/* The draft branch's actual vertical stack: fields, then actions, then any
-   error — kept as one flex column so it (not the row) is what fills the
-   space next to the fixed-width number circle. Without this wrapper,
-   `.set-row-fields` and `.set-row-actions` would just be two more items in
-   `.set-row`'s own flex row and end up side by side instead of stacked. */
+/* The draft branch's vertical stack: the one-line row, then any error below
+   it — kept as its own flex column so it (not `.set-row`) is what fills the
+   space next to the fixed-width number circle. */
 .set-row-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
 
-/* Redesign item 67: tap-to-edit compact fields replacing the +/- steppers
-   (`1b3f9fe`) — an underlined value per field, numeric keypad on tap, no
-   stacked stepper buttons eating vertical space. Native spin-button
-   appearance stays suppressed (below): with the steppers gone there's
-   nothing forcing the wider input that made the arrows read as clutter, but
-   the compact underlined style reads cleanest without them, and mobile
-   entry goes through the numeric keypad anyway. RPE rides along as a
-   fourth field, same pattern, dashed/dim placeholder since it's optional. */
-.set-row-fields-compact {
+/* Redesign item 67 (and its follow-up): a single line matching the canvas
+   mockup exactly — number, weight, reps, RPE, then two small circular
+   action buttons, all inline, rather than fields stacked above a full-width
+   "Add set" button underneath. Tap-to-edit compact fields (an underlined
+   value per field, numeric keypad on tap) replace the +/- steppers
+   (`1b3f9fe`); native spin-button appearance stays suppressed (below) since
+   the compact underlined style reads cleanest without them and mobile entry
+   goes through the numeric keypad anyway. RPE rides along as a fourth
+   field, same pattern, dashed/dim placeholder since it's optional. */
+.set-row-line {
   display: flex;
-  align-items: flex-end;
-  gap: 14px;
+  align-items: center;
+  gap: 10px;
 }
 
 .set-field {
@@ -1949,15 +1969,15 @@ async function handleResumeJustFinished() {
 }
 
 .set-input-compact {
-  width: 52px;
-  min-height: 32px;
+  width: 44px;
+  min-height: 28px;
   padding: 0 0 2px;
   background: none;
   border: none;
   border-bottom: 2px solid var(--accent);
   color: var(--accent);
   text-align: left;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   -moz-appearance: textfield;
 }
@@ -1973,39 +1993,62 @@ async function handleResumeJustFinished() {
 }
 
 .set-input-rpe-compact {
-  width: 40px;
+  width: 34px;
   border-bottom: 1px dashed var(--text-dim);
   color: var(--text-dim);
   text-align: center;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
-.set-row-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.log-btn {
-  flex: 1;
-  min-height: 46px;
-  padding: 0 14px;
-  font-size: 1rem;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-  font-weight: 700;
-}
-
-.remove-row-btn {
+/* Small circular buttons matching the mockup, replacing the earlier
+   full-width "Add set" text button and 46px square remove button — grouped
+   together at the end of the line the same way the canvas groups them. */
+.set-row-actions-compact {
   flex-shrink: 0;
-  min-height: 46px;
-  min-width: 46px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.log-btn-compact {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  min-height: 0;
   padding: 0;
-  font-size: 1.1rem;
-  background: transparent;
-  border-color: var(--border);
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.log-btn-compact:disabled {
+  opacity: 0.4;
+}
+
+.log-btn-compact-retry {
+  background: var(--danger);
+  color: white;
+}
+
+.remove-row-btn-compact {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
   color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .add-row-btn {

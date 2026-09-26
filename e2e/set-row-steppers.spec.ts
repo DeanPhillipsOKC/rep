@@ -46,7 +46,7 @@ test('compact set-row fields are directly editable with no stepper buttons', asy
       const weightBounds = element.querySelector('.set-field-weight')!.getBoundingClientRect()
       const repsBounds = element.querySelector('.set-field-reps')!.getBoundingClientRect()
       const rpeBounds = element.querySelector('.set-field-rpe')!.getBoundingClientRect()
-      const addBounds = element.querySelector('.log-btn')!.getBoundingClientRect()
+      const addBounds = element.querySelector('.log-btn-compact')!.getBoundingClientRect()
       return {
         withinRow:
           weightBounds.left >= bounds.left &&
