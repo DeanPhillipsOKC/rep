@@ -23,12 +23,11 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 74 — confirm-row warning text squeezed into a wrapped column (ROI 2)
-2. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
-3. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
-4. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
-5. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-6. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+1. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
+2. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
+3. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
+4. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+5. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -78,21 +77,6 @@ implemented and were dropped rather than logged.
   finished) plus an "Add set" affordance per expanded history card with an exercise picker (the
   existing flat set list has no exercise-scoped entry point today) and the same reps/weight/unit/RPE
   fields the edit form already uses. [Effort: 3, Value: 3, ROI: 1]
-
-- [ ] Confirm-row warning text gets squeezed into an awkward wrapped column next to its
-  buttons (item 74, 2026-09-26 — ux-review, `06-exercise-delete-confirm.png` and
-  `08-template-archive-confirm.png`): `ExerciseList.vue`'s delete-confirm row (`:206-210`, `.row
-  confirm-delete`) and `TemplateManager.vue`'s archive-confirm row (`:266-268`, `.row
-  confirm-archive`) both lay the `.row-sub` warning text out horizontally next to `.confirm-actions`
-  in a flex row that never wraps to a new line as a whole (`ExerciseList.vue`'s `.confirm-delete`
-  sets `flex-wrap: nowrap` explicitly; `TemplateManager.vue`'s plain `.row` doesn't set `flex-wrap`
-  at all, which defaults to the same `nowrap`) — with `.confirm-actions` pinned at `flex-shrink: 0`,
-  the text gets all the squeezing and line-wraps mid-phrase into a narrow ~35% column ("Archive this
-  / template? This / can't be undone." split across three short lines). `WorkoutHistory.vue`'s own
-  two confirm rows (`:258-260` delete-set, `:321-323` delete-workout) already avoid this — its
-  `.confirm-delete` is `flex-direction: column` (`:577-582`), stacking the warning text full-width
-  above the button row instead of squeezing beside it. Apply that same column layout to the other
-  two files' confirm rows. [Effort: 1, Value: 2, ROI: 2]
 
 - [ ] Bare unstyled "Loading…" placeholder text, inconsistent with the app's branded loading
   screen (item 73, 2026-09-26 — ux-review, `04-exercises-list.png` and `19-history-list.png`):

@@ -503,6 +503,12 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
   flex-shrink: 0;
 }
 
+.confirm-archive {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .confirm-actions {
   display: flex;
   gap: 8px;

@@ -377,7 +377,9 @@ async function confirmDelete(id: string) {
 }
 
 .confirm-delete {
-  flex-wrap: nowrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 .confirm-actions {

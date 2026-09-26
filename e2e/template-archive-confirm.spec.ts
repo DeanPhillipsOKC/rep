@@ -23,7 +23,16 @@ test('archiving a template requires an explicit confirm step', async ({ page, st
   // stop matching the instant the confirm UI appears.
   const row = page.locator('.row-wrap').last()
   await row.getByRole('button', { name: 'Archive' }).click()
-  await expect(row.getByText("Archive this template? This can't be undone.")).toBeVisible()
+  const warning = row.getByText("Archive this template? This can't be undone.")
+  await expect(warning).toBeVisible()
+
+  // item 74: the warning text must stack above the button row, not squeeze
+  // into a narrow wrapped column beside it.
+  const warningBox = await warning.boundingBox()
+  const actionsBox = await row.getByRole('button', { name: 'Confirm archive' }).boundingBox()
+  expect(warningBox).not.toBeNull()
+  expect(actionsBox).not.toBeNull()
+  expect(actionsBox!.y).toBeGreaterThanOrEqual(warningBox!.y + warningBox!.height - 1)
 
   await row.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByText(templateName)).toBeVisible()

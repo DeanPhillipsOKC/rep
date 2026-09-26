@@ -20,7 +20,16 @@ test('deleting an exercise requires an explicit confirm step', async ({ page, st
   // scoped to a `hasText: exerciseName` locator that stops matching the
   // instant the confirm UI appears (same shape as the template-archive spec).
   await page.locator('.row-wrap', { hasText: exerciseName }).getByRole('button', { name: 'Delete exercise' }).click()
-  await expect(page.getByText("Delete this exercise? This can't be undone.")).toBeVisible()
+  const warning = page.getByText("Delete this exercise? This can't be undone.")
+  await expect(warning).toBeVisible()
+
+  // item 74: the warning text must stack above the button row, not squeeze
+  // into a narrow wrapped column beside it.
+  const warningBox = await warning.boundingBox()
+  const actionsBox = await page.getByRole('button', { name: 'Confirm delete' }).boundingBox()
+  expect(warningBox).not.toBeNull()
+  expect(actionsBox).not.toBeNull()
+  expect(actionsBox!.y).toBeGreaterThanOrEqual(warningBox!.y + warningBox!.height - 1)
 
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByText(exerciseName)).toBeVisible()

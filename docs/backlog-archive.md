@@ -150,3 +150,15 @@ on something already shipped. New entries get appended here when an item is remo
   `e2e/onboarding.spec.ts` with a spec asserting the build-version text (`v<count>+<sha>[-dirty]`)
   appears exactly once on the onboarding screen. Verified via `npm run build` and a full
   `npm run test:e2e` run (54/54).
+- Stack confirm-row warning text above its buttons instead of squeezing beside them (item 74,
+  2026-09-26 — ux-review): `ExerciseList.vue`'s delete-confirm row and `TemplateManager.vue`'s
+  archive-confirm row both laid the `.row-sub` warning text out in a flex row next to
+  `.confirm-actions` that never wrapped as a whole, so the pinned `flex-shrink: 0` button group
+  forced the text to line-wrap mid-phrase into a narrow column. Matched `WorkoutHistory.vue`'s
+  existing `.confirm-delete` pattern (`flex-direction: column`) by adding `flex-direction: column;
+  align-items: stretch;` to `ExerciseList.vue`'s `.confirm-delete` and a new `.confirm-archive` rule
+  in `TemplateManager.vue`. Files: `src/components/ExerciseList.vue`,
+  `src/components/TemplateManager.vue`. Extended `e2e/exercise-delete-confirm.spec.ts` and
+  `e2e/template-archive-confirm.spec.ts` with a bounding-box assertion that the warning text sits
+  fully above the confirm button row. Verified via `npm run build` and a full `npm run test:e2e`
+  run (54/54).
