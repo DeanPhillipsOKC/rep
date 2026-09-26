@@ -28,8 +28,9 @@ scores by hand, recompute this line to match:
 3. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
 4. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
 5. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-6. Remove JSON training data export (ROI 1.50)
-7. Show exercise-by-exercise history (ROI 1.00)
+6. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
+7. Remove JSON training data export (ROI 1.50)
+8. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -65,6 +66,22 @@ implemented and were dropped rather than logged.
   fresh (not carried over from a just-finished workout). Cover both explicit choices and the
   disabled/blocked submit-with-nothing-selected state in Playwright.
   [Effort: 2, Value: 4, ROI: 2.00]
+
+- [ ] Fix the jagged sizing of the in-workout exercise quick-select chips — `.suggested`
+  (`WorkoutLogger.vue`, the row of chips built from `activeTemplateExercises` for jumping between
+  a template's exercises mid-workout) sizes each chip to its own text with no width constraint
+  (`.chip` is `padding: 0 14px` with no min/max-width, wrapped via plain `flex-wrap: wrap`), so
+  chip width swings with each exercise name's length and the wrapped rows look ragged/sloppy
+  rather than aligned. Keep the chips rather than falling back to the `<select>` dropdown alone —
+  a one-tap chip is faster mid-set than opening and scrolling a dropdown — but give them a
+  consistent min/max-width with text truncation (ellipsis, and a `title` attribute or similar for
+  the full name) so short and long exercise names produce a clean, evenly-aligned grid instead of
+  ragged text-fit blocks. Don't change the separate template-selection chips at workout start
+  (`.template-chips`/`.template-chip`) or their own backlog item (template-or-freeform choice,
+  above) — this is scoped to the mid-workout exercise-switch chips only. Verify against a template
+  with both short and long exercise names, and cover truncation + full-name accessibility (aria
+  label or title) in Playwright/visual check.
+  [Effort: 2, Value: 3, ROI: 1.50]
 
 - [ ] Carry over RPE from the previous set when pre-filling a new set — the active workout
   logger's `applyPrefillToRow` (`WorkoutLogger.vue`) already seeds a new draft row's reps and
