@@ -1556,8 +1556,8 @@ async function handleResumeJustFinished() {
 }
 
 .suggested {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 140px));
   gap: 8px;
   margin-bottom: 20px;
 }
@@ -1570,12 +1570,11 @@ async function handleResumeJustFinished() {
 }
 
 /* Backlog item: unlike .template-chip (horizontal scroll, sized to its own
-   text), .suggested-chip wraps into a grid, so unconstrained per-chip
-   widths made each wrapped row look ragged. Bound width both ways and
-   truncate long names instead. */
+   text), .suggested-chip sits in a CSS grid (see .suggested) so every chip
+   fills its column track and rows line up regardless of label length,
+   instead of each chip sizing to its own text. */
 .suggested-chip {
-  min-width: 90px;
-  max-width: 140px;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
