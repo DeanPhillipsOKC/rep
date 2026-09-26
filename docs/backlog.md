@@ -51,7 +51,12 @@ implemented and were dropped rather than logged.
   tap, which reads as a flicker/inconsistency rather than an intentional state change. Auto-focus
   the revealed input when the toggle is clicked so one tap both reveals and opens it for entry, and
   make the toggle-to-placeholder transition read as one continuous control rather than two different
-  labels. Cover the one-tap-to-focus behavior in Playwright.
+  labels. Since RPE carryover from the previous set (item 1, shipped 2026-09-25,
+  `docs/backlog-archive.md`) now pre-fills this input with a value, also select the pre-filled value
+  on focus (or otherwise make it a one-keystroke overwrite) so the user doesn't have to manually
+  reposition the cursor to replace it — same select-on-focus behavior called for on the reps/weight
+  fields in the set-row redesign item below, applied here to RPE. Cover the one-tap-to-focus and
+  select-on-focus-overwrite behavior in Playwright.
   [Effort: 1, Value: 2, ROI: 2.00]
 
 - [ ] Require a conscious template-or-freeform choice before starting a workout — reported from
