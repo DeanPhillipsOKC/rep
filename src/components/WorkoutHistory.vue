@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useWorkoutsStore } from '../stores/workouts'
 import { findPrWorkoutIds } from '../lib/progress'
+import SkeletonRows from './SkeletonRows.vue'
 import type { SetWithExercise, WeightUnit, WorkoutWithSets } from '../lib/types'
 
 const workout = useWorkoutsStore()
@@ -153,7 +154,7 @@ async function saveNotes(id: string) {
   <div>
     <h2>History</h2>
 
-    <p v-if="workout.loading">Loading…</p>
+    <SkeletonRows v-if="workout.loading" :rows="3" />
     <p v-if="workout.errorMessage" class="error">{{ workout.errorMessage }}</p>
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     <p v-if="!workout.loading && workout.history.length === 0" class="empty">No workouts logged yet.</p>

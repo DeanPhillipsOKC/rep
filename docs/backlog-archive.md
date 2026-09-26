@@ -190,3 +190,17 @@ on something already shipped. New entries get appended here when an item is remo
   variant renders inside. Files: `src/components/FirstWorkoutCelebration.vue`,
   `src/components/WorkoutLogger.vue`, `e2e/volume-chart.spec.ts`, `e2e/resume-after-finish.spec.ts`.
   Verified via `npm run build` and a full `npm run test:e2e` run (55/55).
+- Replace bare "Loading…" text with branded skeleton rows (item 73, 2026-09-26): new shared
+  `SkeletonRows.vue` renders 2-3 `row-wrap`-shaped placeholder cards (a wide title bar, a narrower
+  subtext bar) with a `background-size: 200% 100%` shimmer sliding via `@keyframes`, tinted off
+  `--surface-2`/`--border`, plus a screen-reader-only `role="status"` "Loading…" announcement so
+  the removed visible text doesn't lose its accessibility signal. Swapped in for all four bare
+  `<p>Loading…</p>` usages: `ExerciseList.vue`, `TemplateManager.vue`, `WorkoutHistory.vue` (3 rows
+  each), and `ExerciseHistoryDetail.vue` (2 rows, matching its smaller bottom-sheet context). Added
+  `e2e/loading-skeletons.spec.ts`, which delays the Exercises/Workouts Supabase GET responses via
+  `page.route` to hold the loading window open long enough to assert the skeleton renders, then
+  releases the gate and confirms it's replaced by real content. Files:
+  `src/components/SkeletonRows.vue`, `src/components/ExerciseList.vue`,
+  `src/components/TemplateManager.vue`, `src/components/WorkoutHistory.vue`,
+  `src/components/ExerciseHistoryDetail.vue`, `e2e/loading-skeletons.spec.ts`. Verified via
+  `npm run build` and a full `npm run test:e2e` run (56/56).

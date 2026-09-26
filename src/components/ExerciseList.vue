@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import ExerciseHistoryDetail from './ExerciseHistoryDetail.vue'
+import SkeletonRows from './SkeletonRows.vue'
 import type { Exercise } from '../lib/types'
 
 const exercises = useExercisesStore()
@@ -159,7 +160,7 @@ async function confirmDelete(id: string) {
     </form>
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-    <p v-if="exercises.loading">Loading…</p>
+    <SkeletonRows v-if="exercises.loading" :rows="3" />
 
     <ul class="list">
       <li v-for="exercise in exercises.activeExercises" :key="exercise.id" class="row-wrap">

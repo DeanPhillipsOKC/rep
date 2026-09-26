@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useWorkoutsStore } from '../stores/workouts'
 import { heaviestSetByUnit } from '../lib/exerciseHistory'
+import SkeletonRows from './SkeletonRows.vue'
 
 // Backlog item 1: focused per-exercise history, opened from the Exercises
 // tab (ExerciseList.vue) and the active logger (WorkoutLogger.vue) so the
@@ -87,7 +88,7 @@ function formatDate(iso: string): string {
         </div>
       </div>
 
-      <p v-if="workout.exerciseHistoryLoading">Loading…</p>
+      <SkeletonRows v-if="workout.exerciseHistoryLoading" :rows="2" />
       <p v-if="workout.exerciseHistoryError" class="error">{{ workout.exerciseHistoryError }}</p>
       <p v-if="!workout.exerciseHistoryLoading && workout.exerciseHistory.length === 0" class="empty">
         No sets logged for this exercise yet.

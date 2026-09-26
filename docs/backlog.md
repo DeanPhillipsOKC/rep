@@ -23,15 +23,14 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
-2. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-3. Item 76 — exercise load type + "Level" type (ROI 1)
-4. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
-5. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
-6. Item 78 — "Bodyweight" load type (ROI 1)
-7. Item 79 — "Assisted" load type (ROI 1)
-8. Item 80 — periodic "update your weight" reminder (ROI 1)
-9. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
+1. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+2. Item 76 — exercise load type + "Level" type (ROI 1)
+3. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
+4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+5. Item 78 — "Bodyweight" load type (ROI 1)
+6. Item 79 — "Assisted" load type (ROI 1)
+7. Item 80 — periodic "update your weight" reminder (ROI 1)
+8. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
 
 ## Features
 
@@ -56,21 +55,6 @@ implemented and were dropped rather than logged.
   finished) plus an "Add set" affordance per expanded history card with an exercise picker (the
   existing flat set list has no exercise-scoped entry point today) and the same reps/weight/unit/RPE
   fields the edit form already uses. [Effort: 3, Value: 3, ROI: 1]
-
-- [ ] Bare unstyled "Loading…" placeholder text, inconsistent with the app's branded loading
-  screen (item 73, 2026-09-26 — ux-review, `04-exercises-list.png` and `19-history-list.png`):
-  `ExerciseList.vue:162`, `TemplateManager.vue:203`, `WorkoutHistory.vue:156`, and
-  `ExerciseHistoryDetail.vue:90` each render a plain `<p>Loading…</p>` with no styling while their
-  store's `loading` flag is true — on the shared test account (hundreds of accumulated workouts)
-  this sits on screen long enough to read clearly, not just flash by. `AuthGate.vue`'s own loading
-  state (`:63-94`, the animated bunny badge with pulsing rings and rotating captions) shows this app
-  already has a polished, on-brand loading treatment; these four list screens fall back to
-  default-browser-text instead. **Decided (2026-09-26, mockup review — `https://claude.ai/artifact/9igCfxNKwXohf4FfzzVRRU`):
-  skeleton rows**, not a spinner — a shared component rendering 2-3 placeholder cards matching the
-  real `row-wrap` card shape (a wide bar for the title line, a narrower one below for subtext),
-  filled with a shimmering gradient (`background-size: 200% 100%` sliding via `@keyframes`, tinted
-  off `--surface-2`/`--border`) so the list doesn't jump in height once data arrives. Swap in for
-  all four `<p>Loading…</p>` usages. [Effort: 2, Value: 3, ROI: 1.5]
 
 - [ ] Template's "N exercises" count goes stale after adding or removing an exercise in the same
   session (item 75, 2026-09-26 — ux-review, `07-template-detail.png`, shows "0 exercises" directly

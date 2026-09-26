@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useExercisesStore } from '../stores/exercises'
 import { useTemplatesStore } from '../stores/templates'
+import SkeletonRows from './SkeletonRows.vue'
 
 const exercises = useExercisesStore()
 const templates = useTemplatesStore()
@@ -200,7 +201,7 @@ async function saveExerciseEdit(templateId: string, templateExerciseId: string) 
     </div>
 
     <p v-if="!showAddForm && errorMessage" class="error">{{ errorMessage }}</p>
-    <p v-if="templates.loading">Loading…</p>
+    <SkeletonRows v-if="templates.loading" :rows="3" />
 
     <ul class="list">
       <li v-for="template in templates.activeTemplates" :key="template.id" class="row-wrap">
