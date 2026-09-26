@@ -23,10 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
-2. Remove JSON training data export (ROI 1.50)
-3. Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check (ROI 1.33)
-4. Show exercise-by-exercise history (ROI 1.00)
+1. Remove JSON training data export (ROI 1.50)
+2. Orphaned freeform `workouts` rows leak permanently and aren't covered by any existing check (ROI 1.33)
+3. Show exercise-by-exercise history (ROI 1.00)
+4. Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run (ROI 1.00)
 
 ## Features
 
@@ -39,22 +39,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Fix the jagged sizing of the in-workout exercise quick-select chips — `.suggested`
-  (`WorkoutLogger.vue`, the row of chips built from `activeTemplateExercises` for jumping between
-  a template's exercises mid-workout) sizes each chip to its own text with no width constraint
-  (`.chip` is `padding: 0 14px` with no min/max-width, wrapped via plain `flex-wrap: wrap`), so
-  chip width swings with each exercise name's length and the wrapped rows look ragged/sloppy
-  rather than aligned. Keep the chips rather than falling back to the `<select>` dropdown alone —
-  a one-tap chip is faster mid-set than opening and scrolling a dropdown — but give them a
-  consistent min/max-width with text truncation (ellipsis, and a `title` attribute or similar for
-  the full name) so short and long exercise names produce a clean, evenly-aligned grid instead of
-  ragged text-fit blocks. Don't change the separate template-selection chips at workout start
-  (`.template-chips`/`.template-chip`) or their own backlog item (template-or-freeform choice,
-  above) — this is scoped to the mid-workout exercise-switch chips only. Verify against a template
-  with both short and long exercise names, and cover truncation + full-name accessibility (aria
-  label or title) in Playwright/visual check.
-  [Effort: 2, Value: 3, ROI: 1.50]
 
 - [ ] Remove JSON training data export — remove the "Your data" card and download action from
   Exercises, the export helper, and its export-specific Playwright spec. There is no in-app import
@@ -103,6 +87,21 @@ implemented and were dropped rather than logged.
   abandoned-mid-workout freeform session looks like too, and must never be touched). Left uncleaned
   for now rather than bulk-deleting 116 rows via an ad hoc script outside reviewable tooling.
   [Effort: 3, Value: 4, ROI: 1.33]
+
+- [ ] Flaky click on "Start workout" in `template-or-freeform-choice.spec.ts`'s second run — found
+  while shipping the mid-workout suggested-chip sizing fix (`docs/backlog-archive.md`): a full
+  `npm run test:e2e` run failed this spec with `Test timeout of 30000ms exceeded` clicking
+  `Start workout` for the follow-up freeform start (after "Log another workout" resets the start
+  screen back to unselected), with Playwright's action log reporting `element was detached from
+  the DOM, retrying` before giving up. Unrelated to the chip-sizing change (different feature area
+  — start-screen template/freeform chips, not the mid-workout `.suggested` exercise chips) and
+  passed cleanly on an immediate rerun in isolation, so treated as a pre-existing flake per
+  `docs/backlog-archive.md` items 56/57's documented pattern rather than blocking that ship. Root
+  cause not yet diagnosed — likely a re-render racing the click right as the post-finish reset
+  flips the start screen back to its unselected state. Investigate and make the click robust (wait
+  for the reset to settle, or find and fix the actual re-render race) so this stops intermittently
+  failing the full e2e gate.
+  [Effort: 3, Value: 3, ROI: 1.00]
 
 ## Human setup / device verification
 

@@ -835,9 +835,10 @@ async function handleResumeJustFinished() {
             v-for="te in activeTemplateExercises"
             :key="te.id"
             type="button"
-            class="ghost chip"
+            class="ghost chip suggested-chip"
             :class="{ 'chip-selected': exerciseId === te.exercise_id }"
             :aria-pressed="exerciseId === te.exercise_id"
+            :title="te.exercises?.name"
             @click="pickSuggested(te.exercise_id)"
           >
             {{ te.exercises?.name }}
@@ -1532,6 +1533,18 @@ async function handleResumeJustFinished() {
   padding: 0 14px;
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+/* Backlog item: unlike .template-chip (horizontal scroll, sized to its own
+   text), .suggested-chip wraps into a grid, so unconstrained per-chip
+   widths made each wrapped row look ragged. Bound width both ways and
+   truncate long names instead. */
+.suggested-chip {
+  min-width: 90px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Backlog item 50: the suggested chips and the exercise <select> below set
