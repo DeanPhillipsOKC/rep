@@ -22,7 +22,7 @@ test('RPE quick-entry: tapping the field accepts input directly, no reveal step'
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
 
   await expect(page.getByRole('button', { name: '+RPE' })).toHaveCount(0)
   const rpeInput = page.getByLabel('RPE (optional)')

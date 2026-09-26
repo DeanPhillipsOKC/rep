@@ -34,7 +34,7 @@ test('primary workout CTAs use the accent fill, not the ghost style', async ({ p
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, true)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('100')
   await page.getByRole('button', { name: 'Add set' }).click()

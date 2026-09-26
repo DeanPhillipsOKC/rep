@@ -67,7 +67,8 @@ test('resume workout: reload after logging a set offers to resume, and Resume re
   await page.getByLabel('Reps').fill('6')
   await page.getByLabel('Weight').fill('205')
   await page.getByRole('button', { name: 'Add set' }).click()
-  await dismissCelebrationIfShown(page)
+  // 6 × 205 = 1230 lb-reps, under the first set's 8 × 185 = 1480 -- not a new
+  // best, so no celebration renders here (item 82: skip the blind wait).
   await expect(page.locator('li.row-wrap', { hasText: '6 × 205lb' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Finish workout' }).click()
@@ -102,7 +103,7 @@ test('resume workout: reload before the first set is still offered, and stays re
   // still work on the resumed session. A freeform workout's carousel deck
   // starts empty (no template, no ad-hoc additions carried over the
   // reload), so add the exercise through the sheet.
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('95')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -129,7 +130,7 @@ test('resume workout: Discard on a recovered workout requires confirmation and r
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   // Freeform workout: the carousel deck starts empty, add via the sheet.
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('135')
   await page.getByRole('button', { name: 'Add set' }).click()

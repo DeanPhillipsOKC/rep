@@ -20,9 +20,11 @@ import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 19: Log home screen's progress strip. Reads
 // the "workouts this week" tile before/after so the test doesn't depend on
-// the shared test account's pre-existing count (other specs also log
-// workouts). Tests run with a single worker (playwright.config.ts), so no
-// other spec can log a workout between this test's before/after reads.
+// the account's pre-existing count (other specs also log workouts). Each
+// Playwright worker signs in as its own dedicated test account (item 82,
+// e2e/fixtures/auth.ts) and runs one test at a time, so no other spec can
+// log a workout against *this* account between this test's before/after
+// reads, regardless of how many workers the suite runs with.
 test('progress strip: workouts-this-week count and recent-PR tile update after finishing a workout', async ({
   page,
   stamp,
@@ -64,7 +66,7 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('135')
   await page.getByRole('button', { name: 'Add set' }).click()

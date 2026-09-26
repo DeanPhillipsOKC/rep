@@ -88,6 +88,31 @@ dev server automatically (`webServer`, reused if already running locally) and ru
 Chromium. `e2e/fixtures/auth.ts` wraps the test-session mint above into `signInAsTestUser(page)`
 so specs can start already signed in — confirmed working end-to-end (`e2e/auth.spec.ts`).
 
+**Runs on 2 workers, one dedicated test account per worker** (item 82, 2026-09-26 — down
+from a single worker sharing one account, roughly halving wall-clock: ~6.8min average across
+3 baseline runs to ~2.0min across 3 measured runs afterward). `scripts/lib/mint-test-session.mjs`
+derives each worker's account from `TEST_ACCOUNT_EMAIL` via Gmail-style plus-addressing
+(`local+e2e-w{N}@domain`, `N` = Playwright's `TEST_PARALLEL_INDEX`) — Supabase treats that as a
+fully separate auth identity, and `generateLink` auto-creates it on first use, so no manual
+per-worker account setup is needed. `e2e/fixtures/auth.ts` also mints only once per worker
+process instead of once per test (re-minting only if the cached session is close to expiry) —
+the old per-test mint was a real `generateLink`/`verifyOtp` round trip roughly 50 times a run.
+A given worker still runs its tests one at a time, so per-account assumptions like
+`progress-strip.spec.ts`'s "nobody else touches this account's workout count" still hold
+regardless of worker count. Concurrent *invocations* of `npm run test:e2e` (e.g. running it by
+hand while `scripts/Run-Backlog.ps1` is also mid-iteration) are not supported — both would
+target the same small pool of per-worker accounts — matching `Run-Backlog.ps1`'s existing
+strictly-sequential design (`docs/backlog-runner.md`); this was chosen over minting a fresh
+Supabase auth user per run to avoid unbounded auth-user growth on the free tier (the "low pilot
+cost" guiding constraint). Override the worker count with `PW_WORKERS=<n> npm run test:e2e` to
+benchmark a different value; `timeout: 45_000` (up from Playwright's 30s default) and
+`retries: 1` locally (was 0) absorb real contention from two workers sharing one dev server and
+one machine's network stack, not flaky assertions — every spec was independently confirmed to
+pass in isolation before this was added. Remaining bottlenecks not yet tackled: most specs still
+create their fixture exercises/templates by driving the UI rather than seeding via the admin
+client, and the full 3-run-per-side benchmark protocol above only exercised 2 workers, not 4 (see
+`docs/backlog.md` for the follow-up item).
+
 **This is the required way to verify UI code changes in this repo.** The Claude-in-Chrome
 browser extension has been unreliable in this environment (extension not connected) —
 don't rely on it or treat a failed connection as a blocker. Instead, write or extend a

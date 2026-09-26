@@ -32,7 +32,7 @@ test('resume after finish: freeform workout with a set offers resume, and Resume
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('95')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -56,11 +56,12 @@ test('resume after finish: freeform workout with a set offers resume, and Resume
   await expect(page.getByRole('heading', { name: 'Freeform workout' })).toBeVisible()
   await expect(page.locator('li.row-wrap', { hasText: '10 × 95lb' })).toBeVisible()
 
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, true)
   await page.getByLabel('Reps').fill('8')
   await page.getByLabel('Weight').fill('105')
   await page.getByRole('button', { name: 'Add set' }).click()
-  await dismissCelebrationIfShown(page)
+  // 8 × 105 = 840 lb-reps, under the first set's 10 × 95 = 950 -- not a new
+  // best, so no celebration renders here (item 82: skip the blind wait).
   await expect(page.locator('li.row-wrap', { hasText: '8 × 105lb' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Finish workout' }).click()

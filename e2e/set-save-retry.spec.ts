@@ -17,7 +17,7 @@ async function startWithExercise(page: import('@playwright/test').Page, name: st
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, name)
+  await selectExercise(page, name, false)
   const row = page.locator('.set-row-draft').first()
   await row.getByLabel('Reps').fill('8')
   await row.getByLabel('Weight').fill('100')

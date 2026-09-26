@@ -58,7 +58,7 @@ test('exercise history: opened from the logger shows newest-first sets across mi
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
 
   // An unsaved draft row -- still there once the overlay below is dismissed
   // proves WorkoutLogger.vue was never unmounted to show it.

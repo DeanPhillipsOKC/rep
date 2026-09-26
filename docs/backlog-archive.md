@@ -218,3 +218,31 @@ on something already shipped. New entries get appended here when an item is remo
   `src/components/TemplateManager.vue`, `src/components/WorkoutHistory.vue`,
   `src/components/ExerciseHistoryDetail.vue`, `e2e/loading-skeletons.spec.ts`. Verified via
   `npm run build` and a full `npm run test:e2e` run (56/56).
+- Speed up the full regression gate while preserving coverage (item 82, 2026-09-26): measured a
+  3-run baseline (5.3min, 6.7min, 8.4min; average 6.8min) before changing anything, then shipped:
+  (1) `e2e/fixtures/auth.ts` mints a real Supabase session once per Playwright worker process
+  instead of once per test (worker-scoped cache in `getWorkerSession()`, re-minting only within 60s
+  of expiry) — the old per-test mint was a real `generateLink`/`verifyOtp` round trip roughly 50
+  times a run; (2) `scripts/lib/mint-test-session.mjs` derives a distinct plus-addressed account per
+  worker (`TEST_ACCOUNT_EMAIL+e2e-w{TEST_PARALLEL_INDEX}`) so `playwright.config.ts` could turn on
+  `fullyParallel: true` with `workers: 2` without racing the same magic link or breaking
+  `progress-strip.spec.ts`'s per-account workout-count assumption (a worker still runs its own
+  tests one at a time, so that assumption still holds); (3) `scripts/lib/cleanup-e2e-stamp.mjs`
+  runs its three independent lookup queries concurrently instead of serially, keeping the
+  FK-ordered deletes sequential; (4) `e2e/fixtures/exercise.ts`'s `selectExercise` takes an optional
+  `inDeck` hint so the ~20 call sites that already know whether their exercise is freeform (not yet
+  in the carousel) or template-sourced (already there) skip the old blind 2-second wait-then-fall-back
+  race entirely; two confirmed-guaranteed-absent `dismissCelebrationIfShown` calls (a second, lighter
+  set that can't be a new record) were removed outright in `resume-after-finish.spec.ts` and
+  `resume-workout.spec.ts` rather than left to time out. Two-worker runs surfaced sporadic
+  single-test timeouts from real contention (two Chromium instances sharing one Vite dev server and
+  network stack) — each failing spec passed cleanly in isolation, so `playwright.config.ts` bumped
+  `timeout` to 45s (from Playwright's 30s default) and local `retries` to 1 (was 0, CI stayed at 2)
+  rather than treating it as a logic bug. Result: 3 post-change runs at 2.0min/2.0min/2.0min
+  (average 2.0min), a 70% reduction, comfortably past the item's 50% target, all 57 tests green
+  every time. Not done — migrating remaining UI-driven fixture setup to API seeding, benchmarking 4
+  workers, and concurrent-run isolation — tracked as a new follow-up, item 83. Files:
+  `playwright.config.ts`, `e2e/fixtures/auth.ts`, `scripts/lib/mint-test-session.mjs`,
+  `scripts/lib/cleanup-e2e-stamp.mjs`, `e2e/fixtures/exercise.ts`, plus `inDeck` call-site updates
+  across ~20 spec files and doc updates to `docs/architecture.md`. Verified via `npm run build` and
+  a full `npm run test:e2e` run (57/57, plus the 3+3 baseline/optimized timing runs above).

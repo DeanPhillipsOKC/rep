@@ -39,7 +39,7 @@ test('compact set rows: target_sets rows show together, log sequentially, stay e
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, true)
 
   // Three configured sets means three rows, visible together — and that
   // total stays three throughout (a logged row switches to a compact

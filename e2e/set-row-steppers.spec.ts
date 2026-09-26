@@ -17,7 +17,7 @@ test('compact set-row fields are directly editable with no stepper buttons', asy
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
 
   const row = page.locator('.set-row-draft').first()
   const weight = row.getByLabel('Weight')
@@ -74,7 +74,7 @@ test('set row fields select their existing value on focus for one-keystroke over
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
 
   const row = page.locator('.set-row-draft').first()
   const reps = row.getByLabel('Reps')

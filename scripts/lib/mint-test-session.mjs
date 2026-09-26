@@ -52,6 +52,26 @@ export function getAdminClient() {
   })
 }
 
+// Backlog item 82: with more than one Playwright worker, every worker minting
+// sessions for the *same* test account races the same magic link and trips
+// progress-strip.spec.ts's "nobody else changes this account's workout
+// count" assumption. Each worker gets its own dedicated account instead,
+// derived from TEST_ACCOUNT_EMAIL via Gmail-style plus-addressing (Supabase
+// treats `local+suffix@domain` as a fully separate auth identity from
+// `local@domain` -- same trick as the human-only "fresh test account" setup
+// task in docs/backlog.md -- and generateLink auto-creates the account on
+// first use, so no manual account provisioning is needed per worker).
+// Playwright sets TEST_PARALLEL_INDEX per worker process (stable across
+// retries, unlike TEST_WORKER_INDEX); it's absent for the CLI script
+// (`npm run test:session`), which keeps using the bare account unchanged.
+function deriveWorkerEmail(baseEmail) {
+  const parallelIndex = process.env.TEST_PARALLEL_INDEX
+  if (parallelIndex === undefined) return baseEmail
+  const at = baseEmail.indexOf('@')
+  if (at === -1) return baseEmail
+  return `${baseEmail.slice(0, at)}+e2e-w${parallelIndex}${baseEmail.slice(at)}`
+}
+
 const isRateLimited = (message) => /rate limit/i.test(message ?? '')
 
 function sleep(ms) {
@@ -95,10 +115,12 @@ export async function mintTestSession() {
     throw new Error(`TEST_ACCOUNT_EMAIL (${testEmail}) is one of the real allowlisted accounts. Refusing.`)
   }
 
+  const workerEmail = deriveWorkerEmail(testEmail)
+
   const admin = getAdminClient()
 
   const linkData = await withRateLimitRetry('generateLink', () =>
-    admin.auth.admin.generateLink({ type: 'magiclink', email: testEmail })
+    admin.auth.admin.generateLink({ type: 'magiclink', email: workerEmail })
   )
 
   const hashedToken = linkData.properties?.hashed_token

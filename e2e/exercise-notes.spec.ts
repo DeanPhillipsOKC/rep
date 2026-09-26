@@ -34,7 +34,7 @@ test('exercise setup notes: add, edit, and see them while logging', async ({ pag
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
 
   await expect(page.locator('.setup-notes')).toHaveText(updatedNotes)
 })

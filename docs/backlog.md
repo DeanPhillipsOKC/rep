@@ -23,15 +23,15 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 82 — speed up the full regression gate while preserving coverage (ROI 1.6)
-2. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-3. Item 76 — exercise load type + "Level" type (ROI 1)
-4. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
-5. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
-6. Item 78 — "Bodyweight" load type (ROI 1)
-7. Item 79 — "Assisted" load type (ROI 1)
-8. Item 80 — periodic "update your weight" reminder (ROI 1)
-9. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
+1. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+2. Item 76 — exercise load type + "Level" type (ROI 1)
+3. Item 77 — "Body" tab: body-weight and height tracking (ROI 1)
+4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+5. Item 78 — "Bodyweight" load type (ROI 1)
+6. Item 79 — "Assisted" load type (ROI 1)
+7. Item 80 — periodic "update your weight" reminder (ROI 1)
+8. Item 81 — weigh-in history: view, fix, and delete entries (ROI 1)
+9. Item 83 — migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (ROI 1)
 
 ## Features
 
@@ -215,38 +215,31 @@ otherwise. Decisions already made with the user, don't relitigate:
 
 ## Testing / tooling
 
-- [ ] Speed up the full regression gate while preserving coverage (item 82, 2026-09-26):
-  source analysis found 57 tests across 34 spec files, all serialized by `workers: 1` in
-  `playwright.config.ts`, with roughly 50 fresh magic-link/session cycles per suite. No timing
-  benchmark was run during the analysis; the speedup below is an acceptance target, not a measured
-  prediction. Every push to `main` deploys to production, so retain the build and full regression
-  gate; do not substitute a smoke subset, skipped tests, or increased retries for existing coverage.
-  - Record baseline wall-clock and per-test/setup/cleanup timings on a fixed revision and machine.
-    Reuse authentication once per worker in fresh browser contexts, keeping explicit auth coverage
-    and handling session expiry/worker restarts without exposing credentials in reports or commits.
-  - Isolate dedicated test accounts by both run and worker before benchmarking two and four workers.
-    Merely raising `workers` is unsafe: magic-link minting races on the shared account, and
-    `progress-strip.spec.ts` assumes nobody else changes its account-wide workout count. Ensure
-    simultaneous agent runs cannot reuse or clean up each other's accounts/data; retain protection
-    for real pilot accounts. Keep tests within each worker isolated through reliable fixture cleanup.
-  - Seed prerequisites through fixtures/API calls when their creation is not the behavior under test
-    (e.g. rest-screen exercises and template setup). Preserve UI creation journeys in their own
-    coverage and real persistence, lost-response retry, recovery, and history checks. Seed before
-    first navigation using the existing `beforeNavigate` pattern to avoid overlapping initial fetches.
-  - Remove expected timeout paths in `e2e/fixtures/exercise.ts` and `celebration.ts`: use explicit
-    add/select actions and known celebration expectations with reliable readiness checks, rather
-    than waiting two seconds for intentionally absent UI. Do not replace those waits with racy
-    immediate visibility snapshots or globally shorten assertion timeouts.
-  - Where timings justify it, track created row IDs and parallelize independent cleanup lookups in
-    `scripts/lib/cleanup-e2e-stamp.mjs`; preserve foreign-key deletion order, scope cleanup to owned
-    test data, surface cleanup errors, and keep recovery for interrupted runs.
-  - Acceptance: target at least a 50% reduction in median full-suite runtime over at least three
-    comparable baseline and optimized runs, with all existing behavioral coverage retained and no
-    observed increase in failures/retries or leaked test data. Exercise concurrent runs separately
-    to verify isolation. Report measured results and remaining bottlenecks; do not claim the target
-    was met without evidence. Update the test workflow documentation. Enforced CI/branch protection
-    and switching the gate to a production build are separate follow-ups outside this item's scope.
-  [Effort: 5, Value: 8, ROI: 1.6]
+- [ ] Migrate remaining e2e fixture setup to API seeding; benchmark 4 workers (item 83, 2026-09-26,
+  follow-up to item 82's regression-gate speedup, `docs/backlog-archive.md`): item 82 shipped
+  per-worker auth reuse (one magic-link mint per worker instead of ~50 per run), 2 parallel workers
+  with isolated per-worker test accounts, parallelized independent lookups in
+  `scripts/lib/cleanup-e2e-stamp.mjs`, and removed a handful of confirmed-wasted 2-second blind waits
+  in `e2e/fixtures/exercise.ts`/`celebration.ts` — measured 70% median wall-clock reduction (3
+  baseline runs averaging 6.8min, 3 post-change runs averaging 2.0min), comfortably past that item's
+  50% target, with all 57 tests green across every measured run. Not done, and out of this item's
+  original scope by the time it shipped:
+  - Most specs still create their fixture exercises/templates by driving the UI (`Add exercise`,
+    `Add template` flows) rather than seeding via the admin client directly, even where creation
+    itself isn't the behavior under test — item 82's own text called this out but it was never
+    started. Audit which specs' setup this applies to (excluding ones that specifically test the
+    creation UI, e.g. `exercise-create-full.spec.ts`, `templates.spec.ts`) and seed via
+    `getAdminClient()` the same way `progress-strip.spec.ts`/`resume-after-finish.spec.ts` already do
+    through `signInAsTestUser`'s `beforeNavigate` hook.
+  - Only 2 workers were benchmarked (see `docs/architecture.md#testing--automation`). Benchmark 4
+    with `PW_WORKERS=4 npm run test:e2e` — watch for Supabase `generateLink`/`verifyOtp` rate
+    limiting across 4 simultaneous per-worker mints, and re-check whether `timeout`/`retries` in
+    `playwright.config.ts` need further adjustment under the extra load.
+  - Concurrent invocations of `npm run test:e2e` (e.g. a manual run overlapping a
+    `scripts/Run-Backlog.ps1` iteration) were deliberately left unsupported rather than solved, to
+    avoid minting a fresh Supabase auth user per run on the free tier — confirm this is still the
+    right tradeoff if usage patterns change, rather than assuming it's been verified safe.
+  [Effort: 3, Value: 3, ROI: 1]
 
 ## Human setup / device verification
 

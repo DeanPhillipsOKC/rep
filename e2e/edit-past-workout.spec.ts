@@ -25,7 +25,7 @@ test('edit notes and a set, and delete a set, on a past workout in History', asy
   await page.getByLabel('Notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await selectExercise(page, exerciseName)
+  await selectExercise(page, exerciseName, false)
 
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')

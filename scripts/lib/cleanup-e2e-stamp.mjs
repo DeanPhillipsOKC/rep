@@ -15,29 +15,34 @@ export async function cleanupStamp(stamp) {
   const admin = getAdminClient()
   const pattern = `%${stamp}%`
 
-  const { data: exerciseRows } = await admin.from('exercises').select('id').ilike('name', pattern)
+  // The three lookups below are independent of each other (none reads a
+  // result the others produce), so item 82 runs them concurrently instead of
+  // one at a time -- the FK-ordered *deletes* further down still can't start
+  // until the ids they depend on are known, so those stay sequential.
+  const [{ data: exerciseRows }, { data: templateRows }, { data: notedWorkoutRows }] = await Promise.all([
+    admin.from('exercises').select('id').ilike('name', pattern),
+    admin.from('workout_templates').select('id').ilike('name', pattern),
+    // Some specs (e.g. zero-set-cleanup, workout-header's freeform case)
+    // stamp a freeform workout's notes instead of/alongside a template or
+    // exercise.
+    admin.from('workouts').select('id').ilike('notes', pattern),
+  ])
   const exerciseIds = (exerciseRows ?? []).map((r) => r.id)
-
-  const { data: templateRows } = await admin
-    .from('workout_templates')
-    .select('id')
-    .ilike('name', pattern)
   const templateIds = (templateRows ?? []).map((r) => r.id)
 
   const workoutIds = new Set()
-
-  if (exerciseIds.length) {
-    const { data: setRows } = await admin.from('sets').select('workout_id').in('exercise_id', exerciseIds)
-    for (const row of setRows ?? []) workoutIds.add(row.workout_id)
-  }
-  if (templateIds.length) {
-    const { data: workoutRows } = await admin.from('workouts').select('id').in('template_id', templateIds)
-    for (const row of workoutRows ?? []) workoutIds.add(row.id)
-  }
-  // Some specs (e.g. zero-set-cleanup, workout-header's freeform case) stamp
-  // a freeform workout's notes instead of/alongside a template or exercise.
-  const { data: notedWorkoutRows } = await admin.from('workouts').select('id').ilike('notes', pattern)
   for (const row of notedWorkoutRows ?? []) workoutIds.add(row.id)
+
+  const [setRows, templateWorkoutRows] = await Promise.all([
+    exerciseIds.length
+      ? admin.from('sets').select('workout_id').in('exercise_id', exerciseIds).then((r) => r.data)
+      : null,
+    templateIds.length
+      ? admin.from('workouts').select('id').in('template_id', templateIds).then((r) => r.data)
+      : null,
+  ])
+  for (const row of setRows ?? []) workoutIds.add(row.workout_id)
+  for (const row of templateWorkoutRows ?? []) workoutIds.add(row.id)
 
   if (workoutIds.size) {
     await admin.from('workouts').delete().in('id', [...workoutIds])
