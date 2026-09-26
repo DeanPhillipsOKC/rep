@@ -23,11 +23,10 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 68 — move accidental-finish resume offer onto the volume chart (ROI 1.5)
-2. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
-3. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
-4. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
-5. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
+1. Item 70 — first-workout celebration card in place of the single-point volume chart (ROI 1.5)
+2. Item 73 — bare unstyled "Loading…" placeholders (ROI 1.5)
+3. Item 75 — template exercise count goes stale after adding/removing (ROI 1.5)
+4. Item 71 — allow adding a set to a past workout on the History screen (ROI 1)
 
 ## Features
 
@@ -40,18 +39,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Move the "resume accidentally-finished workout" offer off the "Log another workout" path
-  (item 68, 2026-09-26 — from discussion, not a UX-review find): today, finishing a templated
-  workout shows the volume chart, and tapping "Log another workout" there (`dismissVolumeChart` in
-  `WorkoutLogger.vue`) immediately shows a second "Resume your workout?" card because
-  `justFinishedWorkout` (item 124/item 1, `docs/backlog-archive.md`) is still set — re-litigating a
-  decision the user just made twice (finish, then explicitly "log another"). The undo-for-accidental-
-  finish value is real, it's just surfaced at the wrong moment. Move it onto the volume chart screen
-  itself instead — a secondary "Finished too early? Resume" affordance next to "Log another
-  workout" — so tapping "Log another workout" goes straight to the start screen with no second gate.
-  Freeform workouts (no volume chart) already show the offer immediately on finish; leave that path
-  alone. [Effort: 2, Value: 3, ROI: 1.5]
 
 - [ ] Replace the volume chart with a first-workout celebration card when there's only one point
   (item 70, 2026-09-26): `handleFinish` (`WorkoutLogger.vue:826-830`) sets `showingVolumeChart =

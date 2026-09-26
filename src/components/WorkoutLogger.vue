@@ -812,15 +812,16 @@ async function handleFinish() {
   recordCelebration.value = null
 
   // Resume-after-finish item: fetch the offer's data up front (rather than
-  // lazily on tap) so the "Resume workout?" card can show the template name
-  // and set count immediately once it's reached, whether that's right away
-  // (freeform) or after the volume chart is dismissed (templated). This has
-  // to finish before showingVolumeChart flips true, not just before
-  // handleFinish returns — otherwise the fetch can still be in flight when
-  // the volume chart's own dismiss button is clicked, and its late arrival
-  // switches the just-shown home screen straight to the resume card mid-
-  // interaction (surfaced as a flaky "element was detached from the DOM"
-  // failure on the next click in template-or-freeform-choice.spec.ts).
+  // lazily on tap) so the resume affordance can show immediately once it's
+  // reached, whether that's right away (freeform, its own "Resume your
+  // workout?" card) or as the "Finished too early? Resume" button on the
+  // volume chart (templated, item 68). This has to finish before
+  // showingVolumeChart flips true, not just before handleFinish returns —
+  // otherwise the fetch can still be in flight when the volume chart's own
+  // dismiss button is clicked, and its late arrival switches the just-shown
+  // home screen straight to the resume card mid-interaction (surfaced as a
+  // flaky "element was detached from the DOM" failure on the next click in
+  // template-or-freeform-choice.spec.ts).
   if (hadSets) await workout.fetchJustFinishedWorkout()
 
   if (finishedTemplateId && hadSets) {
@@ -834,6 +835,11 @@ async function handleFinish() {
 function dismissVolumeChart() {
   showingVolumeChart.value = false
   workout.clearVolumeHistory()
+  // Item 68: the resume-a-just-finished-workout offer moved onto this screen
+  // (the "Finished too early? Resume" button above) — tapping through to a
+  // new workout from here should go straight to the start screen, not
+  // re-surface the same offer as a second gate.
+  workout.dismissJustFinishedWorkout()
 }
 
 // Resume-after-finish item: mirrors handleResume above, but restores from
@@ -846,6 +852,11 @@ const justFinishedTemplateName = computed(
 async function handleResumeJustFinished() {
   const justFinished = workout.justFinishedWorkout
   if (!justFinished) return
+  // Item 68: reachable from the volume chart's own "Finished too early?
+  // Resume" button, so the chart itself (still showing at that point) has to
+  // be cleared here too, not just by dismissVolumeChart.
+  showingVolumeChart.value = false
+  workout.clearVolumeHistory()
   workout.resumeJustFinishedWorkout()
   notes.value = justFinished.notes ?? ''
   templateId.value = justFinished.template_id ?? ''
@@ -896,6 +907,14 @@ async function handleResumeJustFinished() {
       <h3>Volume over time</h3>
       <VolumeChart :points="workout.volumeHistory" />
       <button type="button" class="btn-accent finish chart-dismiss" @click="dismissVolumeChart">Log another workout</button>
+      <button
+        v-if="workout.justFinishedWorkout"
+        type="button"
+        class="link-button chart-resume-link"
+        @click="handleResumeJustFinished"
+      >
+        Finished too early? Resume
+      </button>
     </div>
 
     <div v-else-if="workout.justFinishedWorkout" class="card">
@@ -1661,6 +1680,12 @@ async function handleResumeJustFinished() {
 .history-link {
   display: block;
   margin: 4px 0 0;
+  font-size: 0.85rem;
+}
+
+.chart-resume-link {
+  display: block;
+  margin: 12px auto 0;
   font-size: 0.85rem;
 }
 

@@ -162,3 +162,14 @@ on something already shipped. New entries get appended here when an item is remo
   `e2e/template-archive-confirm.spec.ts` with a bounding-box assertion that the warning text sits
   fully above the confirm button row. Verified via `npm run build` and a full `npm run test:e2e`
   run (54/54).
+- Move accidental-finish resume offer onto the volume chart (item 68, 2026-09-26 — from
+  discussion): finishing a templated workout now shows a "Finished too early? Resume" link on the
+  "Volume over time" card itself (`WorkoutLogger.vue`), instead of a second "Resume your workout?"
+  card appearing after "Log another workout" is tapped — that second gate re-litigated a decision
+  the user had just made twice. `dismissVolumeChart` now also calls `dismissJustFinishedWorkout()`
+  so "Log another workout" goes straight to the start screen; `handleResumeJustFinished` now clears
+  `showingVolumeChart`/`clearVolumeHistory` itself since it's reachable while the chart is still
+  showing. Freeform workouts (no chart) are unaffected — they still show the standalone resume
+  card immediately. Files: `src/components/WorkoutLogger.vue`, `e2e/resume-after-finish.spec.ts`,
+  `e2e/volume-chart.spec.ts`, `e2e/template-or-freeform-choice.spec.ts`. Verified via `npm run build`
+  and a full `npm run test:e2e` run (55/55).

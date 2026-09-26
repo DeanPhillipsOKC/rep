@@ -10,7 +10,11 @@ import { selectExercise } from './fixtures/exercise'
 // set existed (docs/backlog-archive.md item 51 only guards the zero-sets
 // case). These specs drive the real "Finish workout" button (not a reload,
 // unlike resume-workout.spec.ts's crash-recovery specs) and check the
-// post-finish "Resume your workout?" offer it should now show.
+// post-finish resume offer. For a templated workout that offer now lives on
+// the volume-chart card itself as "Finished too early? Resume" (item 68) —
+// "Log another workout" there goes straight to a new workout with no second
+// gate. A freeform finish has no chart, so it still shows its own standalone
+// "Resume your workout?" card immediately.
 
 test('resume after finish: freeform workout with a set offers resume, and Resume restores it', async ({
   page,
@@ -62,7 +66,7 @@ test('resume after finish: freeform workout with a set offers resume, and Resume
   await page.getByRole('button', { name: 'Finish workout' }).click()
 })
 
-test('resume after finish: templated workout offers resume after the volume chart, and Start a new workout dismisses it', async ({
+test('resume after finish: templated workout offers resume inside the volume chart, and Log another workout skips a second gate', async ({
   page,
   stamp,
 }) => {
@@ -97,23 +101,18 @@ test('resume after finish: templated workout offers resume after the volume char
 
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
-  // A templated workout with sets shows the volume chart first — the resume
-  // offer isn't gated inside it, it just comes right after.
-  await expect(page.getByRole('heading', { name: 'Volume over time' })).toBeVisible()
+  // Item 68: a templated workout with sets shows the volume chart, and the
+  // just-finished resume offer now lives inside that same card as a
+  // secondary affordance, not as a second card gating "Log another workout".
+  const chart = page.locator('.card', { hasText: 'Volume over time' })
+  await expect(chart).toBeVisible()
+  const resumeLink = chart.getByRole('button', { name: 'Finished too early? Resume' })
+  await expect(resumeLink).toBeVisible()
+  await expect(page.locator('.card', { hasText: 'Resume your workout?' })).toHaveCount(0)
+
+  // "Log another workout" goes straight to the start screen — no second gate.
   await page.getByRole('button', { name: 'Log another workout' }).click()
-
-  const prompt = page.locator('.card', { hasText: 'Resume your workout?' })
-  await expect(prompt).toBeVisible()
-  await expect(prompt).toContainText(templateName)
-  await expect(prompt).toContainText('1 set logged')
-
-  await page.getByRole('button', { name: 'Start a new workout' }).click()
-
-  // Dismissing is non-destructive: the finished workout and its set stay
-  // exactly as finished, just no longer offered as resumable. Back at the
-  // normal start screen, nothing's pre-selected (item 1's explicit-choice
-  // requirement), so Start workout is present but disabled again.
-  await expect(prompt).toHaveCount(0)
+  await expect(page.locator('.card', { hasText: 'Resume your workout?' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Log a workout' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start workout' })).toBeDisabled()
 
@@ -121,6 +120,53 @@ test('resume after finish: templated workout offers resume after the volume char
   const card = page.locator('.card', { hasText: templateName })
   await expect(card).toBeVisible()
   await expect(card.locator('li.row-wrap')).toContainText('5 × 225lb')
+})
+
+test('resume after finish: "Finished too early? Resume" on the volume chart restores the workout', async ({
+  page,
+  stamp,
+}) => {
+  const exerciseName = `E2E ResumeFinish TooEarly ${stamp}`
+  const templateName = `E2E ResumeFinish TooEarly Day ${stamp}`
+
+  await signInAsTestUser(page)
+
+  await goTo(page, 'Exercises')
+  await page.getByLabel('Name').fill(exerciseName)
+  await page.getByRole('button', { name: 'Add exercise' }).click()
+  await expect(page.getByText(exerciseName)).toBeVisible()
+
+  await goTo(page, 'Templates')
+  await page.getByRole('button', { name: 'Add template' }).click()
+  await page.getByLabel('Name').fill(templateName)
+  await page.getByRole('button', { name: 'Add template' }).click()
+  await page.getByText(templateName).click()
+  await page.getByRole('combobox').selectOption({ label: exerciseName })
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.locator('.exercise-row', { hasText: exerciseName })).toBeVisible()
+
+  await goTo(page, 'Home')
+  await page.getByRole('button', { name: templateName, exact: true }).click()
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByRole('button', { name: exerciseName, exact: true }).click()
+  await page.getByLabel('Reps').fill('5')
+  await page.getByLabel('Weight').fill('185')
+  await page.getByRole('button', { name: 'Add set' }).click()
+  await dismissCelebrationIfShown(page)
+  await expect(page.locator('li.row-wrap', { hasText: '5 × 185lb' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Finish workout' }).click()
+  await expect(page.getByRole('heading', { name: 'Volume over time' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Finished too early? Resume' }).click()
+
+  // Genuinely resumed, not left stuck on the chart: the workout is active
+  // again under its template name with the prior set still there.
+  await expect(page.getByRole('heading', { name: templateName, exact: true })).toBeVisible()
+  await expect(page.locator('li.row-wrap', { hasText: '5 × 185lb' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Volume over time' })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Finish workout' }).click()
 })
 
 test('resume after finish: finishing with no sets logged does not offer to resume', async ({ page, stamp }) => {
