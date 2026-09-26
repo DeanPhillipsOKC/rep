@@ -10,6 +10,7 @@ test('set row steppers adjust values while inputs remain editable and RPE stays 
   await page.getByLabel('Name').fill(exerciseName)
   await page.getByRole('button', { name: 'Add exercise' }).click()
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 

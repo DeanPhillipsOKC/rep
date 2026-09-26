@@ -22,6 +22,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 
@@ -58,6 +59,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
   await page.getByRole('button', { name: 'Finish workout' }).click()
 
   // A later workout: matching (not beating) the prior best must not trigger.
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('8')
@@ -80,6 +82,7 @@ test('Record celebration: tapping the overlay also dismisses it', async ({ page,
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('5')

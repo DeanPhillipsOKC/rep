@@ -20,6 +20,7 @@ test('delete a workout from History', async ({ page, stamp }) => {
 
   await goTo(page, 'Home')
   await page.getByLabel('Notes (optional)').fill(notes)
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('10')

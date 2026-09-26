@@ -19,6 +19,7 @@ test('RPE quick-entry: toggle focuses the input in one tap', async ({ page, stam
   await page.getByRole('button', { name: 'Add exercise' }).click()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
 

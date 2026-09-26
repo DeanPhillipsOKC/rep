@@ -29,6 +29,7 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('5')

@@ -41,6 +41,7 @@ test('active workout shows a dynamic header, and the exercise chip/select stay i
 
   // Freeform workout: heading falls back to "Freeform workout" and a
   // ticking mm:ss clock appears.
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await expect(page.getByRole('heading', { name: 'Freeform workout' })).toBeVisible()
   const elapsed = page.locator('.elapsed-time')

@@ -22,6 +22,7 @@ test('adding a set with RPE left blank does not error', async ({ page, stamp }) 
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('10')

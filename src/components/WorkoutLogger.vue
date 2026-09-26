@@ -23,7 +23,12 @@ const router = useRouter()
 const weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 const notes = ref('')
-const templateId = ref('')
+// Backlog item 1 (template-or-freeform choice): `null` is the sentinel for
+// "nothing picked yet", distinct from `''` which means Freeform was
+// explicitly chosen — without that distinction, an untouched start screen
+// looked identical to a deliberate Freeform pick and "Start workout" would
+// silently start freeform.
+const templateId = ref<string | null>(null)
 const exerciseId = ref('')
 const errorMessage = ref('')
 
@@ -189,6 +194,7 @@ async function handleDiscardRecovered() {
 }
 
 async function handleStart() {
+  if (templateId.value === null) return
   errorMessage.value = ''
   // A brand-new workout session starts with no drafts of its own — without
   // this, a leftover unsaved row from a just-finished workout (e.g. the
@@ -610,7 +616,7 @@ async function handleFinish() {
   await workout.finishWorkout()
   confirmingEmptyFinish.value = false
   notes.value = ''
-  templateId.value = ''
+  templateId.value = null
   exerciseId.value = ''
   draftRowsByExercise.value = {}
   recordCelebration.value = null
@@ -758,7 +764,7 @@ function dismissVolumeChart() {
 
             <label for="workout-notes">Notes (optional)</label>
             <input id="workout-notes" v-model="notes" type="text" />
-            <button type="submit">Start workout</button>
+            <button type="submit" :disabled="templateId === null">Start workout</button>
           </form>
         </template>
       </template>

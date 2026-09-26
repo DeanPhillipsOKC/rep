@@ -82,6 +82,7 @@ test('resume workout: reload before the first set is still offered, and stays re
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await expect(page.getByRole('heading', { name: 'Freeform workout' })).toBeVisible()
 
@@ -123,6 +124,7 @@ test('resume workout: Discard on a recovered workout requires confirmation and r
   await expect(page.getByText(exerciseName)).toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   // Freeform workout: no suggested chips, pick from the <select>.
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })

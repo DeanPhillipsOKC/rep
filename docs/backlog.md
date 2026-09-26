@@ -23,13 +23,12 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
-2. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
-3. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-4. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
-5. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
-6. Remove JSON training data export (ROI 1.50)
-7. Show exercise-by-exercise history (ROI 1.00)
+1. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
+2. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
+3. E2E-stamped rows are still leaking despite item 57's per-test cleanup fixture (ROI 1.67)
+4. Fix the jagged sizing of the in-workout exercise quick-select chips (ROI 1.50)
+5. Remove JSON training data export (ROI 1.50)
+6. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -42,19 +41,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] Require a conscious template-or-freeform choice before starting a workout — reported from
-  real use: the start screen's `templateId` ref (`WorkoutLogger.vue`) defaults to `''`, and the
-  "Freeform" chip renders pre-selected (`chip-selected` when `templateId === ''`) before the user
-  has touched anything, so tapping "Start workout" without deliberately picking a chip silently
-  starts a freeform workout instead of the intended template — easy to do by accident and
-  confusing after the fact, since the workout then has no template-linked progress tracking.
-  Make the choice explicit: start with nothing selected (no chip shown as active, sentinel value
-  distinct from freeform's `''`), and require picking either a template chip or the Freeform chip
-  before "Start workout" is enabled/submits. Reset to unselected each time this screen is reached
-  fresh (not carried over from a just-finished workout). Cover both explicit choices and the
-  disabled/blocked submit-with-nothing-selected state in Playwright.
-  [Effort: 2, Value: 4, ROI: 2.00]
 
 - [ ] Fix the jagged sizing of the in-workout exercise quick-select chips — `.suggested`
   (`WorkoutLogger.vue`, the row of chips built from `activeTemplateExercises` for jumping between

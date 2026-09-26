@@ -14,6 +14,7 @@ async function startWithExercise(page: import('@playwright/test').Page, name: st
   await exerciseRow.getByLabel('Rest timer (seconds)').fill('30')
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: name })
   const row = page.locator('.set-row-draft').first()

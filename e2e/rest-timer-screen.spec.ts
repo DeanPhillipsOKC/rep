@@ -24,6 +24,7 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page, s
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('10')
@@ -61,6 +62,7 @@ test('rest timer screen: auto-dismisses when the countdown finishes', async ({ p
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('5')
@@ -86,6 +88,7 @@ test('rest timer screen: -15s and +15s adjust the countdown', async ({ page, sta
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('10')
@@ -136,6 +139,7 @@ test('rest timer screen: back to workout minimizes without canceling, resume res
   await exerciseRow.getByRole('button', { name: 'Save' }).click()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await page.getByLabel('Exercise').selectOption({ label: exerciseName })
   await page.getByLabel('Reps').fill('10')

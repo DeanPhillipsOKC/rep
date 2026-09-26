@@ -27,6 +27,7 @@ test('edit exercise name: rename and see it reflected elsewhere', async ({ page,
   await expect(page.getByText(originalName)).not.toBeVisible()
 
   await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
   await expect(page.getByLabel('Exercise').locator('option', { hasText: renamedName })).toHaveCount(1)
 })
