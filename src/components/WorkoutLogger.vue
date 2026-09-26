@@ -161,7 +161,17 @@ const workoutExerciseIds = computed(() => {
 
 const currentExerciseIndex = computed(() => workoutExerciseIds.value.indexOf(exerciseId.value))
 
+// Drives which way the exercise-card transition below slides -- 1 for
+// forward (dot/swipe/next moving to a later position in the deck), -1 for
+// backward. Computed here rather than separately in each caller (dots,
+// peek buttons, swipe, the add-exercise sheet) since they all funnel
+// through this one function.
+const slideDirection = ref(1)
+
 function selectExercise(id: string) {
+  const newIndex = workoutExerciseIds.value.indexOf(id)
+  const oldIndex = currentExerciseIndex.value
+  if (newIndex !== -1 && oldIndex !== -1) slideDirection.value = newIndex >= oldIndex ? 1 : -1
   exerciseId.value = id
 }
 
@@ -934,16 +944,25 @@ async function handleResumeJustFinished() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
 
-            <div class="exercise-card" @pointerdown="handleCardPointerDown" @pointerup="handleCardPointerUp">
-              <span class="exercise-card-position">{{ currentExerciseIndex + 1 }} / {{ workoutExerciseIds.length }}</span>
-              <div class="exercise-card-name">{{ exerciseName(exerciseId) }}</div>
-              <p v-if="selectedExerciseNotes" class="setup-notes exercise-card-notes">{{ selectedExerciseNotes }}</p>
-              <div class="exercise-card-footer">
-                <span class="row-sub">{{ setsLoggedLabel(exerciseId) }}</span>
-                <button type="button" class="link-button history-link" @click="viewingHistoryFor = exerciseId">
-                  View exercise history
-                </button>
-              </div>
+            <div class="exercise-card-viewport">
+              <Transition :name="slideDirection >= 0 ? 'slide-next' : 'slide-prev'" mode="out-in">
+                <div
+                  :key="exerciseId"
+                  class="exercise-card"
+                  @pointerdown="handleCardPointerDown"
+                  @pointerup="handleCardPointerUp"
+                >
+                  <span class="exercise-card-position">{{ currentExerciseIndex + 1 }} / {{ workoutExerciseIds.length }}</span>
+                  <div class="exercise-card-name">{{ exerciseName(exerciseId) }}</div>
+                  <p v-if="selectedExerciseNotes" class="setup-notes exercise-card-notes">{{ selectedExerciseNotes }}</p>
+                  <div class="exercise-card-footer">
+                    <span class="row-sub">{{ setsLoggedLabel(exerciseId) }}</span>
+                    <button type="button" class="link-button history-link" @click="viewingHistoryFor = exerciseId">
+                      View exercise history
+                    </button>
+                  </div>
+                </div>
+              </Transition>
             </div>
 
             <button
@@ -1781,10 +1800,21 @@ async function handleResumeJustFinished() {
   opacity: 0.35;
 }
 
-.exercise-card {
+/* Clips the slide transition below to the card's rounded corners, and gives
+   the transition's absolutely-unnecessary-but-simpler out-in swap a fixed
+   box to happen inside instead of the surrounding flex row reflowing. */
+.exercise-card-viewport {
   flex: 1;
   min-width: 0;
   height: 150px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.exercise-card {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -1798,6 +1828,38 @@ async function handleResumeJustFinished() {
   touch-action: pan-y;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Redesign item 67 follow-up: swiping/tapping a dot used to swap the
+   exercise card's content instantly, easy to miss as "nothing happened" at
+   a glance. Slides the new exercise in from the direction it came from
+   (slideDirection in the script), fading the old one out first (`out-in`
+   so the two never overlap and fight for the same box). */
+.slide-next-enter-active,
+.slide-next-leave-active,
+.slide-prev-enter-active,
+.slide-prev-leave-active {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.slide-next-enter-from {
+  transform: translateX(28px);
+  opacity: 0;
+}
+
+.slide-next-leave-to {
+  transform: translateX(-28px);
+  opacity: 0;
+}
+
+.slide-prev-enter-from {
+  transform: translateX(-28px);
+  opacity: 0;
+}
+
+.slide-prev-leave-to {
+  transform: translateX(28px);
+  opacity: 0;
 }
 
 .exercise-card-position {
@@ -1976,14 +2038,10 @@ async function handleResumeJustFinished() {
   border: none;
   border-bottom: 2px solid var(--accent);
   color: var(--accent);
-  text-align: left;
+  text-align: center;
   font-size: 1.05rem;
   font-weight: 800;
   -moz-appearance: textfield;
-}
-
-.set-field-reps .set-input-compact {
-  text-align: right;
 }
 
 .set-input-compact::-webkit-inner-spin-button,
