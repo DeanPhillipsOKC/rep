@@ -328,10 +328,11 @@ function openRpeInput(row: DraftRow) {
   nextTick(() => rpeInputRefs.get(row.key)?.focus())
 }
 
-// Also covers RPE carryover (applyPrefillToRow) landing a value in an
-// already-open input: selecting it on focus makes it a one-keystroke
-// overwrite instead of requiring manual cursor repositioning.
-function selectRpeInputText(event: FocusEvent) {
+// Redesign item: tapping into a reps/weight/RPE field that already carries
+// a value (a stepper adjustment, or pre-fill/carryover from the previous
+// set) used to require manually repositioning the cursor before typing.
+// Selecting the value on focus makes it a one-keystroke overwrite instead.
+function selectInputText(event: FocusEvent) {
   ;(event.target as HTMLInputElement).select()
 }
 
@@ -891,39 +892,45 @@ async function handleResumeJustFinished() {
                 </span>
 
                 <template v-else>
+                  <div class="set-row-body">
                   <div class="set-row-fields">
-                    <span class="set-stepper">
-                      <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} rep count`" :disabled="entry.row.saving || entry.row.reps === null || entry.row.reps <= 1" @click="adjustReps(entry.row, -1)">−</button>
-                      <label class="sr-only" :for="`row-reps-${entry.row.key}`">Reps</label>
-                      <input
-                        :id="`row-reps-${entry.row.key}`"
-                        v-model.number="entry.row.reps"
-                        :disabled="entry.row.saving"
-                        type="number"
-                        inputmode="numeric"
-                        min="1"
-                        placeholder="Reps"
-                        class="set-input"
-                      />
-                      <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} rep count`" :disabled="entry.row.saving" @click="adjustReps(entry.row, 1)">+</button>
-                    </span>
-                    <span class="set-row-x" aria-hidden="true">×</span>
-                    <span class="set-stepper">
-                      <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving || entry.row.weight === null || entry.row.weight <= 0" @click="adjustWeight(entry.row, -1)">−</button>
-                      <label class="sr-only" :for="`row-weight-${entry.row.key}`">Weight</label>
-                      <input
-                        :id="`row-weight-${entry.row.key}`"
-                        v-model.number="entry.row.weight"
-                        :disabled="entry.row.saving"
-                        type="number"
-                        inputmode="decimal"
-                        min="0"
-                        step="0.5"
-                        :placeholder="rowWeightUnit"
-                        class="set-input"
-                      />
-                      <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving" @click="adjustWeight(entry.row, 1)">+</button>
-                    </span>
+                    <div class="field-row">
+                      <span class="set-stepper">
+                        <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} rep count`" :disabled="entry.row.saving || entry.row.reps === null || entry.row.reps <= 1" @click="adjustReps(entry.row, -1)">−</button>
+                        <label class="sr-only" :for="`row-reps-${entry.row.key}`">Reps</label>
+                        <input
+                          :id="`row-reps-${entry.row.key}`"
+                          v-model.number="entry.row.reps"
+                          :disabled="entry.row.saving"
+                          type="number"
+                          inputmode="numeric"
+                          min="1"
+                          placeholder="Reps"
+                          class="set-input"
+                          @focus="selectInputText"
+                        />
+                        <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} rep count`" :disabled="entry.row.saving" @click="adjustReps(entry.row, 1)">+</button>
+                      </span>
+                    </div>
+                    <div class="field-row">
+                      <span class="set-stepper">
+                        <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving || entry.row.weight === null || entry.row.weight <= 0" @click="adjustWeight(entry.row, -1)">−</button>
+                        <label class="sr-only" :for="`row-weight-${entry.row.key}`">Weight</label>
+                        <input
+                          :id="`row-weight-${entry.row.key}`"
+                          v-model.number="entry.row.weight"
+                          :disabled="entry.row.saving"
+                          type="number"
+                          inputmode="decimal"
+                          min="0"
+                          step="0.5"
+                          :placeholder="rowWeightUnit"
+                          class="set-input"
+                          @focus="selectInputText"
+                        />
+                        <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving" @click="adjustWeight(entry.row, 1)">+</button>
+                      </span>
+                    </div>
                     <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" :disabled="entry.row.saving" @click="openRpeInput(entry.row)">
                       +RPE
                     </button>
@@ -941,7 +948,7 @@ async function handleResumeJustFinished() {
                         step="0.5"
                         placeholder="RPE"
                         class="set-input set-input-rpe"
-                        @focus="selectRpeInputText"
+                        @focus="selectInputText"
                       />
                     </span>
                   </div>
@@ -965,6 +972,7 @@ async function handleResumeJustFinished() {
                     </button>
                   </div>
                   <p v-if="entry.row.error" class="row-error">{{ entry.row.error }}</p>
+                  </div>
                 </template>
               </li>
             </ul>
@@ -1627,15 +1635,20 @@ async function handleResumeJustFinished() {
 .set-rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
+/* Redesign item: was flex-wrap with no column structure, so the
+   reps/weight/RPE controls wrapped onto extra lines unpredictably depending
+   on exact pixel widths. Reps and weight now each get their own explicit
+   row (`.field-row`) instead of sharing one and fighting for space — a
+   deterministic stacked layout at every phone width down to 320px, not a
+   wrap point that shifts with font size or locale. */
 .set-row {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 8px 10px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1643,90 +1656,116 @@ async function handleResumeJustFinished() {
 
 .set-row-number {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: var(--surface);
   color: var(--text-dim);
-  font-size: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .set-row-done {
   flex: 1;
   min-width: 0;
-  font-size: 0.9rem;
+  padding-top: 4px;
+  font-size: 1.05rem;
   font-weight: 600;
+}
+
+/* The draft branch's actual vertical stack: fields, then actions, then any
+   error — kept as one flex column so it (not the row) is what fills the
+   space next to the fixed-width number circle. Without this wrapper,
+   `.set-row-fields` and `.set-row-actions` would just be two more items in
+   `.set-row`'s own flex row and end up side by side instead of stacked. */
+.set-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .set-row-fields {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Fixed-column layout for a stepper row: the two stepper buttons keep a
+   consistent width regardless of viewport, and the input takes whatever
+   space is left (`1fr`) rather than a hard-coded width that could overflow
+   a narrow phone or leave slack on a wide one. */
+.field-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  column-gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  flex: 1 1 250px;
-  min-width: 0;
 }
 
 .set-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
+  display: contents;
 }
 
 .stepper-btn {
-  width: 24px;
-  min-width: 24px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
-  font-size: 1rem;
+  font-size: 1.3rem;
   background: var(--surface);
 }
 
 .set-input {
-  width: 50px;
-  min-height: 40px;
-  padding: 0 3px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 6px;
   text-align: center;
-  flex-shrink: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  /* The custom −/+ stepper buttons are the intended way to adjust these —
+     the native spin arrows are redundant and, at the larger width this
+     redesign gives the input, start showing up as visual clutter. */
+  -moz-appearance: textfield;
+}
+
+.set-input::-webkit-inner-spin-button,
+.set-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .set-input-rpe {
-  width: 52px;
-}
-
-.set-row-x {
-  color: var(--text-dim);
-  flex-shrink: 0;
+  width: 84px;
 }
 
 .rpe-toggle {
-  flex-shrink: 0;
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 0.72rem;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 0.85rem;
   background: transparent;
   border-style: dashed;
   color: var(--text-dim);
 }
 
 .rpe-inline {
-  flex-shrink: 0;
+  display: flex;
 }
 
 .set-row-actions {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 10px;
 }
 
 .log-btn {
-  min-height: 36px;
+  flex: 1;
+  min-height: 46px;
   padding: 0 14px;
-  font-size: 0.85rem;
+  font-size: 1rem;
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);
@@ -1734,9 +1773,11 @@ async function handleResumeJustFinished() {
 }
 
 .remove-row-btn {
-  min-height: 36px;
-  min-width: 36px;
+  flex-shrink: 0;
+  min-height: 46px;
+  min-width: 46px;
   padding: 0;
+  font-size: 1.1rem;
   background: transparent;
   border-color: var(--border);
   color: var(--text-dim);
@@ -1751,9 +1792,8 @@ async function handleResumeJustFinished() {
 }
 
 .row-error {
-  flex-basis: 100%;
   color: var(--danger);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   margin: 0;
 }
 

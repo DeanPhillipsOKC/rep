@@ -57,3 +57,37 @@ test('set row steppers adjust values while inputs remain editable and RPE stays 
     expect(geometry.separated).toBe(true)
   }
 })
+
+// Redesign item: tapping into a reps/weight field that already held a value
+// (from a stepper adjustment, or pre-fill/carryover) used to require
+// manually repositioning the cursor before typing. Mirrors the RPE
+// select-on-focus coverage in e2e/rpe-quick-entry.spec.ts.
+test('set row fields select their existing value on focus for one-keystroke overwrite', async ({ page, stamp }) => {
+  const exerciseName = `E2E Stepper Select ${stamp}`
+  await signInAsTestUser(page)
+  await goTo(page, 'Exercises')
+  await page.getByLabel('Name').fill(exerciseName)
+  await page.getByRole('button', { name: 'Add exercise' }).click()
+  await goTo(page, 'Home')
+  await page.getByRole('button', { name: 'Freeform' }).click()
+  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+
+  const row = page.locator('.set-row-draft').first()
+  const reps = row.getByLabel('Reps')
+  const weight = row.getByLabel('Weight')
+
+  // Give each field a value via its stepper — not by focusing the input
+  // itself — so the click below is genuinely that field's first focus.
+  await row.getByRole('button', { name: 'Increase set 1 rep count' }).click()
+  await expect(reps).toHaveValue('1')
+  await reps.click()
+  await page.keyboard.type('7')
+  await expect(reps).toHaveValue('7')
+
+  await row.getByRole('button', { name: 'Increase set 1 load by 10 lb' }).click()
+  await expect(weight).toHaveValue('10')
+  await weight.click()
+  await page.keyboard.type('225')
+  await expect(weight).toHaveValue('225')
+})
