@@ -685,6 +685,32 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     exerciseHistoryError.value = ''
   }
 
+  // Redesign item 67: ranks the add-exercise sheet's "Recently logged"
+  // section by actual recency only (no muscle-group/goal tagging exists to
+  // do better — see docs/backlog.md item 67's canvas note n4). Reads the
+  // most recent 300 sets' exercise ids in performed_at order and dedupes
+  // client-side rather than a DB-side GROUP BY, which PostgREST has no
+  // query-builder support for.
+  const recentlyLoggedExerciseIds = ref<string[]>([])
+
+  async function fetchRecentlyLoggedExercises() {
+    const { data, error } = await supabase
+      .from('sets')
+      .select('exercise_id, workouts!inner(performed_at)')
+      .order('performed_at', { foreignTable: 'workouts', ascending: false })
+      .limit(300)
+    if (error || !data) return
+
+    const seen = new Set<string>()
+    const ids: string[] = []
+    for (const row of data as unknown as { exercise_id: string }[]) {
+      if (seen.has(row.exercise_id)) continue
+      seen.add(row.exercise_id)
+      ids.push(row.exercise_id)
+    }
+    recentlyLoggedExerciseIds.value = ids
+  }
+
   async function fetchHistory() {
     loading.value = true
     errorMessage.value = ''
@@ -719,6 +745,8 @@ export const useWorkoutsStore = defineStore('workouts', () => {
     exerciseHistory,
     exerciseHistoryLoading,
     exerciseHistoryError,
+    recentlyLoggedExerciseIds,
+    fetchRecentlyLoggedExercises,
     newRecord,
     workoutsThisWeek,
     workoutDaysThisWeek,

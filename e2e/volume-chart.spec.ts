@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 6: post-workout volume-over-time chart, shown
 // after finishing any workout logged against a template. Template has two
@@ -53,7 +54,7 @@ test('volume chart: under-completed exercise carries forward its last complete v
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: trackedName })
+  await selectExercise(page, trackedName)
   await expect(page.locator('.set-row-draft')).toHaveCount(2)
   let openRow = page.locator('.set-row-draft').first()
   await openRow.getByLabel('Reps').fill('10')
@@ -95,13 +96,13 @@ test('volume chart: under-completed exercise carries forward its last complete v
   // "complete" and its actual volume passes straight through, uncarried).
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: trackedName })
+  await selectExercise(page, trackedName)
   await expect(page.locator('.set-row-draft')).toHaveCount(2)
   await page.locator('.set-row-draft').first().getByLabel('Reps').fill('10')
   await page.locator('.set-row-draft').first().getByLabel('Weight').fill('50')
   await page.locator('.set-row-draft').first().getByRole('button', { name: 'Add set' }).click()
   await expect(page.locator('.row', { hasText: trackedName })).toHaveCount(1)
-  await page.getByLabel('Exercise').selectOption({ label: otherName })
+  await selectExercise(page, otherName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('20')
   await page.getByRole('button', { name: 'Add set' }).click()

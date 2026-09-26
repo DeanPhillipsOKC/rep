@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md's "primary calls to action get lost against
 // secondary/ghost buttons" item: WorkoutLogger.vue's "Finish workout" and
@@ -33,7 +34,7 @@ test('primary workout CTAs use the accent fill, not the ghost style', async ({ p
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('100')
   await page.getByRole('button', { name: 'Add set' }).click()

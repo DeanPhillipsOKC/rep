@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 1: a focused per-exercise history detail,
 // opened from the active logger, showing past workouts newest-first with
@@ -57,7 +58,7 @@ test('exercise history: opened from the logger shows newest-first sets across mi
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
 
   // An unsaved draft row -- still there once the overlay below is dismissed
   // proves WorkoutLogger.vue was never unmounted to show it.

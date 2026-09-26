@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 28: the in-app rest screen (RestTimer.vue)
 // shown after logging a set for an exercise with rest_seconds configured.
@@ -26,7 +27,7 @@ test('rest timer screen: shows after a set, skip dismisses it', async ({ page, s
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -64,7 +65,7 @@ test('rest timer screen: auto-dismisses when the countdown finishes', async ({ p
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('20')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -90,7 +91,7 @@ test('rest timer screen: -15s and +15s adjust the countdown', async ({ page, sta
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -141,7 +142,7 @@ test('rest timer screen: back to workout minimizes without canceling, resume res
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()

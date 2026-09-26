@@ -23,7 +23,7 @@ Priority order (highest ROI first) is regenerated from the tags below by `next-i
 it makes (excluding blocked/needs-review/human items), so it can't drift out of sync. If you edit
 scores by hand, recompute this line to match:
 
-1. Item 67 — redesign active-workout screen: swipeable exercise carousel, remove "Last time" card, drop steppers, add RPE [ROI 1.0]
+(none — no eligible open items)
 
 ## Features
 
@@ -36,41 +36,6 @@ Items 49–55 came out of an adversarial UI/UX review (screenshot-based, another
 anything was logged — several of its claims (workout-delete confirmation, template-archive
 labeling, notes-display-when-present, duplicate-submit protection) turned out to already be
 implemented and were dropped rather than logged.
-
-- [ ] **67.** Redesign the active-workout logging screen (`WorkoutLogger.vue`'s in-progress view;
-  the pre-start template-selection screen isn't touched) per the canvas mockup at
-  https://claude.ai/artifact/BjvWV5AFmWZsgymDR8eFj7 (`Main.dc.html`/`AddExercise.dc.html`,
-  2026-09-26 — supersedes what were separately-numbered items 67/68 in earlier drafts of this entry;
-  folded together because the mockup resolves them as one connected redesign, not three independent
-  patches). Four pieces:
-  - Replace the suggested-exercise chip row and the `<select>` exercise dropdown with a swipeable
-    exercise carousel: a dot-indicator row (tap a dot to jump straight to that exercise), peek-edge
-    cards hinting more exercises exist off-screen, and a persistent dashed "+" that opens a full
-    add-exercise sheet (search box, then a "Recently logged" list). Rank that list by recency only
-    — the app has no muscle-group/goal tagging on exercises to do a real "good for leg day"
-    recommendation (see the canvas's `n4` note); don't fake it, and don't reach for AI-based
-    recommendation either, that's explicitly out of scope for now.
-  - Remove the "Last time" card (`.last-time`, `visiblePreviousExercises`/`previousSetsByExercise`,
-    item 3) entirely — per-row reps/weight pre-fill (item 21's `matchingSet`/seed logic) already
-    surfaces those numbers as the draft row's starting values, so the card is now just redundant
-    space. Check first whether the pre-fill seed logic itself still needs `workout.previousWorkout`
-    or those computeds before deleting them out from under it. Carry the existing exercise setup
-    notes forward onto the new exercise card (`selectedExerciseNotes`/`.setup-notes`) — that's
-    per-exercise "before you start the set" context (e.g. seat/pad position) that pre-fill can't
-    stand in for, so it doesn't get dropped along with the card it used to sit next to.
-  - Drop the reps/weight stepper buttons (`.field-row`/`.set-stepper`/`.stepper-btn`,
-    `adjustReps`/`adjustWeight`, added 2026-09-25 as an overlap-bug fix, `1b3f9fe`) for compact
-    tap-to-edit inline number fields, one row per set, as in the mockup. Re-enable the native
-    spin-button/appearance `.set-input` currently suppresses (that suppression existed *because* the
-    steppers replaced it), or leave spinners off if that's still preferred — either way, re-run the
-    mobile-width Playwright checks the stepper item added (320px/375px) since this reverses what they
-    cover.
-  - Add an RPE column to the compact set row (dashed/dim placeholder when empty, since it's
-    optional) in place of the current `+RPE` reveal-toggle button.
-
-  Touches template markup, styles, e2e selectors for the chips/dropdown that go away, and the
-  mobile-width steppers coverage — a real screen rewrite, not a small tweak.
-  [Effort: 8, Value: 8, ROI: 1.0]
 
 ## Testing / tooling
 

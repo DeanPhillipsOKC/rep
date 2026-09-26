@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Found 2026-09-24 while manually testing: v-model.number leaves an emptied
 // <input type="number"> as '' rather than coercing it to null, and RPE/target
@@ -24,7 +25,7 @@ test('adding a set with RPE left blank does not error', async ({ page, stamp }) 
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()

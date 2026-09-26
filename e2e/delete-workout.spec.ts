@@ -3,6 +3,7 @@ import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 31: remove a finished workout logged in error
 // from History. `sets.workout_id` has `on delete cascade`, so this also
@@ -22,7 +23,7 @@ test('delete a workout from History', async ({ page, stamp }) => {
   await page.getByLabel('Notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')
   await page.getByRole('button', { name: 'Add set' }).click()

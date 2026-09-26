@@ -3,6 +3,7 @@ import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md's "Recover an interrupted workout after reload"
 // item: activeWorkoutId/activeSets used to live only in the Pinia store, so
@@ -98,10 +99,10 @@ test('resume workout: reload before the first set is still offered, and stays re
   await expect(page.getByRole('heading', { name: 'Freeform workout' })).toBeVisible()
 
   // No sets existed before the reload, so logging the very first one must
-  // still work on the resumed session. A freeform workout has no suggested
-  // exercise chips (those only render for a templated one), so pick from
-  // the <select>.
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  // still work on the resumed session. A freeform workout's carousel deck
+  // starts empty (no template, no ad-hoc additions carried over the
+  // reload), so add the exercise through the sheet.
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('95')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -127,8 +128,8 @@ test('resume workout: Discard on a recovered workout requires confirmation and r
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  // Freeform workout: no suggested chips, pick from the <select>.
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  // Freeform workout: the carousel deck starts empty, add via the sheet.
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('135')
   await page.getByRole('button', { name: 'Add set' }).click()

@@ -3,10 +3,11 @@ import { signInAsTestUser } from './fixtures/auth'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 
 // Covers docs/backlog.md item 3: starting a new workout against a template
-// that already has a logged instance shows a "Last time" card and pre-fills
-// the reps/weight fields from the most recent matching set. Also covers the
-// "Last time" card narrowing to the selected exercise once one is picked,
-// so a multi-exercise template doesn't force scrolling mid-workout.
+// that already has a logged instance pre-fills the reps/weight fields from
+// the most recent matching set. The redesign (item 67) removed the separate
+// "Last time" summary card that used to also surface these numbers -- the
+// per-row pre-fill below is the only place they show now, and it re-narrows
+// correctly as the carousel moves between exercises.
 test('pre-fill: last workout of the same template surfaces on the next one', async ({ page, stamp }) => {
   const exerciseName = `E2E Squat ${stamp}`
   const otherExerciseName = `E2E Deadlift ${stamp}`
@@ -69,23 +70,15 @@ test('pre-fill: last workout of the same template surfaces on the next one', asy
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
-  const lastTime = page.locator('.last-time')
-  await expect(lastTime).toContainText(exerciseName)
-  await expect(lastTime).toContainText(otherExerciseName)
-  await expect(lastTime).toContainText('8×185lb')
-  await expect(lastTime).toContainText('5×225lb')
-
-  // Picking an exercise narrows the card to just that exercise.
-  await page.getByRole('button', { name: exerciseName, exact: true }).click()
-  await expect(lastTime).toContainText(exerciseName)
-  await expect(lastTime).not.toContainText(otherExerciseName)
+  // The carousel opens on the first exercise in the deck (template order),
+  // already pre-filled from last time's matching set.
+  await expect(page.locator('.exercise-card-name')).toHaveText(exerciseName)
   await expect(page.getByLabel('Reps')).toHaveValue('8')
   await expect(page.getByLabel('Weight')).toHaveValue('185')
 
-  // Switching exercises re-narrows rather than staying stuck on the first pick.
+  // Switching exercises re-fills rather than staying stuck on the first pick.
   await page.getByRole('button', { name: otherExerciseName, exact: true }).click()
-  await expect(lastTime).toContainText(otherExerciseName)
-  await expect(lastTime).not.toContainText(exerciseName)
+  await expect(page.locator('.exercise-card-name')).toHaveText(otherExerciseName)
   await expect(page.getByLabel('Reps')).toHaveValue('5')
   await expect(page.getByLabel('Weight')).toHaveValue('225')
 })
@@ -236,18 +229,16 @@ test('pre-fill: RPE carries over from the previous set when present, stays close
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
-  // Previous set had an RPE: the field should already be open and seeded,
-  // no need to tap "+RPE" first.
+  // Previous set had an RPE: the always-visible field is already seeded.
   await page.getByRole('button', { name: withRpeName, exact: true }).click()
   await expect(page.getByLabel('Reps')).toHaveValue('5')
   await expect(page.getByLabel('Weight')).toHaveValue('200')
-  await expect(page.getByRole('button', { name: '+RPE' })).not.toBeVisible()
   await expect(page.getByLabel('RPE (optional)')).toHaveValue('8')
 
-  // Previous set had no RPE: stays closed behind the toggle, same as before.
+  // Previous set had no RPE: the field stays empty (dashed placeholder),
+  // not carried over from a value that never existed.
   await page.getByRole('button', { name: noRpeName, exact: true }).click()
   await expect(page.getByLabel('Reps')).toHaveValue('5')
   await expect(page.getByLabel('Weight')).toHaveValue('225')
-  await expect(page.getByRole('button', { name: '+RPE' })).toBeVisible()
-  await expect(page.getByLabel('RPE (optional)')).not.toBeVisible()
+  await expect(page.getByLabel('RPE (optional)')).toHaveValue('')
 })

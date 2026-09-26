@@ -3,6 +3,7 @@ import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 async function startWithExercise(page: import('@playwright/test').Page, name: string) {
   await signInAsTestUser(page)
@@ -16,7 +17,7 @@ async function startWithExercise(page: import('@playwright/test').Page, name: st
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: name })
+  await selectExercise(page, name)
   const row = page.locator('.set-row-draft').first()
   await row.getByLabel('Reps').fill('8')
   await row.getByLabel('Weight').fill('100')
@@ -36,7 +37,6 @@ async function persistedSets(exerciseName: string) {
 test('set save rejection keeps fields and rest idle, then retries current values once', async ({ page, stamp }) => {
   const name = `E2E Rejected Set ${stamp}`
   const row = await startWithExercise(page, name)
-  await row.getByRole('button', { name: '+RPE' }).click()
   await row.getByLabel('RPE (optional)').fill('8.5')
   let rejected = false
   await page.route('**/rest/v1/sets?*', async (route) => {
@@ -55,7 +55,7 @@ test('set save rejection keeps fields and rest idle, then retries current values
   await expect(row.getByLabel('Weight')).toHaveValue('100')
   await expect(row.getByLabel('RPE (optional)')).toHaveValue('8.5')
   await expect(page.getByRole('button', { name: 'lb', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByLabel('Exercise').locator('option:checked')).toHaveText(name)
+  await expect(page.locator('.exercise-card-name')).toHaveText(name)
   await expect(page.locator('.set-row-logged')).toHaveCount(0)
   await expect(page.locator('.rest-headline')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Finish workout' })).toBeDisabled()

@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 32: fix a wrong rep/weight/RPE entry, remove a
 // set, or edit the notes on a workout that's already finished, without
@@ -24,7 +25,7 @@ test('edit notes and a set, and delete a set, on a past workout in History', asy
   await page.getByLabel('Notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
 
   await page.getByLabel('Reps').fill('10')
   await page.getByLabel('Weight').fill('45')

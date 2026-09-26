@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 38 (the full-screen celebration takeover) and
 // docs/backlog-archive.md item 4 (the underlying record detection it
@@ -24,7 +25,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
 
   // First-ever set for this exercise: any value is a new best.
   await page.getByLabel('Reps').fill('8')
@@ -61,7 +62,7 @@ test('Record celebration: shows on a new all-time best, blocks until dismissed, 
   // A later workout: matching (not beating) the prior best must not trigger.
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('8')
   await page.getByLabel('Weight').fill('110')
   await page.getByRole('button', { name: 'Add set' }).click()
@@ -84,7 +85,7 @@ test('Record celebration: tapping the overlay also dismisses it', async ({ page,
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('50')
   await page.getByRole('button', { name: 'Add set' }).click()

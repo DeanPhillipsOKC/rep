@@ -2,14 +2,15 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
+import { selectExercise } from './fixtures/exercise'
 
-// Covers docs/backlog.md's RPE quick-entry item: the +RPE toggle used to
-// only reveal the input without focusing it, so a first tap just swapped
-// the `+RPE` label for an unfocused `RPE` placeholder and typing a value
-// required a second tap. Also covers the select-on-focus behavior added
-// alongside it, so a carried-over RPE value (pre-fill.spec.ts) is a
-// one-keystroke overwrite instead of requiring manual cursor repositioning.
-test('RPE quick-entry: toggle focuses the input in one tap', async ({ page, stamp }) => {
+// Covers docs/backlog.md item 67: RPE is now an always-visible, dashed/dim
+// tap-to-edit field (no more "+RPE" reveal-toggle) -- tapping it and typing
+// immediately lands the value, with no separate reveal step first. Also
+// covers the select-on-focus behavior, so a carried-over RPE value
+// (pre-fill.spec.ts) is a one-keystroke overwrite instead of requiring
+// manual cursor repositioning.
+test('RPE quick-entry: tapping the field accepts input directly, no reveal step', async ({ page, stamp }) => {
   const exerciseName = `E2E RPE Toggle ${stamp}`
 
   await signInAsTestUser(page)
@@ -21,13 +22,11 @@ test('RPE quick-entry: toggle focuses the input in one tap', async ({ page, stam
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
 
-  await page.getByRole('button', { name: '+RPE' }).click()
+  await expect(page.getByRole('button', { name: '+RPE' })).toHaveCount(0)
   const rpeInput = page.getByLabel('RPE (optional)')
-  await expect(rpeInput).toBeFocused()
-
-  // Typing immediately, with no second tap/click, must land in the field.
+  await rpeInput.click()
   await page.keyboard.type('7')
   await expect(rpeInput).toHaveValue('7')
 })

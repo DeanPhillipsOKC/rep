@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 8: add setup notes to an exercise, confirm
 // they persist in the Exercises tab, and confirm they surface next to the
@@ -33,7 +34,7 @@ test('exercise setup notes: add, edit, and see them while logging', async ({ pag
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
 
   await expect(page.locator('.setup-notes')).toHaveText(updatedNotes)
 })

@@ -3,6 +3,7 @@ import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
 import { getAdminClient } from '../scripts/lib/mint-test-session.mjs'
+import { selectExercise } from './fixtures/exercise'
 
 // This spec predates the "resume after finish" item (docs/backlog-archive.md,
 // "Let an accidentally-finished workout be resumed..."): finishing a freeform
@@ -63,7 +64,7 @@ test('progress strip: workouts-this-week count and recent-PR tile update after f
   await goTo(page, 'Home')
   await page.getByRole('button', { name: 'Freeform' }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
   await page.getByLabel('Reps').fill('5')
   await page.getByLabel('Weight').fill('135')
   await page.getByRole('button', { name: 'Add set' }).click()

@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/cleanup'
 import { signInAsTestUser } from './fixtures/auth'
 import { goTo } from './fixtures/nav'
 import { dismissCelebrationIfShown } from './fixtures/celebration'
+import { selectExercise } from './fixtures/exercise'
 
 // Covers docs/backlog.md item 1: numbered rows matching the exercise's
 // configured set count, replacing the old one-set-at-a-time form. A
@@ -38,7 +39,7 @@ test('compact set rows: target_sets rows show together, log sequentially, stay e
   await goTo(page, 'Home')
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
-  await page.getByLabel('Exercise').selectOption({ label: exerciseName })
+  await selectExercise(page, exerciseName)
 
   // Three configured sets means three rows, visible together — and that
   // total stays three throughout (a logged row switches to a compact
@@ -80,10 +81,10 @@ test('compact set rows: target_sets rows show together, log sequentially, stay e
   await expect(page.locator('.rest-headline')).toBeVisible()
   await page.getByRole('button', { name: 'Skip Rest' }).click()
 
-  // Only row 3 is still open. Use its compact RPE expansion, then log it.
+  // Only row 3 is still open. Its RPE field is always available, no reveal
+  // step needed.
   await expect(openRows).toHaveCount(1)
   const thirdRow = openRows.nth(0)
-  await thirdRow.getByRole('button', { name: '+RPE' }).click()
   await thirdRow.getByLabel('RPE (optional)').fill('9')
   await thirdRow.getByLabel('Reps').fill('6')
   await thirdRow.getByLabel('Weight').fill('195')

@@ -4,11 +4,9 @@ import { goTo } from './fixtures/nav'
 
 // Covers docs/backlog.md item 50: WorkoutLogger.vue's heading used to read
 // "Log a workout" whether or not a workout was active, with no elapsed-time
-// indication. Also covers the item's chip/select fold-in: the suggested
-// exercise chips and the exercise <select> both just set exerciseId, so
-// picking via either one should visibly highlight the matching chip rather
-// than leaving them looking like two unrelated controls.
-test('active workout shows a dynamic header, and the exercise chip/select stay in sync', async ({ page, stamp }) => {
+// indication. Also covers item 67's carousel: its dot row and exercise card
+// stay in sync -- picking a dot highlights it and updates the card's name.
+test('active workout shows a dynamic header, and the exercise carousel stays in sync', async ({ page, stamp }) => {
   const exerciseAName = `E2E Bench ${stamp}`
   const exerciseBName = `E2E Row ${stamp}`
   const templateName = `E2E Push Day ${stamp}`
@@ -58,19 +56,19 @@ test('active workout shows a dynamic header, and the exercise chip/select stay i
   await page.getByRole('button', { name: 'Start workout' }).click()
   await expect(page.getByRole('heading', { name: templateName, exact: true })).toBeVisible()
 
-  const chipA = page.getByRole('button', { name: exerciseAName, exact: true })
-  const chipB = page.getByRole('button', { name: exerciseBName, exact: true })
-  const exerciseSelect = page.getByLabel('Exercise')
+  const dotA = page.getByRole('button', { name: exerciseAName, exact: true })
+  const dotB = page.getByRole('button', { name: exerciseBName, exact: true })
+  const cardName = page.locator('.exercise-card-name')
 
-  // Picking a chip highlights it and drives the same value the <select> shows.
-  await chipA.click()
-  await expect(chipA).toHaveAttribute('aria-pressed', 'true')
-  await expect(chipB).toHaveAttribute('aria-pressed', 'false')
-  await expect(exerciseSelect.locator('option:checked')).toHaveText(exerciseAName)
+  // Picking a dot highlights it and updates the exercise card.
+  await dotA.click()
+  await expect(dotA).toHaveAttribute('aria-pressed', 'true')
+  await expect(dotB).toHaveAttribute('aria-pressed', 'false')
+  await expect(cardName).toHaveText(exerciseAName)
 
-  // Picking the other exercise from the <select> flips the highlight to the
-  // matching chip instead — the two controls now visibly agree.
-  await exerciseSelect.selectOption({ label: exerciseBName })
-  await expect(chipB).toHaveAttribute('aria-pressed', 'true')
-  await expect(chipA).toHaveAttribute('aria-pressed', 'false')
+  // Picking the other dot flips the highlight -- the two stay in sync.
+  await dotB.click()
+  await expect(dotB).toHaveAttribute('aria-pressed', 'true')
+  await expect(dotA).toHaveAttribute('aria-pressed', 'false')
+  await expect(cardName).toHaveText(exerciseBName)
 })

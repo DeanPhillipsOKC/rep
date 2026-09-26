@@ -65,17 +65,14 @@ test('archived exercise stops appearing in a template it is still attached to', 
   await page.getByRole('button', { name: templateName, exact: true }).click()
   await page.getByRole('button', { name: 'Start workout' }).click()
 
-  // Wait for the suggested-chips section to actually mount before checking
-  // what it offers — asserting toHaveCount(0) against a section that hasn't
-  // rendered yet (activeWorkoutId/activeTemplateId still settling after the
-  // start-workout request) trivially "passes" without ever having checked
-  // the real, post-render list. Waiting on the container itself rather than
-  // e.g. the "Add set" button, since with only one (now-excluded) exercise
-  // on this template the picker legitimately has nothing to auto-select.
-  await page.locator('.suggested').waitFor({ state: 'attached' })
+  // With the archived exercise excluded, this template now has zero
+  // loggable exercises left, so the carousel deck is empty -- wait for that
+  // state to actually mount (activeWorkoutId/activeTemplateId still settling
+  // after the start-workout request) before checking it, rather than
+  // trivially "passing" against a not-yet-rendered section.
+  await page.locator('.deck-empty').waitFor({ state: 'attached' })
 
-  await expect(page.locator('.suggested .chip', { hasText: exerciseName })).toHaveCount(0)
-  await expect(page.getByLabel('Exercise').getByRole('option', { name: exerciseName })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: exerciseName, exact: true })).toHaveCount(0)
 
   // Started but never logged a set — Finish here would just discard it (see
   // e2e/zero-set-cleanup.spec.ts), which also keeps this spec from leaving a

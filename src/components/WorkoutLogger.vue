@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExercisesStore } from '../stores/exercises'
 import { usePushSubscriptionStore } from '../stores/pushSubscription'
 import { useTemplatesStore } from '../stores/templates'
 import { useWorkoutsStore } from '../stores/workouts'
+import AddExerciseSheet from './AddExerciseSheet.vue'
 import ExerciseHistoryDetail from './ExerciseHistoryDetail.vue'
 import RecordCelebration from './RecordCelebration.vue'
 import RestTimer from './RestTimer.vue'
@@ -58,6 +59,7 @@ onMounted(() => {
   if (exercises.exercises.length === 0) exercises.fetchExercises()
   if (templates.templates.length === 0) templates.fetchTemplates()
   workout.fetchProgressStats()
+  workout.fetchRecentlyLoggedExercises()
   document.addEventListener('visibilitychange', handleRestVisibilityChange)
   elapsedTimerHandle = window.setInterval(() => {
     elapsedNow.value = Date.now()
@@ -99,8 +101,10 @@ const elapsedLabel = computed(() => {
 })
 
 // Backlog item 3: sets from the previous workout against this template,
-// grouped by exercise in the order they were logged, so the "last time"
-// card and the reps/weight pre-fill can both read off it.
+// grouped by exercise in the order they were logged, so the reps/weight
+// pre-fill (item 21's applyPrefillToRow below) can read off it. Used to also
+// back a "Last time" summary card; removed in the redesign (item 67) since
+// the per-row pre-fill already surfaces the same numbers.
 const previousSetsByExercise = computed(() => {
   const grouped: Record<string, SetWithExercise[]> = {}
   for (const set of workout.previousWorkout?.sets ?? []) {
@@ -109,19 +113,11 @@ const previousSetsByExercise = computed(() => {
   return grouped
 })
 
-// Once an exercise is picked, narrow the "Last time" card to just that
-// exercise instead of the whole previous workout — keeps the screen short
-// enough to use mid-set without scrolling past exercises that aren't next.
-const visiblePreviousExercises = computed(() => {
-  const entries = Object.entries(previousSetsByExercise.value)
-  return exerciseId.value ? entries.filter(([exId]) => exId === exerciseId.value) : entries
-})
-
 // Backlog item 25: a template can still reference an exercise after it's
 // been archived (archiving only flips exercises.is_archived, it doesn't
 // touch workout_template_exercises), so this filters archived exercises out
-// of the suggested chips and the picker below rather than treating the join
-// table as the source of truth for what's loggable. Checks the live
+// of the carousel deck below rather than treating the join table as the
+// source of truth for what's loggable. Checks the live
 // exercises store rather than te.exercises.is_archived from the cached join
 // — that join is a snapshot from whenever the template's exercises were
 // last fetched, which templates.exercisesByTemplate only ever does once per
@@ -134,21 +130,98 @@ const activeTemplateExercises = computed(() => {
   )
 })
 
-// Backlog item 21: logging against a template restricts the exercise picker
-// to that template's exercises — the suggested chips below were already
-// scoped this way, but the dropdown itself wasn't, so picking from it (not
-// a chip) could add an exercise the template doesn't track. Matters beyond
-// just the chip/dropdown mismatch: "Last time" and the post-workout volume
-// chart both read every set in a templated workout as if it belonged to the
-// template, so an ad-hoc addition there leaks into that reporting. A
-// workout with no template keeps the full exercise list.
-const availableExercises = computed(() => {
-  if (!workout.activeTemplateId) return exercises.activeExercises
-  return activeTemplateExercises.value.map((te) => ({
-    id: te.exercise_id,
-    name: te.exercises?.name ?? 'Unknown',
-  }))
+// Redesign item 67: the swipeable carousel's deck of exercises for the
+// active workout, replacing the old chip row + <select> (which item 21
+// scoped a templated workout's dropdown to the template's own exercises).
+// That auto-populated part of the deck stays template-scoped for the same
+// reason item 21 gave (an ad-hoc addition leaking into the "last time"/
+// volume-chart reporting) — but the carousel's persistent "+" now
+// deliberately allows adding any active exercise on top of it (an ad-hoc
+// addition, or the whole deck for a freeform workout), per the redesign's
+// canvas note: "for anything outside the template or building a freeform
+// session from scratch." adHocExerciseIds tracks those additions for this
+// session (reset on start/resume, see handleStart etc. below); the fallback
+// over activeSets covers a resumed workout whose ad-hoc addition was made in
+// an earlier session and so never repopulated adHocExerciseIds.
+const adHocExerciseIds = ref<string[]>([])
+
+const workoutExerciseIds = computed(() => {
+  const ids: string[] = []
+  const seen = new Set<string>()
+  function add(id: string) {
+    if (seen.has(id)) return
+    seen.add(id)
+    ids.push(id)
+  }
+  for (const te of activeTemplateExercises.value) add(te.exercise_id)
+  for (const id of adHocExerciseIds.value) add(id)
+  for (const set of workout.activeSets) add(set.exercise_id)
+  return ids
 })
+
+const currentExerciseIndex = computed(() => workoutExerciseIds.value.indexOf(exerciseId.value))
+
+function selectExercise(id: string) {
+  exerciseId.value = id
+}
+
+function goToDeckOffset(delta: number) {
+  const ids = workoutExerciseIds.value
+  if (ids.length === 0) return
+  const current = currentExerciseIndex.value
+  const next = current === -1 ? 0 : Math.min(Math.max(current + delta, 0), ids.length - 1)
+  selectExercise(ids[next])
+}
+
+function goToPreviousExercise() {
+  goToDeckOffset(-1)
+}
+
+function goToNextExercise() {
+  goToDeckOffset(1)
+}
+
+// Real swipe support (not just the peek buttons/dots) via pointer events,
+// which unify touch/mouse/pen instead of needing separate touch handlers.
+let dragStartX: number | null = null
+
+function handleCardPointerDown(event: PointerEvent) {
+  dragStartX = event.clientX
+}
+
+function handleCardPointerUp(event: PointerEvent) {
+  if (dragStartX === null) return
+  const delta = event.clientX - dragStartX
+  dragStartX = null
+  const threshold = 40
+  if (delta > threshold) goToPreviousExercise()
+  else if (delta < -threshold) goToNextExercise()
+}
+
+// Add-exercise sheet: the deck's persistent "+". Candidates exclude whatever
+// is already in the deck (picking one of those is what the dots are for).
+const addingExercise = ref(false)
+
+const candidateExercisesForSheet = computed(() =>
+  exercises.activeExercises
+    .filter((e) => !workoutExerciseIds.value.includes(e.id))
+    .map((e) => ({ id: e.id, name: e.name })),
+)
+
+function openAddExercise() {
+  addingExercise.value = true
+}
+
+function handleSheetSelect(id: string) {
+  if (!workoutExerciseIds.value.includes(id)) adHocExerciseIds.value.push(id)
+  selectExercise(id)
+  addingExercise.value = false
+}
+
+function handleSheetManage() {
+  addingExercise.value = false
+  router.push({ name: 'exercises' })
+}
 
 // Recover-interrupted-workout item: recoverableWorkout comes straight off
 // the raw fetch in stores/workouts.ts (checkForRecoverableWorkout), so its
@@ -177,12 +250,15 @@ async function handleResume() {
   workout.resumeRecoverableWorkout()
   notes.value = recovered.notes ?? ''
   templateId.value = recovered.template_id ?? ''
+  adHocExerciseIds.value = []
+  exerciseId.value = ''
   if (recovered.template_id) {
     await workout.fetchPreviousWorkout(recovered.template_id, recovered.id)
     if (!templates.exercisesByTemplate[recovered.template_id]) {
       await templates.fetchTemplateExercises(recovered.template_id)
     }
   }
+  exerciseId.value = workoutExerciseIds.value[0] ?? ''
 }
 
 async function handleDiscardRecovered() {
@@ -202,6 +278,8 @@ async function handleStart() {
   // auto-replenished blank row after the last set of a no-target exercise)
   // would resurface the moment the same exercise is picked again.
   draftRowsByExercise.value = {}
+  adHocExerciseIds.value = []
+  exerciseId.value = ''
   if (templateId.value) {
     await workout.fetchPreviousWorkout(templateId.value)
   }
@@ -213,10 +291,10 @@ async function handleStart() {
   if (templateId.value && !templates.exercisesByTemplate[templateId.value]) {
     await templates.fetchTemplateExercises(templateId.value)
   }
-}
-
-function pickSuggested(id: string) {
-  exerciseId.value = id
+  // Redesign item 67: the carousel opens on the deck's first exercise
+  // (template order, or the first ad-hoc addition for a freeform workout)
+  // instead of requiring an explicit pick before anything shows.
+  exerciseId.value = workoutExerciseIds.value[0] ?? ''
 }
 
 // Backlog item 1: numbered rows matching the exercise's configured set
@@ -233,14 +311,13 @@ interface DraftRow {
   reps: number | null
   weight: number | null
   rpe: number | null
-  rpeOpen: boolean
   saving: boolean
   attempted: boolean
   error: string
 }
 
 function makeDraftRow(): DraftRow {
-  return { key: crypto.randomUUID(), reps: null, weight: null, rpe: null, rpeOpen: false, saving: false, attempted: false, error: '' }
+  return { key: crypto.randomUUID(), reps: null, weight: null, rpe: null, saving: false, attempted: false, error: '' }
 }
 
 // Shared across rows rather than per-row — a full-width unit selector on
@@ -258,6 +335,14 @@ function loggedCountFor(id: string): number {
   return workout.activeSets.filter((s) => s.exercise_id === id).length
 }
 
+function setsLoggedLabel(id: string): string {
+  const logged = loggedCountFor(id)
+  const target = configuredTargetFor(id)
+  const suffix = target !== null ? ` of ${target}` : ''
+  const plural = logged === 1 && target === null ? '' : 's'
+  return `${logged}${suffix} set${plural} logged`
+}
+
 // Position-indexed, same rule as the old applyPrefill: set N this session
 // pre-fills from set N last time (not just "the last set logged"), since a
 // superset's interleaved order would otherwise pre-fill from the wrong
@@ -268,13 +353,11 @@ function applyPrefillToRow(row: DraftRow, id: string, position: number) {
     row.reps = null
     row.weight = null
     row.rpe = null
-    row.rpeOpen = false
     return
   }
   row.reps = matchingSet.reps
   row.weight = matchingSet.weight
   row.rpe = matchingSet.rpe
-  row.rpeOpen = matchingSet.rpe !== null
 }
 
 // Lazily builds this exercise's row list the first time it's selected in
@@ -301,33 +384,6 @@ function ensureDraftRows(id: string) {
 }
 
 const draftRows = computed(() => (exerciseId.value ? (draftRowsByExercise.value[exerciseId.value] ?? []) : []))
-
-function adjustReps(row: DraftRow, delta: number) {
-  const current = typeof row.reps === 'number' && Number.isFinite(row.reps) ? row.reps : 0
-  row.reps = Math.max(1, current + delta)
-}
-
-function adjustWeight(row: DraftRow, delta: number) {
-  const step = rowWeightUnit.value === 'kg' ? 5 : 10
-  const current = typeof row.weight === 'number' && Number.isFinite(row.weight) ? row.weight : 0
-  row.weight = Math.max(0, current + delta * step)
-}
-
-// Backlog item 1: the +RPE toggle used to only reveal the input, leaving it
-// unfocused (a visible label flicker with no keyboard yet) so entering a
-// value took two taps. Keyed by row so a fast tap on one row's toggle can't
-// grab focus meant for another.
-const rpeInputRefs = new Map<string, HTMLInputElement>()
-
-function setRpeInputRef(key: string, el: Element | null) {
-  if (el) rpeInputRefs.set(key, el as HTMLInputElement)
-  else rpeInputRefs.delete(key)
-}
-
-function openRpeInput(row: DraftRow) {
-  row.rpeOpen = true
-  nextTick(() => rpeInputRefs.get(row.key)?.focus())
-}
 
 // Redesign item: tapping into a reps/weight/RPE field that already carries
 // a value (a stepper adjustment, or pre-fill/carryover from the previous
@@ -626,6 +682,7 @@ async function handleFinish() {
   templateId.value = null
   exerciseId.value = ''
   draftRowsByExercise.value = {}
+  adHocExerciseIds.value = []
   recordCelebration.value = null
 
   // Resume-after-finish item: fetch the offer's data up front (rather than
@@ -666,12 +723,15 @@ async function handleResumeJustFinished() {
   workout.resumeJustFinishedWorkout()
   notes.value = justFinished.notes ?? ''
   templateId.value = justFinished.template_id ?? ''
+  adHocExerciseIds.value = []
+  exerciseId.value = ''
   if (justFinished.template_id) {
     await workout.fetchPreviousWorkout(justFinished.template_id, justFinished.id)
     if (!templates.exercisesByTemplate[justFinished.template_id]) {
       await templates.fetchTemplateExercises(justFinished.template_id)
     }
   }
+  exerciseId.value = workoutExerciseIds.value[0] ?? ''
 }
 </script>
 
@@ -828,180 +888,178 @@ async function handleResumeJustFinished() {
       </p>
 
       <template v-else>
-        <div v-if="workout.previousWorkout" class="card last-time">
-          <h3>Last time</h3>
-          <p v-if="!exerciseId && workout.previousWorkout.notes" class="row-sub">
-            {{ workout.previousWorkout.notes }}
-          </p>
-          <ul class="last-time-list">
-            <li v-for="[exId, sets] in visiblePreviousExercises" :key="exId">
-              <span class="row-title">{{ sets[0].exercises?.name ?? 'Unknown' }}</span>
-              <span class="row-sub">
-                {{ sets.map((s) => `${s.reps}×${s.weight}${s.weight_unit}`).join(', ') }}
-              </span>
-            </li>
-          </ul>
-        </div>
-
-        <div v-if="workout.activeTemplateId" class="suggested">
-          <button
-            v-for="te in activeTemplateExercises"
-            :key="te.id"
-            type="button"
-            class="ghost chip suggested-chip"
-            :class="{ 'chip-selected': exerciseId === te.exercise_id }"
-            :aria-pressed="exerciseId === te.exercise_id"
-            :title="te.exercises?.name"
-            @click="pickSuggested(te.exercise_id)"
-          >
-            {{ te.exercises?.name }}
-          </button>
-        </div>
-
-        <div class="card">
-          <label for="set-exercise">Exercise</label>
-          <select id="set-exercise" v-model="exerciseId" required>
-            <option value="" disabled>Select an exercise</option>
-            <option v-for="exercise in availableExercises" :key="exercise.id" :value="exercise.id">
-              {{ exercise.name }}
-            </option>
-          </select>
-
-          <p v-if="selectedExerciseNotes" class="setup-notes">{{ selectedExerciseNotes }}</p>
-
-          <button
-            v-if="exerciseId"
-            type="button"
-            class="link-button history-link"
-            @click="viewingHistoryFor = exerciseId"
-          >
-            View exercise history
-          </button>
-
-          <template v-if="exerciseId">
-            <div class="unit-toggle" role="group" aria-label="Units">
+        <div class="exercise-deck">
+          <div class="deck-controls">
+            <div v-if="workoutExerciseIds.length > 0" class="deck-dots" role="group" aria-label="Exercises in this workout">
               <button
+                v-for="id in workoutExerciseIds"
+                :key="id"
                 type="button"
-                class="unit-btn"
-                :class="{ 'unit-selected': rowWeightUnit === 'lb' }"
-                :aria-pressed="rowWeightUnit === 'lb'"
-                @click="rowWeightUnit = 'lb'"
-              >
-                lb
-              </button>
-              <button
-                type="button"
-                class="unit-btn"
-                :class="{ 'unit-selected': rowWeightUnit === 'kg' }"
-                :aria-pressed="rowWeightUnit === 'kg'"
-                @click="rowWeightUnit = 'kg'"
-              >
-                kg
-              </button>
+                class="deck-dot"
+                :class="{ 'deck-dot-active': id === exerciseId }"
+                :aria-label="exerciseName(id)"
+                :aria-pressed="id === exerciseId"
+                @click="selectExercise(id)"
+              ></button>
+            </div>
+            <span v-else class="deck-dots-spacer"></span>
+            <button type="button" class="deck-add-btn" aria-label="Add exercise" @click="openAddExercise">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <div v-if="workoutExerciseIds.length > 0" class="deck-peek-row">
+            <button
+              type="button"
+              class="deck-peek"
+              aria-label="Previous exercise"
+              :disabled="currentExerciseIndex <= 0"
+              @click="goToPreviousExercise"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+
+            <div class="exercise-card" @pointerdown="handleCardPointerDown" @pointerup="handleCardPointerUp">
+              <span class="exercise-card-position">{{ currentExerciseIndex + 1 }} / {{ workoutExerciseIds.length }}</span>
+              <div class="exercise-card-name">{{ exerciseName(exerciseId) }}</div>
+              <p v-if="selectedExerciseNotes" class="setup-notes exercise-card-notes">{{ selectedExerciseNotes }}</p>
+              <div class="exercise-card-footer">
+                <span class="row-sub">{{ setsLoggedLabel(exerciseId) }}</span>
+                <button type="button" class="link-button history-link" @click="viewingHistoryFor = exerciseId">
+                  View exercise history
+                </button>
+              </div>
             </div>
 
-            <ul class="set-rows">
-              <li
-                v-for="entry in combinedRows"
-                :key="entry.type === 'logged' ? entry.set.id : entry.row.key"
-                class="set-row"
-                :class="entry.type === 'logged' ? 'set-row-logged' : 'set-row-draft'"
-              >
-                <span class="set-row-number" aria-hidden="true">{{ entry.number }}</span>
+            <button
+              type="button"
+              class="deck-peek"
+              aria-label="Next exercise"
+              :disabled="currentExerciseIndex >= workoutExerciseIds.length - 1"
+              @click="goToNextExercise"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
 
-                <span v-if="entry.type === 'logged'" class="set-row-done">
-                  {{ entry.set.reps }} × {{ entry.set.weight }}{{ entry.set.weight_unit }}
-                  <template v-if="entry.set.rpe !== null"> · RPE {{ entry.set.rpe }}</template>
-                </span>
+          <div v-else class="card deck-empty">
+            <p class="row-sub">No exercises yet. Add one to start logging.</p>
+            <button type="button" class="btn-accent" @click="openAddExercise">Add your first exercise</button>
+          </div>
+        </div>
 
-                <template v-else>
-                  <div class="set-row-body">
-                  <div class="set-row-fields">
-                    <div class="field-row">
-                      <span class="set-stepper">
-                        <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} rep count`" :disabled="entry.row.saving || entry.row.reps === null || entry.row.reps <= 1" @click="adjustReps(entry.row, -1)">−</button>
-                        <label class="sr-only" :for="`row-reps-${entry.row.key}`">Reps</label>
-                        <input
-                          :id="`row-reps-${entry.row.key}`"
-                          v-model.number="entry.row.reps"
-                          :disabled="entry.row.saving"
-                          type="number"
-                          inputmode="numeric"
-                          min="1"
-                          placeholder="Reps"
-                          class="set-input"
-                          @focus="selectInputText"
-                        />
-                        <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} rep count`" :disabled="entry.row.saving" @click="adjustReps(entry.row, 1)">+</button>
-                      </span>
-                    </div>
-                    <div class="field-row">
-                      <span class="set-stepper">
-                        <button type="button" class="stepper-btn" :aria-label="`Decrease set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving || entry.row.weight === null || entry.row.weight <= 0" @click="adjustWeight(entry.row, -1)">−</button>
-                        <label class="sr-only" :for="`row-weight-${entry.row.key}`">Weight</label>
-                        <input
-                          :id="`row-weight-${entry.row.key}`"
-                          v-model.number="entry.row.weight"
-                          :disabled="entry.row.saving"
-                          type="number"
-                          inputmode="decimal"
-                          min="0"
-                          step="0.5"
-                          :placeholder="rowWeightUnit"
-                          class="set-input"
-                          @focus="selectInputText"
-                        />
-                        <button type="button" class="stepper-btn" :aria-label="`Increase set ${entry.number} load by ${rowWeightUnit === 'kg' ? 5 : 10} ${rowWeightUnit}`" :disabled="entry.row.saving" @click="adjustWeight(entry.row, 1)">+</button>
-                      </span>
-                    </div>
-                    <button v-if="!entry.row.rpeOpen" type="button" class="rpe-toggle" :disabled="entry.row.saving" @click="openRpeInput(entry.row)">
-                      +RPE
-                    </button>
-                    <span v-else class="rpe-inline">
-                      <label class="sr-only" :for="`row-rpe-${entry.row.key}`">RPE (optional)</label>
-                      <input
-                        :id="`row-rpe-${entry.row.key}`"
-                        :ref="(el) => setRpeInputRef(entry.row.key, el as Element | null)"
-                        v-model.number="entry.row.rpe"
-                        :disabled="entry.row.saving"
-                        type="number"
-                        inputmode="decimal"
-                        min="0"
-                        max="10"
-                        step="0.5"
-                        placeholder="RPE"
-                        class="set-input set-input-rpe"
-                        @focus="selectInputText"
-                      />
-                    </span>
-                  </div>
-                  <div class="set-row-actions">
-                    <button
-                      type="button"
-                      class="log-btn"
-                      :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
-                      @click="completeRow(exerciseId, entry.row)"
-                    >
-                      {{ entry.row.saving ? 'Saving…' : entry.row.error ? 'Retry' : 'Add set' }}
-                    </button>
-                    <button
-                      type="button"
-                      class="remove-row-btn"
-                      :aria-label="`Remove row ${entry.number}`"
-                      :disabled="entry.row.saving || !!entry.row.error"
-                      @click="removeDraftRow(exerciseId, entry.row)"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <p v-if="entry.row.error" class="row-error">{{ entry.row.error }}</p>
-                  </div>
-                </template>
-              </li>
-            </ul>
+        <div v-if="exerciseId" class="card">
+          <div class="unit-toggle" role="group" aria-label="Units">
+            <button
+              type="button"
+              class="unit-btn"
+              :class="{ 'unit-selected': rowWeightUnit === 'lb' }"
+              :aria-pressed="rowWeightUnit === 'lb'"
+              @click="rowWeightUnit = 'lb'"
+            >
+              lb
+            </button>
+            <button
+              type="button"
+              class="unit-btn"
+              :class="{ 'unit-selected': rowWeightUnit === 'kg' }"
+              :aria-pressed="rowWeightUnit === 'kg'"
+              @click="rowWeightUnit = 'kg'"
+            >
+              kg
+            </button>
+          </div>
 
-            <button type="button" class="add-row-btn" @click="addDraftRow(exerciseId)">+ Add row</button>
-          </template>
+          <ul class="set-rows">
+            <li
+              v-for="entry in combinedRows"
+              :key="entry.type === 'logged' ? entry.set.id : entry.row.key"
+              class="set-row"
+              :class="entry.type === 'logged' ? 'set-row-logged' : 'set-row-draft'"
+            >
+              <span class="set-row-number" aria-hidden="true">{{ entry.number }}</span>
+
+              <span v-if="entry.type === 'logged'" class="set-row-done">
+                {{ entry.set.reps }} × {{ entry.set.weight }}{{ entry.set.weight_unit }}
+                <template v-if="entry.set.rpe !== null"> · RPE {{ entry.set.rpe }}</template>
+              </span>
+
+              <template v-else>
+                <div class="set-row-body">
+                <div class="set-row-fields-compact">
+                  <label class="set-field set-field-weight">
+                    <span class="sr-only">Weight</span>
+                    <input
+                      :id="`row-weight-${entry.row.key}`"
+                      v-model.number="entry.row.weight"
+                      :disabled="entry.row.saving"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="0.5"
+                      placeholder="0"
+                      class="set-input-compact"
+                      @focus="selectInputText"
+                    />
+                    <span class="set-field-unit" aria-hidden="true">{{ rowWeightUnit }}</span>
+                  </label>
+                  <label class="set-field set-field-reps">
+                    <span class="sr-only">Reps</span>
+                    <input
+                      :id="`row-reps-${entry.row.key}`"
+                      v-model.number="entry.row.reps"
+                      :disabled="entry.row.saving"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      placeholder="0"
+                      class="set-input-compact"
+                      @focus="selectInputText"
+                    />
+                  </label>
+                  <label class="set-field set-field-rpe">
+                    <span class="sr-only">RPE (optional)</span>
+                    <input
+                      :id="`row-rpe-${entry.row.key}`"
+                      v-model.number="entry.row.rpe"
+                      :disabled="entry.row.saving"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      placeholder="–"
+                      class="set-input-compact set-input-rpe-compact"
+                      @focus="selectInputText"
+                    />
+                  </label>
+                </div>
+                <div class="set-row-actions">
+                  <button
+                    type="button"
+                    class="log-btn"
+                    :disabled="entry.row.reps === null || entry.row.weight === null || entry.row.saving"
+                    @click="completeRow(exerciseId, entry.row)"
+                  >
+                    {{ entry.row.saving ? 'Saving…' : entry.row.error ? 'Retry' : 'Add set' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="remove-row-btn"
+                    :aria-label="`Remove row ${entry.number}`"
+                    :disabled="entry.row.saving || !!entry.row.error"
+                    @click="removeDraftRow(exerciseId, entry.row)"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p v-if="entry.row.error" class="row-error">{{ entry.row.error }}</p>
+                </div>
+              </template>
+            </li>
+          </ul>
+
+          <button type="button" class="add-row-btn" @click="addDraftRow(exerciseId)">+ Add row</button>
         </div>
       </template>
 
@@ -1123,6 +1181,15 @@ async function handleResumeJustFinished() {
       v-if="viewingHistoryFor"
       :exercise-id="viewingHistoryFor"
       @dismiss="viewingHistoryFor = null"
+    />
+
+    <AddExerciseSheet
+      v-if="addingExercise"
+      :exercises="candidateExercisesForSheet"
+      :recent-ids="workout.recentlyLoggedExerciseIds"
+      @select="handleSheetSelect"
+      @dismiss="addingExercise = false"
+      @manage="handleSheetManage"
     />
 
     <div v-if="activeRest && restMinimized" class="rest-mini-bar" role="status" aria-live="polite">
@@ -1543,25 +1610,6 @@ async function handleResumeJustFinished() {
   flex-shrink: 0;
 }
 
-.last-time-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.last-time-list li {
-  display: flex;
-  flex-direction: column;
-}
-
-.suggested {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 140px));
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
 .chip {
   min-height: 36px;
   padding: 0 14px;
@@ -1569,21 +1617,6 @@ async function handleResumeJustFinished() {
   font-weight: 500;
 }
 
-/* Backlog item: unlike .template-chip (horizontal scroll, sized to its own
-   text), .suggested-chip sits in a CSS grid (see .suggested) so every chip
-   fills its column track and rows line up regardless of label length,
-   instead of each chip sizing to its own text. */
-.suggested-chip {
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Backlog item 50: the suggested chips and the exercise <select> below set
-   the same exerciseId, so a chip highlights the same way the template picker
-   does once its exercise is selected -- via either the chip or the dropdown -
-   making the relationship visible instead of leaving them looking unrelated. */
 .chip.chip-selected {
   background: var(--accent);
   border-color: var(--accent);
@@ -1643,6 +1676,148 @@ async function handleResumeJustFinished() {
   white-space: pre-wrap;
 }
 
+/* Redesign item 67: swipeable exercise carousel replacing the suggested-chip
+   row and the exercise <select>. Dots pick an exercise directly; the peek
+   buttons step one at a time; the card itself also responds to a
+   left/right drag via pointer events (handlePointerDown/Up in the script). */
+.exercise-deck {
+  margin-bottom: 20px;
+}
+
+.deck-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px 12px;
+}
+
+.deck-dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.deck-dots-spacer {
+  display: block;
+  height: 6px;
+}
+
+.deck-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  min-height: 0;
+  border-radius: 3px;
+  background: var(--border);
+  border: none;
+  transition: width 0.15s ease, background-color 0.15s ease;
+}
+
+.deck-dot-active {
+  width: 20px;
+  background: var(--accent);
+}
+
+.deck-add-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deck-peek-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deck-peek {
+  flex-shrink: 0;
+  width: 26px;
+  height: 150px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deck-peek:disabled {
+  opacity: 0.35;
+}
+
+.exercise-card {
+  flex: 1;
+  min-width: 0;
+  height: 150px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.exercise-card-position {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.exercise-card-name {
+  font-family: var(--font-display, inherit);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exercise-card-notes {
+  min-height: 0;
+  margin: 2px 0;
+}
+
+.exercise-card-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.deck-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1684,12 +1859,6 @@ async function handleResumeJustFinished() {
   gap: 10px;
 }
 
-/* Redesign item: was flex-wrap with no column structure, so the
-   reps/weight/RPE controls wrapped onto extra lines unpredictably depending
-   on exact pixel widths. Reps and weight now each get their own explicit
-   row (`.field-row`) instead of sharing one and fighting for space — a
-   deterministic stacked layout at every phone width down to 320px, not a
-   wrap point that shifts with font size or locale. */
 .set-row {
   display: flex;
   align-items: flex-start;
@@ -1736,70 +1905,80 @@ async function handleResumeJustFinished() {
   min-width: 0;
 }
 
-.set-row-fields {
+/* Redesign item 67: tap-to-edit compact fields replacing the +/- steppers
+   (`1b3f9fe`) — an underlined value per field, numeric keypad on tap, no
+   stacked stepper buttons eating vertical space. Native spin-button
+   appearance stays suppressed (below): with the steppers gone there's
+   nothing forcing the wider input that made the arrows read as clutter, but
+   the compact underlined style reads cleanest without them, and mobile
+   entry goes through the numeric keypad anyway. RPE rides along as a
+   fourth field, same pattern, dashed/dim placeholder since it's optional. */
+.set-row-fields-compact {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-end;
+  gap: 14px;
 }
 
-/* Fixed-column layout for a stepper row: the two stepper buttons keep a
-   consistent width regardless of viewport, and the input takes whatever
-   space is left (`1fr`) rather than a hard-coded width that could overflow
-   a narrow phone or leave slack on a wide one. */
-.field-row {
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  column-gap: 8px;
+.set-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.set-field-weight {
+  flex: 1;
+  min-width: 0;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.set-field-reps {
+  align-items: flex-end;
+}
+
+.set-field-rpe {
   align-items: center;
 }
 
-.set-stepper {
-  display: contents;
-}
-
-.stepper-btn {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  font-size: 1.3rem;
-  background: var(--surface);
-}
-
-.set-input {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 6px;
-  text-align: center;
-  font-size: 1.2rem;
+.set-field-unit {
+  font-size: 0.7rem;
   font-weight: 700;
-  /* The custom −/+ stepper buttons are the intended way to adjust these —
-     the native spin arrows are redundant and, at the larger width this
-     redesign gives the input, start showing up as visual clutter. */
+  color: var(--text-dim);
+}
+
+.set-input-compact {
+  width: 52px;
+  min-height: 32px;
+  padding: 0 0 2px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+  text-align: left;
+  font-size: 1.1rem;
+  font-weight: 800;
   -moz-appearance: textfield;
 }
 
-.set-input::-webkit-inner-spin-button,
-.set-input::-webkit-outer-spin-button {
+.set-field-reps .set-input-compact {
+  text-align: right;
+}
+
+.set-input-compact::-webkit-inner-spin-button,
+.set-input-compact::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.set-input-rpe {
-  width: 84px;
-}
-
-.rpe-toggle {
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0 16px;
-  font-size: 0.85rem;
-  background: transparent;
-  border-style: dashed;
+.set-input-rpe-compact {
+  width: 40px;
+  border-bottom: 1px dashed var(--text-dim);
   color: var(--text-dim);
-}
-
-.rpe-inline {
-  display: flex;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .set-row-actions {
