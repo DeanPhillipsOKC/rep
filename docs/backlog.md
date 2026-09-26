@@ -25,10 +25,11 @@ scores by hand, recompute this line to match:
 
 1. Carry over RPE from the previous set when pre-filling a new set (ROI 3.00)
 2. Fix RPE quick-entry requiring two taps with a flickering label (ROI 2.00)
-3. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
-4. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
-5. Remove JSON training data export (ROI 1.50)
-6. Show exercise-by-exercise history (ROI 1.00)
+3. Require a conscious template-or-freeform choice before starting a workout (ROI 2.00)
+4. Let an accidentally-finished workout be resumed instead of only starting a new one (ROI 1.67)
+5. Redesign the set-row entry UI for size, alignment, and low-vision accessibility (ROI 1.67)
+6. Remove JSON training data export (ROI 1.50)
+7. Show exercise-by-exercise history (ROI 1.00)
 
 ## Features
 
@@ -51,6 +52,19 @@ implemented and were dropped rather than logged.
   make the toggle-to-placeholder transition read as one continuous control rather than two different
   labels. Cover the one-tap-to-focus behavior in Playwright.
   [Effort: 1, Value: 2, ROI: 2.00]
+
+- [ ] Require a conscious template-or-freeform choice before starting a workout — reported from
+  real use: the start screen's `templateId` ref (`WorkoutLogger.vue`) defaults to `''`, and the
+  "Freeform" chip renders pre-selected (`chip-selected` when `templateId === ''`) before the user
+  has touched anything, so tapping "Start workout" without deliberately picking a chip silently
+  starts a freeform workout instead of the intended template — easy to do by accident and
+  confusing after the fact, since the workout then has no template-linked progress tracking.
+  Make the choice explicit: start with nothing selected (no chip shown as active, sentinel value
+  distinct from freeform's `''`), and require picking either a template chip or the Freeform chip
+  before "Start workout" is enabled/submits. Reset to unselected each time this screen is reached
+  fresh (not carried over from a just-finished workout). Cover both explicit choices and the
+  disabled/blocked submit-with-nothing-selected state in Playwright.
+  [Effort: 2, Value: 4, ROI: 2.00]
 
 - [ ] Carry over RPE from the previous set when pre-filling a new set — the active workout
   logger's `applyPrefillToRow` (`WorkoutLogger.vue`) already seeds a new draft row's reps and
