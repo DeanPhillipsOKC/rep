@@ -206,11 +206,17 @@ otherwise. Decisions already made with the user, don't relitigate:
   every workout after it, so entries must be correctable. The Body screen's "See all weigh-ins"
   link (mockup, "Body tab" artboard, below the Reminders card) opens a list of every
   `body_weight_entries` row, newest first: weight + unit, date, and the change from the previous
-  entry. Each row gets Edit (weight, unit, and date, same inline-flyout pattern as
-  `ExerciseList.vue`'s edit form) and Delete (inline confirm row, same pattern as the exercise
-  delete). Flag likely typos on save, both here and in item 77's log-weight form and
-  `BodyStatsModal.vue`: if a new value differs from the previous entry by more than 20%, show
-  "That's a big change from 185.4 lb. Save anyway?" instead of saving straight away. Since volume
+  entry. It's a **bottom-sheet overlay over the Body tab**, not a new route: same shell as
+  `ExerciseHistoryDetail.vue` (dimmed backdrop, rounded-top panel, close button). Mockup artboard
+  "All weigh-ins: edit, typo check, delete (item 81)" shows every state. Each row gets Edit
+  (weight, unit, and date, same inline-flyout pattern as `ExerciseList.vue`'s edit form) and Delete
+  (inline confirm row, same pattern as the exercise delete, noting that volume for affected
+  workouts will be recalculated). Flag likely typos on save, both here and in item 77's log-weight
+  form and `BodyStatsModal.vue`: if a new value differs from the previous entry by more than 20%,
+  don't save yet; show an **inline warning box under the field** (Carrot Gold `--highlight` tint,
+  field border turns gold): "That's a big change from 185.4 lb. Save anyway?" with "Fix it"
+  (primary, refocuses the field) and "Save anyway". Build it as one small shared component so all
+  three places look identical. Since volume
   is computed at read time from these entries, a fix corrects past workouts' volume automatically;
   make sure any cached volume/PR data in the stores is refetched after an edit or delete. Extend
   item 77's store with update/delete. e2e: log two weights, edit one, delete one, confirm the list
