@@ -79,13 +79,13 @@ implemented and were dropped rather than logged.
   that template's exercises have been fetched this session) in both mutation functions.
   [Effort: 2, Value: 3, ROI: 1.5]
 
-Items 76-79 (2026-09-26, design discussion with the user): not every exercise is "reps × plate
+Items 76-80 (2026-09-26, design discussion with the user): not every exercise is "reps × plate
 weight." Each exercise gets a **load type** (`weight` | `level` | `bodyweight` | `assisted`) chosen
 when it's created, which decides what the logger asks for and how (or whether) a set counts toward
-volume. All four need the SQL in the **[human]** "Apply load-type / body-weight SQL" item under
+volume. All five need the SQL in the **[human]** "Apply load-type / body-weight SQL" item under
 *Human setup* applied to the live DB first, hence `Status: blocked` on each; once the user has run
-it, remove the Status from all four. Document order below is also dependency order (76 and 77
-before 78 and 79), and equal ROI/tie-break on Value/document order makes the runner take them in
+it, remove the Status from all five. Document order below is also dependency order (76 and 77
+before 78-80), and equal ROI/tie-break on Value/document order makes the runner take them in
 that order. Decisions already made with the user, don't relitigate:
 - Level exercises are **excluded from volume entirely** (difficulty levels aren't linear, so no
   "each level ≈ X lb" scale factor). They still get per-exercise progress and PRs.
@@ -93,8 +93,13 @@ that order. Decisions already made with the user, don't relitigate:
 - Body weight is tracked as a dated log, not a single profile field, so old sets keep the body
   weight the user had at the time instead of shifting whenever it's updated. It lives on a new
   "Body" bottom-nav tab alongside height and BMI.
-- When body weight is missing, bodyweight/assisted exercises prompt for it with a modal, but the
-  user can always decline; those sets then just stay out of volume.
+- When body weight is missing, bodyweight/assisted exercises prompt for it with a modal every
+  workout, with "Not now" and "Don't ask again"; the user can always decline, and those sets then
+  just stay out of volume.
+- Users with a weight and height on file get a periodic weigh-in reminder (weekly or monthly),
+  also with "Don't ask again."
+- Five bottom-nav tabs is fine (icons are small); if it ever looks cluttered, that's a separate
+  UX pass, not a reason to drop the tab.
 - Timed/cardio exercises (treadmill speed × time, planks) are out of scope for now.
 
 - [ ] Exercise load type + "Level" type (item 76, 2026-09-26): add a load-type picker to exercise
@@ -132,7 +137,12 @@ that order. Decisions already made with the user, don't relitigate:
     `VolumeChart.vue` styling). Empty state explains why it's worth filling in (bodyweight and
     assisted exercises count toward volume). Check the five-tab bar still fits at 360px width.
   - **Reusable `BodyStatsModal.vue`**: height + current weight fields prefilled with whatever is
-    already on file, "Save" and "Not now" buttons. Built here, triggered by items 78/79.
+    already on file, with "Save", "Not now", and "Don't ask again" buttons (the modal just emits
+    which one was chosen; callers decide what each means). Built here, triggered by items 78-80.
+  - A "Reminders" section on the Body screen with the toggles items 78 and 80 need to undo a
+    "Don't ask again": "Ask for my weight when logging bodyweight/assisted exercises" and the
+    weight-update reminder's cadence (Weekly / Monthly / Off). Items 78 and 80 wire them up;
+    this item can render them from the profile columns already.
   - Expose one pure helper, e.g. `bodyWeightAt(entries, performedAt, unit)`: the latest entry
     recorded at or before `performedAt`, falling back to the earliest entry if none is that old (so
     entering a body weight today still covers sets logged last week), converted to `unit` (1 kg =
@@ -148,9 +158,13 @@ that order. Decisions already made with the user, don't relitigate:
   excluded from volume (same "skip, not zero" rule as item 76's level sets). **Missing body weight
   prompt:** open item 77's `BodyStatsModal.vue` (a) right after the user creates a bodyweight or
   assisted exercise, and (b) when they log the first bodyweight/assisted set of a workout, in both
-  cases only if no body weight is on file. "Not now" is always allowed and nothing is blocked: the
-  set still saves, it just stays out of volume. After a "Not now," don't ask again for the rest of
-  that workout. Share this trigger logic with item 79 (one composable), don't duplicate it. PRs use effective-load volume when body weight is known, otherwise most reps (with
+  cases only if no body weight is on file. The user can always decline and nothing is blocked: the
+  set still saves, it just stays out of volume. **"Not now"** suppresses it for the rest of that
+  workout; it comes back next workout. **"Don't ask again"** sets
+  `profiles.missing_weight_prompt_opt_out = true` (on the profile, not localStorage, so it holds on
+  every device) and the modal never opens for this reason again; item 77's Body screen gets a
+  toggle to turn the prompt back on. Share this trigger logic with item 79 (one composable), don't
+  duplicate it. PRs use effective-load volume when body weight is known, otherwise most reps (with
   added weight as tiebreak). Set rendering: "12 reps · bodyweight" or "8 reps · BW + 25 lb". Unhide
   the Bodyweight option in item 76's picker. Extend e2e. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
@@ -158,12 +172,27 @@ that order. Decisions already made with the user, don't relitigate:
   assisted pull-up/dip machines, where a bigger number means an easier set. Logger field is labeled
   "Assist" (stored in `weight`/`weight_unit`). Effective load = max(body weight − assist, 0); volume
   = reps × effective load, with the same "excluded from volume, plus `BodyStatsModal` prompt"
-  behavior as item 78 when no body weight is on file (reuse item 78's composable). PRs run **inverted** when body weight is unknown: less assist beats more, ties
-  broken by more reps; with body weight known, compare effective-load volume. Progress/history
+  behavior as item 78 when no body weight is on file (reuse item 78's composable, including its
+  "Don't ask again" opt-out). PRs run **inverted** when body weight is unknown: less assist beats
+  more, ties broken by more reps; with body weight known, compare effective-load volume. Progress/history
   views must not show a rising assist number as improvement: check `ExerciseHistoryDetail.vue` and
   `exerciseHistory.ts` for any "heavier is better" assumptions. Set rendering: "10 reps · 40 lb
   assist". Unhide the Assisted option in item 76's picker. Extend e2e.
   [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
+
+- [ ] Periodic "update your weight" reminder (item 80, 2026-09-26, depends on item 77): once a
+  user has **both** a body weight and a height on file, remind them to log a fresh weight when
+  their latest `body_weight_entries.recorded_at` is older than their cadence,
+  `profiles.weight_reminder` (`'weekly'` = 7 days, `'monthly'` = 30 days, `'off'`; default
+  `'monthly'`, changeable in item 77's Reminders section). Check on app open, on the Home screen
+  only. Never interrupt an in-progress workout: if one is active, wait until the next open without
+  one. Show item 77's `BodyStatsModal.vue` in "update" mode (short "Time for a weigh-in?" line,
+  weight prefilled with the last value, height hidden). "Save" logs a new entry. "Not now" snoozes
+  for 3 days (per-device localStorage is fine for the snooze, wrapped in try/catch; worst case it
+  asks again sooner). "Don't ask again" sets `weight_reminder = 'off'`. Keep the due/snooze
+  decision in a pure, unit-tested function (inputs: latest entry date, cadence, snooze-until, has
+  height, now). e2e: seed an old weight entry, open the app, see the prompt, choose "Don't ask
+  again," reload, no prompt. [Effort: 3, Value: 3, ROI: 1, Status: blocked: needs the load-type SQL (human item) applied to the live DB]
 
 ## Testing / tooling
 
@@ -171,8 +200,8 @@ that order. Decisions already made with the user, don't relitigate:
 
 ## Human setup / device verification
 
-- [ ] **[human]** Apply load-type / body-weight SQL (2026-09-26, prerequisite for items 76-79):
-  run this in the Supabase SQL editor, then remove the `Status: blocked` from items 76-79 so the
+- [ ] **[human]** Apply load-type / body-weight SQL (2026-09-26, prerequisite for items 76-80):
+  run this in the Supabase SQL editor, then remove the `Status: blocked` from items 76-80 so the
   runner picks them up. Additive only; existing exercises default to `weight` and behave exactly
   as today.
   ```sql
@@ -181,6 +210,9 @@ that order. Decisions already made with the user, don't relitigate:
   alter table sets add column level int null check (level is null or level > 0);
   alter table profiles add column height numeric null check (height is null or height > 0);
   alter table profiles add column height_unit text null check (height_unit in ('in', 'cm'));
+  alter table profiles add column missing_weight_prompt_opt_out boolean not null default false;
+  alter table profiles add column weight_reminder text not null default 'monthly'
+    check (weight_reminder in ('weekly', 'monthly', 'off'));
 
   create table body_weight_entries (
     id          uuid primary key default gen_random_uuid(),
