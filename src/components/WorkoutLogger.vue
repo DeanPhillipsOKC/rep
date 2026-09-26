@@ -175,6 +175,32 @@ function selectExercise(id: string) {
   exerciseId.value = id
 }
 
+// Redesign item 67 follow-up: the set-rows panel (unit toggle + set rows +
+// "Add row") slides/fades in step with the exercise card so both areas read
+// as one thing moving together, instead of the card animating while this
+// larger area's values just snapped to the next exercise's. A keyed
+// <Transition> (like the exercise card uses) would remount these rows,
+// which briefly leaves no "Reps"/"Weight" field in the DOM for the
+// incoming exercise while the outgoing one plays its leave transition — a
+// real gap where a fast tap/keystroke lands on the wrong (about-to-be-
+// removed) exercise's fields. Instead this replays a plain CSS keyframe
+// animation on the same, never-remounted DOM node: the row list still
+// updates in the same tick as `exerciseId` (ordinary Vue reactivity, no
+// gap), and the animation is purely decorative on top of that. Toggling the
+// class off/on with a forced reflow between is what makes the animation
+// replay on a second swipe in the same direction, since re-adding a class
+// that's already present doesn't restart a CSS animation on its own.
+const setRowsPanelEl = ref<HTMLElement | null>(null)
+
+watch(exerciseId, () => {
+  const el = setRowsPanelEl.value
+  if (!el) return
+  const animationClass = slideDirection.value >= 0 ? 'set-rows-panel-anim-next' : 'set-rows-panel-anim-prev'
+  el.classList.remove('set-rows-panel-anim-next', 'set-rows-panel-anim-prev')
+  void el.offsetWidth
+  el.classList.add(animationClass)
+})
+
 function goToDeckOffset(delta: number) {
   const ids = workoutExerciseIds.value
   if (ids.length === 0) return
@@ -1014,6 +1040,8 @@ async function handleResumeJustFinished() {
             <span class="set-header-spacer" aria-hidden="true"></span>
           </div>
 
+          <div class="set-rows-viewport">
+          <div ref="setRowsPanelEl" class="set-rows-panel">
           <ul class="set-rows">
             <li
               v-for="entry in combinedRows"
@@ -1106,6 +1134,8 @@ async function handleResumeJustFinished() {
           </ul>
 
           <button type="button" class="add-row-btn" @click="addDraftRow(exerciseId)">+ Add row</button>
+          </div>
+          </div>
         </div>
       </template>
 
@@ -2005,6 +2035,42 @@ async function handleResumeJustFinished() {
   border-color: var(--accent);
   color: var(--accent-text);
   font-weight: 700;
+}
+
+/* Redesign item 67 follow-up: the set-rows panel slides/fades in step with
+   the exercise card when swiping between exercises -- without this, only
+   the small card animated while this larger area's values just snapped to
+   the next exercise's, reading as two disconnected things happening at
+   once. A plain keyframe animation (toggled from the script, not a keyed
+   <Transition>) rather than remounting: see setRowsPanelEl's watcher for
+   why a remount here is a real bug, not just style. overflow-x (not
+   overflow, which would also clip vertically) keeps the horizontal slide
+   from spilling past the card's edges while still letting the panel size to
+   however many rows the new exercise has. */
+.set-rows-viewport {
+  overflow-x: hidden;
+}
+
+@keyframes set-rows-slide-in-next {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+}
+
+@keyframes set-rows-slide-in-prev {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+}
+
+.set-rows-panel-anim-next {
+  animation: set-rows-slide-in-next 0.22s ease;
+}
+
+.set-rows-panel-anim-prev {
+  animation: set-rows-slide-in-prev 0.22s ease;
 }
 
 .set-rows {
